@@ -40,19 +40,18 @@ export default function GameStateDirector() {
     }
   };
 
-  const handleSelectClass = (selectedClassData) => {
-    const realName = user?.firstName || user?.emailAddresses[0]?.emailAddress?.split('@')[0] || 'Wanderer';
+  const handleCreateCharacter = (username) => {
     setSaveData({
       ...saveData,
       stage: 'EXPLORATION',
       heroData: {
-        ...selectedClassData,
-        name: realName,
-        maxHp: selectedClassData.hp,
-        hp: selectedClassData.hp,
-        maxMana: selectedClassData.mana,
-        mana: selectedClassData.mana,
-        baseDmg: selectedClassData.dmg,
+        name: username,
+        hp: 100,
+        maxHp: 100,
+        mana: 50,
+        maxMana: 50,
+        dmg: 12,
+        baseDmg: 12,
         gold: 0,
         level: 1,
         xp: 0,
@@ -63,7 +62,10 @@ export default function GameStateDirector() {
         equippedArmor: null,
         essence: 100,
         essence_last_regen: new Date().toISOString(),
-        daily_quests: getDailyQuests(selectedClassData.id)
+        daily_quests: getDailyQuests(),
+        skillPoints: {},
+        unspentSkillPoints: 0,
+        learnedTomes: [],
       }
     });
   };
@@ -128,7 +130,7 @@ export default function GameStateDirector() {
 
       <div className="w-full relative z-10 flex flex-col items-center justify-center flex-1">
         {stage === 'BOOT' && <BootScreen onStart={handleStartBoot} />}
-        {stage === 'CREATOR' && <CharacterCreator onSelectClass={handleSelectClass} />}
+        {stage === 'CREATOR' && <CharacterCreator onCreateCharacter={handleCreateCharacter} />}
         {stage === 'EXPLORATION' && <ExplorationEngine hero={saveData.heroData} updateHero={updateHero} onFindCombat={handleEnterCombat} />}
         {stage === 'COMBAT' && <CombatEngine heroDef={saveData.heroData} zone={saveData.combatZone} onVictory={handleVictory} onHeroDeath={handleDeath} />}
         {stage === 'DEATH' && <DeathScreen onRestart={handleRestart} />}

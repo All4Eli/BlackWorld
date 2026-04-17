@@ -115,7 +115,7 @@ export const ZONES = [
 ];
 
 // Daily quest generation — seeded by today's date so everyone gets same quests
-export function getDailyQuests(heroClass) {
+export function getDailyQuests() {
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
   const seed = today.split('-').reduce((acc, n) => acc + parseInt(n), 0);
 

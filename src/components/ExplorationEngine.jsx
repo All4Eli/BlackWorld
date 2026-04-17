@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ZONES, getDailyQuests, calculateEssence } from '@/lib/gameData';
 import QuestLog from './QuestLog';
+import SkillTreePanel from './SkillTreePanel';
 
 export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
   const [log, setLog] = useState(["[ENTRY]: You descend into the dark. Choose your ground."]);
@@ -9,6 +10,7 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
   const [merchantOpen, setMerchantOpen] = useState(false);
   const [questLogOpen, setQuestLogOpen] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
+  const [skillTreeOpen, setSkillTreeOpen] = useState(false);
   const logEndRef = useRef(null);
 
   useEffect(() => {
@@ -149,6 +151,9 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
       {questLogOpen && (
         <QuestLog quests={hero.daily_quests} onClose={() => setQuestLogOpen(false)} />
       )}
+      {skillTreeOpen && (
+        <SkillTreePanel hero={hero} updateHero={updateHero} onClose={() => setSkillTreeOpen(false)} />
+      )}
 
       {/* Top HUD */}
       <header className="flex flex-wrap justify-between items-center bg-black/60 border border-neutral-900 px-6 py-4 mb-6 gap-4">
@@ -184,6 +189,12 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
             Contracts
             {hero.daily_quests?.some(q => q.progress < q.target) && (
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full animate-pulse" />
+            )}
+          </button>
+          <button onClick={() => setSkillTreeOpen(true)} className="relative bg-black border border-neutral-800 px-4 py-2 text-[10px] uppercase tracking-widest text-stone-400 hover:border-purple-900 hover:text-purple-400 transition-all">
+            Skills
+            {(hero.unspentSkillPoints ?? 0) > 0 && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
             )}
           </button>
           <button onClick={() => setInventoryOpen(!inventoryOpen)} className={`bg-black border px-4 py-2 text-[10px] uppercase tracking-widest transition-all ${inventoryOpen ? 'border-red-900 text-red-500' : 'border-neutral-800 text-stone-400 hover:border-neutral-700'}`}>
@@ -355,6 +366,25 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
                       )}
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+
+            {/* Learned Tomes */}
+            <div>
+              <div className="text-[10px] text-stone-600 uppercase tracking-widest mb-2">Learned Tomes</div>
+              {!hero.learnedTomes?.length ? (
+                <div className="text-stone-700 text-xs text-center py-4 italic border border-neutral-900">None discovered</div>
+              ) : (
+                <div className="space-y-2">
+                  {hero.learnedTomes.map((tomeId) => {
+                    const rarity = tomeId.includes('mythic') ? 'text-fuchsia-500' : tomeId.includes('legendary') ? 'text-yellow-500' : 'text-blue-400';
+                    return (
+                      <div key={tomeId} className="border border-yellow-900/30 bg-yellow-950/5 p-2 text-[10px] uppercase tracking-widest">
+                        <span className={`font-bold ${rarity}`}>{tomeId.replace('tome_', '').replace(/_/g, ' ')}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

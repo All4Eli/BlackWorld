@@ -1,5 +1,6 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
+import { calculateSkillBonuses, rollForTomeDrop } from '@/lib/skillTree';
 import DeathScreen from './DeathScreen';
 
 export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) {
@@ -57,15 +58,16 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
 
   const handleLevelUp = (currentHero) => {
     if (currentHero.xp >= 100) {
-      addLog(`[ASCENSION]: You reached Level ${currentHero.level + 1}! Vitality increased.`);
+      addLog(`⬆️ [LEVEL UP]: You reached Level ${currentHero.level + 1}! +1 Skill Point earned.`);
       return {
         ...currentHero,
         level: currentHero.level + 1,
         xp: currentHero.xp - 100,
-        maxHp: currentHero.maxHp + 25,
-        hp: currentHero.maxHp + 25,
-        maxMana: currentHero.maxMana + 15,
-        flasks: currentHero.flasks + 1 // Bonus flask on level up
+        maxHp: currentHero.maxHp + 15,
+        hp: currentHero.maxHp + 15,
+        maxMana: currentHero.maxMana + 10,
+        flasks: currentHero.flasks + 1,
+        unspentSkillPoints: (currentHero.unspentSkillPoints ?? 0) + 1
       };
     }
     return currentHero;
@@ -75,13 +77,19 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
     if (hero.hp <= 0 || enemy.hp <= 0 || !isPlayerTurn) return;
     setIsPlayerTurn(false);
 
-    // Calculate Hero Damage with Equipped Gear Math
+    // Calculate Hero Damage with Equipped Gear + Skill Tree bonuses
     const weaponMod = hero.equippedWeapon ? hero.equippedWeapon.stat : 0;
-    const heroDamage = Math.floor(Math.random() * 8) + hero.baseDmg + weaponMod; 
+    const skillBonuses = calculateSkillBonuses(hero.skillPoints);
+    const baseDamage = Math.floor(Math.random() * 8) + hero.baseDmg + weaponMod + skillBonuses.baseDmg + skillBonuses.magicDmg;
+    
+    // Critical hit check from skill tree
+    const isCrit = Math.random() * 100 < (skillBonuses.critChance || 0);
+    const heroDamage = isCrit ? Math.floor(baseDamage * 1.5) : baseDamage;
     
     const newEnemyHp = Math.max(0, enemy.hp - heroDamage);
     setEnemy(prev => ({ ...prev, hp: newEnemyHp }));
-    addLog(`⚔️ [STRIKE]: Your weapon cuts ${enemy.name} for ${heroDamage} damage.`);
+    if (isCrit) addLog(`💥 [CRITICAL HIT!]: Your weapon devastates ${enemy.name} for ${heroDamage} damage!`);
+    else addLog(`⚔️ [STRIKE]: Your weapon cuts ${enemy.name} for ${heroDamage} damage.`);
 
     if (newEnemyHp === 0) {
       const xpDrop = enemy.isBoss ? 100 : 40;
@@ -105,10 +113,19 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
         droppedArtifact = { ...generated, id: Math.random().toString(36).substr(2, 9) };
       }
 
-      addLog(`🏆 [SLAUGHTER]: The ${enemy.name} was eradicated.`);
+      addLog(`🏆 [SLAIN]: The ${enemy.name} has fallen.`);
       addLog(`+ ${xpDrop} EXP | + ${goldDrop} Gold`);
-      if (droppedFlask) addLog(`🩸 Found 1x Crimson Flask amongst the ash.`);
-      if (droppedArtifact) addLog(`🔮 [ARTIFACT FOUND!]: Captured ${droppedArtifact.name} (+${droppedArtifact.stat} Stat)`);
+      if (droppedFlask) addLog(`🩸 Found 1x Crimson Flask.`);
+      if (droppedArtifact) addLog(`🔮 [ARTIFACT!]: ${droppedArtifact.name} (+${droppedArtifact.stat})`);
+
+      // Roll for tome drop on boss kill
+      let droppedTome = null;
+      if (enemy.isBoss) {
+        droppedTome = rollForTomeDrop(hero.learnedTomes || []);
+        if (droppedTome) {
+          addLog(`📜 [ANCIENT TOME DISCOVERED!]: ${droppedTome.name} — ${droppedTome.description}`);
+        }
+      }
       
       const newKills = hero.kills + 1;
       
@@ -119,7 +136,8 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
           xp: prev.xp + xpDrop,
           gold: prev.gold + goldDrop,
           flasks: droppedFlask ? prev.flasks + 1 : prev.flasks,
-          artifacts: droppedArtifact ? [...prev.artifacts, droppedArtifact] : prev.artifacts
+          artifacts: droppedArtifact ? [...prev.artifacts, droppedArtifact] : prev.artifacts,
+          learnedTomes: droppedTome ? [...(prev.learnedTomes || []), droppedTome.id] : (prev.learnedTomes || [])
         };
         const levelUpHero = handleLevelUp(updated);
         
@@ -136,11 +154,13 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
 
     // ENEMY PHASE
     setTimeout(() => {
-      const enemyDmg = Math.floor(Math.random() * (enemy.isBoss ? 10 : 5)) + enemy.attackDamage;
-      setHero(prev => ({ ...prev, hp: Math.max(0, prev.hp - enemyDmg) }));
-      addLog(`⚠️ [AGONY]: ${enemy.name} strikes for ${enemyDmg} damage!`);
+      const rawEnemyDmg = Math.floor(Math.random() * (enemy.isBoss ? 10 : 5)) + enemy.attackDamage;
+      const sB = calculateSkillBonuses(hero.skillPoints);
+      const reducedDmg = Math.max(1, rawEnemyDmg - (sB.damageReduction || 0));
+      setHero(prev => ({ ...prev, hp: Math.max(0, prev.hp - reducedDmg) }));
+      addLog(`⚠️ ${enemy.name} strikes for ${reducedDmg} damage!${sB.damageReduction > 0 ? ` (${sB.damageReduction} blocked)` : ''}`);
 
-      if (hero.hp - enemyDmg <= 0) {
+      if (hero.hp - reducedDmg <= 0) {
         addLog("🛑 [PERISHED]: The dark consumes you...");
       } else {
         setIsPlayerTurn(true);
@@ -155,15 +175,18 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
         return;
      }
 
+     const sB = calculateSkillBonuses(hero.skillPoints);
+     const flaskHeal = 60 + (sB.flaskBonus || 0);
      setIsPlayerTurn(false);
-     setHero(prev => ({ ...prev, hp: Math.min(prev.maxHp, prev.hp + 60), flasks: prev.flasks - 1 }));
-     addLog("🩸 [CRIMSON FLASK]: You crush a glass vial and restore 60 HP.");
+     setHero(prev => ({ ...prev, hp: Math.min(prev.maxHp, prev.hp + flaskHeal), flasks: prev.flasks - 1 }));
+     addLog(`🩸 [CRIMSON FLASK]: Restored ${flaskHeal} HP.`);
 
     setTimeout(() => {
-      const enemyDmg = Math.floor(Math.random() * 5) + enemy.attackDamage;
-      setHero(prev => ({ ...prev, hp: Math.max(0, prev.hp - enemyDmg) }));
-      addLog(`⚠️ [AGONY]: ${enemy.name} punishes your healing phase for ${enemyDmg} damage!`);
-      if (hero.hp - enemyDmg <= 0) {
+      const rawDmg = Math.floor(Math.random() * 5) + enemy.attackDamage;
+      const reduced = Math.max(1, rawDmg - (sB.damageReduction || 0));
+      setHero(prev => ({ ...prev, hp: Math.max(0, prev.hp - reduced) }));
+      addLog(`⚠️ ${enemy.name} strikes during recovery for ${reduced} damage!`);
+      if (hero.hp - reduced <= 0) {
         addLog("🛑 [PERISHED]: The dark consumes you...");
       } else {
         setIsPlayerTurn(true);
@@ -224,7 +247,7 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
               </div>
               <div>
                 <h2 className="text-xl font-bold uppercase tracking-wider text-stone-200">{hero.name}</h2>
-                <p className="text-red-700 text-xs uppercase tracking-widest break-words overflow-hidden">{hero.class}</p>
+                <p className="text-red-700 text-xs uppercase tracking-widest">Level {hero.level}</p>
               </div>
             </div>
 

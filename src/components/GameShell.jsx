@@ -7,6 +7,7 @@ import TownView from './TownView';
 import ArsenalView from './ArsenalView';
 import SkillTreePanel from './SkillTreePanel';
 import QuestLog from './QuestLog';
+import AchievementPanel from './AchievementPanel';
 
 export default function GameShell({ hero, updateHero, onFindCombat }) {
   const [activeTab, setActiveTab] = useState('DASHBOARD');
@@ -47,7 +48,8 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
 
   const charTabs = [
     { id: 'ARSENAL', label: 'Arsenal', icon: '⚔' },
-    { id: 'SKILLS', label: 'Skills', icon: '✧', alert: unspentPoints > 0 }
+    { id: 'SKILLS', label: 'Skills', icon: '✧', alert: unspentPoints > 0 },
+    { id: 'ACHIEVEMENTS', label: 'Legacy', icon: '♆' }
   ];
 
   const activeTabData = [...mainTabs, ...charTabs].find(t => t.id === activeTab);
@@ -136,6 +138,7 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
         {activeTab === 'ARSENAL' && <ArsenalView hero={hero} updateHero={updateHero} />}
         {activeTab === 'SKILLS' && <SkillTreePanel hero={hero} updateHero={updateHero} inline={true} />}
         {activeTab === 'CONTRACTS' && <QuestLog quests={hero.daily_quests} inline={true} />}
+        {activeTab === 'ACHIEVEMENTS' && <AchievementPanel hero={hero} updateHero={updateHero} />}
       </main>
 
     </div>

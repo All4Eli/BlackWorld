@@ -12,7 +12,7 @@ import AchievementPanel from './AchievementPanel';
 import BattlePassHub from './BattlePassHub';
 import PremiumStore from './PremiumStore';
 import WorldEventBanner from './WorldEventBanner';
-import TornSidebar from './TornSidebar';
+import BlackWorldSidebar from './BlackWorldSidebar';
 
 export default function GameShell({ hero, updateHero, onFindCombat }) {
   const [activeTab, setActiveTab] = useState('DASHBOARD');
@@ -178,7 +178,7 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
       {/* Torn-Style Left Stat Panel */}
       <div className="hidden xl:block mr-8 flex-shrink-0 relative">
          <div className="sticky top-6">
-            <TornSidebar hero={hero} onNavigate={(tab) => {
+            <BlackWorldSidebar hero={hero} onNavigate={(tab) => {
                setActiveTab(tab);
                if (window.scrollTo) window.scrollTo({ top: 0, behavior: 'smooth' });
             }} />

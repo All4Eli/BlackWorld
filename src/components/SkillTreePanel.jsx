@@ -3,7 +3,7 @@ import { SKILL_TREE, calculateSkillBonuses } from '@/lib/skillTree';
 
 export default function SkillTreePanel({ hero, updateHero, onClose, inline = false }) {
   const skillPoints = hero.skillPoints || {};
-  const availablePoints = (hero.unspentSkillPoints ?? 0);
+  const availablePoints = hero.skillPointsUnspent || hero.unspentSkillPoints || 0;
   const bonuses = calculateSkillBonuses(skillPoints);
 
   const canAllocate = (skill) => {

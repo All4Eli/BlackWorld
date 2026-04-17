@@ -39,12 +39,12 @@ export const calcMonsterStats = (bossData) => {
     const multiplier = tierMultipliers[bossData.tier] || 1.0;
 
     return {
-        hp: bossData.hp || bossData.base_hp,
-        maxHp: bossData.maxHp || bossData.base_hp,
-        damageMin: Math.floor((bossData.damageMin || bossData.base_damage_min) * multiplier),
-        damageMax: Math.floor((bossData.damageMax || bossData.base_damage_max) * multiplier),
-        dodgeChance: bossData.dodgeChance || bossData.dodge_chance || 0.0,
-        baseXp: bossData.hp || bossData.base_hp, // Use HP as a proxy for base XP
+        hp: bossData.hp ?? bossData.base_hp ?? bossData.baseHp ?? 1,
+        maxHp: bossData.maxHp ?? bossData.base_hp ?? bossData.baseHp ?? 1,
+        damageMin: Math.floor((bossData.damageMin ?? bossData.base_damage_min ?? bossData.dmgMin ?? 1) * multiplier),
+        damageMax: Math.floor((bossData.damageMax ?? bossData.base_damage_max ?? bossData.dmgMax ?? 2) * multiplier),
+        dodgeChance: bossData.dodgeChance ?? bossData.dodge_chance ?? bossData.dodge ?? 0.0,
+        baseXp: bossData.hp ?? bossData.base_hp ?? bossData.baseHp ?? 10,
 
         xpMultiplier: multiplier
     };

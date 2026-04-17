@@ -19,7 +19,7 @@ export async function POST(request) {
       if (error || !player) throw new Error('Player not found');
 
       let hero = player.hero_data || {};
-      const availablePoints = hero.unspentSkillPoints || 0;
+      const availablePoints = hero.skillPointsUnspent || hero.unspentSkillPoints || 0;
       
       if (availablePoints <= 0) {
           return NextResponse.json({ error: 'No skill points available.' }, { status: 400 });
@@ -54,7 +54,7 @@ export async function POST(request) {
 
       // Execute Allocation
       hero.skillPoints[skillId] = currentRank + 1;
-      hero.unspentSkillPoints = availablePoints - 1;
+      hero.skillPointsUnspent = availablePoints - 1;
 
       // Persist to database
       const { error: updateError } = await supabase

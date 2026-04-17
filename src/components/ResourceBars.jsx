@@ -10,9 +10,8 @@ export default function ResourceBars({ hero, onRefillClick }) {
         return () => clearInterval(t);
     }, []);
 
-    if (!hero?.player_resources) return null; // Wait for load
 
-    const res = hero.player_resources;
+    const res = hero;
     
     const vitaeMax = calculateMaxResource('vitae', hero);
     const vStat = calculateCurrentResource(res, 'vitae', vitaeMax);

@@ -2,9 +2,9 @@
 import { calculateCurrentResource, calculateMaxResource } from '@/lib/resources';
 
 export default function MobileResourceStrip({ hero, onRefillClick }) {
-    if (!hero?.player_resources) return null;
+    if (!hero) return null;
 
-    const res = hero.player_resources;
+    const res = hero;
     const vitaeMax = calculateMaxResource('vitae', hero);
     const vStat = calculateCurrentResource(res, 'vitae', vitaeMax);
     const resolveMax = calculateMaxResource('resolve', hero);

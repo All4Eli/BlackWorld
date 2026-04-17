@@ -8,19 +8,20 @@ const RES_CONFIG = {
 
 export const calculateMaxResource = (resourceType, hero) => {
   const cfg = RES_CONFIG[resourceType];
-  const statVal = hero?.[cfg.max_stat] ?? 5;
-  const lvl = hero?.level ?? 1;
-  const equipBonus = hero?.equip_resource_bonus?.[resourceType] ?? 0;
+  const statVal = Number(hero?.[cfg.max_stat]) || 5;
+  const lvl = Number(hero?.level) || 1;
+  const equipBonus = Number(hero?.equip_resource_bonus?.[resourceType]) || 0;
   return Math.floor(cfg.base + (statVal * cfg.per_stat) + (lvl * cfg.per_lvl) + equipBonus);
 };
 
 export const calculateCurrentResource = (resourceRecord, resourceType, maxVal) => {
   if (!resourceRecord) return { current: 0, max: maxVal, next_tick: 0 };
   
-  const current = resourceRecord[`${resourceType}_current`];
+  const current = Number(resourceRecord[`${resourceType}_current`]) || 0;
   if (current >= maxVal) return { current: maxVal, max: maxVal, next_tick: 0 };
 
-  const lastUpdate = new Date(resourceRecord[`${resourceType}_last_update`]).getTime();
+  const lastUpdateStr = resourceRecord[`${resourceType}_last_update`];
+  const lastUpdate = lastUpdateStr ? new Date(lastUpdateStr).getTime() : new Date().getTime();
   const now = new Date().getTime();
   const elapsedSec = Math.floor((now - lastUpdate) / 1000);
   

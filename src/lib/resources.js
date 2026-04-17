@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+// No supabase import needed for pure functions.
 
 const RES_CONFIG = {
   vitae: { base: 100, regen: 300, max_stat: 'vit', per_stat: 2, per_lvl: 1, cost: 50 },

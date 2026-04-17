@@ -67,6 +67,7 @@ export const validateAndConsume = (hero, limits, requiredCost, resourceType) => 
     return {
         success: true,
         new_current: current - requiredCost,
+        new_last_update: new Date().toISOString(),
         resource_type: resourceType
     };
 };

@@ -37,21 +37,27 @@ export async function POST(request) {
             };
         }
 
-        // Use essence or 'energy' as requested. The UI expects essence. We will subtract 1 manually.
-        let energy = hero.player_resources.essence_current ?? hero.essence ?? 0;
-        
-        if (energy < 1) {
-            return NextResponse.json({ error: 'Not enough energy/essence.' }, { status: 400 });
+        // Validate Zone Cost
+        let requiredCost = 1; // Default
+        if (zoneId) {
+             const { ZONES } = require('@/lib/gameData');
+             const matched = ZONES.find(z => z.id === zoneId);
+             if (matched && matched.essenceCost) requiredCost = matched.essenceCost;
         }
 
-        // Deduct 1 energy
-        if (hero.player_resources.essence_current !== undefined) {
-            hero.player_resources.essence_current -= 1;
-        } else {
-            hero.essence = energy - 1;
-        }
+        const { validateAndConsume } = require('@/lib/resources');
+        const check = validateAndConsume(hero, hero.player_resources, requiredCost, 'essence');
         
-        incrementQuestProgress(hero, 'ESSENCE_SPENT', 1);
+        if (!check.success) {
+            return NextResponse.json({ error: 'Not enough Essence to explore.' }, { status: 400 });
+        }
+
+        hero.player_resources.essence_current = check.new_current;
+        hero.player_resources.essence_last_update = check.new_last_update;
+
+        const energy = check.new_current;
+        
+        incrementQuestProgress(hero, 'ESSENCE_SPENT', requiredCost);
 
         // Calculate encounter logic
         const roll = Math.random();

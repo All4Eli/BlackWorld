@@ -65,6 +65,7 @@ export async function POST(request) {
         hero.gold -= tableInfo.gold;
         if (!hero.player_resources) hero.player_resources = {};
         hero.player_resources.essence_current = check.new_current;
+        hero.player_resources.essence_last_update = check.new_last_update;
 
         const { error: updateError } = await supabase
             .from('players')

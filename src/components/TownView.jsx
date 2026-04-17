@@ -7,6 +7,7 @@ import ItemShopView from './ItemShopView';
 import CovenView from './CovenView';
 import AuctionView from './AuctionView';
 import ArenaHub from './ArenaHub';
+import QuestLog from './QuestLog';
 
 export default function TownView({ hero, updateHero }) {
   const [activeLocation, setActiveLocation] = useState(null);
@@ -30,6 +31,7 @@ export default function TownView({ hero, updateHero }) {
       title: 'Sanctuary',
       locations: [
         { id: 'healer', name: 'The Hollow Healer', description: 'Rejuvenate health and restore flasks.', status: null },
+        { id: 'quests', name: 'Notice Board', description: 'Accept contracts for bounty and glory.', status: null },
       ]
     },
     {
@@ -48,6 +50,7 @@ export default function TownView({ hero, updateHero }) {
   if (activeLocation === 'covens') return <CovenView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
   if (activeLocation === 'auction') return <AuctionView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
   if (activeLocation === 'arena') return <ArenaHub hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'quests') return <QuestLog hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col gap-8 animate-in slide-in-from-bottom-4 duration-700">

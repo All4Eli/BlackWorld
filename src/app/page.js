@@ -220,7 +220,7 @@ export default function GameStateDirector() {
                
                <div className="relative">
                  <button onClick={() => setShowNotifications(true)} className="text-stone-500 hover:text-stone-200 transition-colors relative">
-                   🔔
+                   ⚠
                    {unreadNotificationsCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)]"></span>}
                  </button>
                  {showNotifications && (

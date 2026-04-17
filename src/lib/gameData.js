@@ -4,7 +4,7 @@ export const ZONES = [
     id: 'bone_crypts',
     name: 'The Bone Crypts',
     description: 'Shallow graves stretch endlessly. The dead here are restless.',
-    icon: '🦴',
+    icon: '✟',
     levelReq: 1,
     essenceCost: 8,
     enemies: [
@@ -26,7 +26,7 @@ export const ZONES = [
     id: 'ashen_wastes',
     name: 'The Ashen Wastes',
     description: 'A scorched plain where demons drag the damned into cinders.',
-    icon: '🌋',
+    icon: '◬',
     levelReq: 5,
     essenceCost: 12,
     enemies: [
@@ -49,7 +49,7 @@ export const ZONES = [
     id: 'hollow_cathedral',
     name: 'The Hollow Cathedral',
     description: 'God abandoned this place. What remains worships something far older.',
-    icon: '⛪',
+    icon: '⛫',
     levelReq: 10,
     essenceCost: 18,
     enemies: [
@@ -72,7 +72,7 @@ export const ZONES = [
     id: 'abyssal_rift',
     name: 'The Abyssal Rift',
     description: 'A tear in reality. Greater demons spill through, screaming.',
-    icon: '🌀',
+    icon: '❂',
     levelReq: 20,
     essenceCost: 25,
     enemies: [
@@ -95,7 +95,7 @@ export const ZONES = [
     id: 'throne_of_nothing',
     name: 'The Throne of Nothing',
     description: 'Where the world ends. The Sovereign sits and waits.',
-    icon: '💀',
+    icon: '☠',
     levelReq: 35,
     essenceCost: 40,
     enemies: [
@@ -128,7 +128,7 @@ export function getDailyQuests() {
       target: 5,
       progress: 0,
       reward: { gold: 200, xp: 80 },
-      icon: '⚔️',
+      icon: '⚔',
     },
 
     {
@@ -139,7 +139,7 @@ export function getDailyQuests() {
       target: 150,
       progress: 0,
       reward: { gold: 300, xp: 100 },
-      icon: '💰',
+      icon: '¤',
     },
   ];
 }

@@ -40,7 +40,7 @@ export default function CraftingStation({ hero, updateHero, onBack }) {
             const data = await response.json();
             
             if (!response.ok) {
-                return alert(`❌ Forge Error: ${data.error}`);
+                return alert(`✖ Forge Error: ${data.error}`);
             }
 
             updateHero(data.updatedHero);
@@ -48,7 +48,7 @@ export default function CraftingStation({ hero, updateHero, onBack }) {
             if (data.forgeSuccess) {
                 alert(`🔥 Forged: ${recipe.name}!`);
             } else {
-                alert(`💀 The forge consumed the materials... (${(recipe.success_chance * 100).toFixed(0)}% success chance)`);
+                alert(`☠ The forge consumed the materials... (${(recipe.success_chance * 100).toFixed(0)}% success chance)`);
             }
 
         } catch (err) {

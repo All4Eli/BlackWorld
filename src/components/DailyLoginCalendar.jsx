@@ -29,7 +29,7 @@ export default function DailyLoginCalendar({ hero, updateHero }) {
         if (day % 7 === 0) return { label: 'Weekly Bonus', icon: '✧', highlight: true };
         if (day === 30) return { label: 'Grand Prize', icon: '🏆', highlight: true };
         if (day % 3 === 0) return { label: 'Blood Stones', icon: '✧', highlight: false };
-        if (day % 2 === 0) return { label: 'Gold', icon: '💰', highlight: false };
+        if (day % 2 === 0) return { label: 'Gold', icon: '¤', highlight: false };
         return { label: 'Supplies', icon: '🎒', highlight: false };
     };
 

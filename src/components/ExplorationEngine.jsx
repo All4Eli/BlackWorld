@@ -49,10 +49,10 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
             setLog([`[ENTRY]: You cross into the ${zone.name}.`]);
             updateHero(data.updatedHero);
         } else {
-            addLog(`❌ [ERROR] ${data.error}`);
+            addLog(`✖ [ERROR] ${data.error}`);
         }
     } catch(err) {
-        addLog(`❌ [SYSTEM] Cannot connect to server.`);
+        addLog(`✖ [SYSTEM] Cannot connect to server.`);
     }
   };
 
@@ -72,7 +72,7 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
       const data = await response.json();
       
       if (!response.ok) {
-         addLog(`❌ [ERROR] ${data.error}`);
+         addLog(`✖ [ERROR] ${data.error}`);
          setExploreCooldown(false);
          return;
       }
@@ -80,7 +80,7 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
       setTimeout(() => {
           addLog(`>> ${data.narrative}`);
           if (data.loot) {
-             addLog(`✨ [LOOT] Acquired ${data.loot.name}!`);
+             addLog(`▲ [LOOT] Acquired ${data.loot.name}!`);
           }
           
           updateHero(data.updatedHero);
@@ -97,7 +97,7 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
       }, 1500); // Artificial exploration delay for ambiance and pacing constraint
       
     } catch(err) {
-      addLog(`❌ [SYSTEM] Cannot connect to server.`);
+      addLog(`✖ [SYSTEM] Cannot connect to server.`);
       setExploreCooldown(false);
     }
   };
@@ -146,7 +146,7 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
          });
          const data = await response.json();
          if (!response.ok) {
-            addCombatLog(`❌ [ERROR]: ${data.error}`);
+            addCombatLog(`✖ [ERROR]: ${data.error}`);
             setCombatLoading(false);
             return;
          }
@@ -192,7 +192,7 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
 
      } catch(err) {
          console.error(err);
-         addCombatLog(`❌ [SYSTEM ERROR]: Failed to contact server.`);
+         addCombatLog(`✖ [SYSTEM ERROR]: Failed to contact server.`);
          setCombatLoading(false);
      }
   };

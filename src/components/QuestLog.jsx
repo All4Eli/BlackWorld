@@ -105,8 +105,14 @@ export default function QuestLog({ hero, updateHero, onBack }) {
                                                     onClick={() => {
                                                         // Claim rewards
                                                         const reward = q.reward || {};
+                                                        
+                                                        // Filter out claimed quest
+                                                        const remainingQuests = acceptedQuests.filter(quest => quest.id !== q.id);
+                                                        setAcceptedQuests(remainingQuests);
+
                                                         updateHero({
                                                             ...hero,
+                                                            accepted_quests: remainingQuests,
                                                             gold: (hero.gold || 0) + (reward.gold || 0),
                                                             xp: (hero.xp || 0) + (reward.xp || 0),
                                                             flasks: Math.min(5, (hero.flasks || 0) + (reward.flasks || 0)),

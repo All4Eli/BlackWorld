@@ -1,25 +1,10 @@
 'use client';
 import { useRef, useEffect, useState } from 'react';
 
-export default function NotificationsDropdown({ onClose }) {
+export default function NotificationsDropdown({ notifications = [], onClose, onMarkRead, onFlushRead }) {
   const dropdownRef = useRef(null);
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchNotifications = async () => {
-       try {
-           const res = await fetch('/api/social/notifications');
-           const data = await res.json();
-           if (res.ok) setNotifications(data.notifications || []);
-       } catch (err) {
-           console.error("Failed to load notifications", err);
-       } finally {
-           setLoading(false);
-       }
-  };
 
   useEffect(() => {
-    fetchNotifications();
 
     const handleOutsideClick = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -37,14 +22,14 @@ export default function NotificationsDropdown({ onClose }) {
              headers: { 'Content-Type': 'application/json' },
              body: JSON.stringify({})
            });
-           fetchNotifications();
+           if (onMarkRead) onMarkRead();
        } catch (err) { console.error(err); }
   };
 
   const handleFlushRead = async () => {
        try {
            await fetch('/api/social/notifications', { method: 'DELETE' });
-           fetchNotifications();
+           if (onFlushRead) onFlushRead();
        } catch (err) { console.error(err); }
   };
 

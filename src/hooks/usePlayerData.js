@@ -1,9 +1,11 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useAuth } from '@clerk/nextjs';
 
 const DEFAULT_SAVE = { stage: 'BOOT', heroData: null };
 
 export function usePlayerData() {
+  const { isLoaded, isSignedIn } = useAuth();
   const [saveData, setSaveData] = useState(DEFAULT_SAVE);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -11,6 +13,12 @@ export function usePlayerData() {
 
   // Load player data from the database on mount
   useEffect(() => {
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      setIsLoading(false);
+      return;
+    }
+
     async function loadPlayer() {
       try {
         const res = await fetch('/api/player');
@@ -31,7 +39,7 @@ export function usePlayerData() {
       }
     }
     loadPlayer();
-  }, []);
+  }, [isLoaded, isSignedIn]);
 
   // Debounced save to database (saves 500ms after last state change)
   const saveToCloud = useCallback(async (data) => {

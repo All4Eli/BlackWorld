@@ -41,7 +41,7 @@ export default function WorldEventBanner() {
                  <span className="font-bold text-red-400">WORLD EVENT:</span>
                  <span className="font-serif italic tracking-[0.2em]">{activeEvent.name}</span>
              </div>
-             <button className="px-4 py-1 border border-stone-400/50 hover:bg-white/10 text-stone-300 font-mono text-[9px] uppercase tracking-widest ml-4 transition-colors">
+             <button onClick={() => alert(`World Event: ${activeEvent.name}\n\nExplore the world to participate!`)} className="px-4 py-1 border border-stone-400/50 hover:bg-white/10 text-stone-300 font-mono text-[9px] uppercase tracking-widest ml-4 transition-colors">
                  Join Fray
              </button>
         </div>

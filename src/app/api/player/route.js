@@ -51,6 +51,8 @@ export async function POST(request) {
       .update({
         stage,
         hero_data: heroData,
+        username: heroData?.name || existing.username,
+        level: heroData?.level || existing.level || 1,
         updated_at: new Date().toISOString()
       })
       .eq('clerk_user_id', userId)
@@ -66,7 +68,9 @@ export async function POST(request) {
       .insert({
         clerk_user_id: userId,
         stage,
-        hero_data: heroData
+        hero_data: heroData,
+        username: heroData?.name || 'Unknown',
+        level: heroData?.level || 1
       })
       .select()
       .single();

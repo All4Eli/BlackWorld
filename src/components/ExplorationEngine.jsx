@@ -128,12 +128,8 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
     setCombatLoading(false);
   };
 
-  const [combatTurn, setCombatTurn] = useState('PLAYER');
-
-  const handleCombatAction = async (action, isEnemyAction = false) => {
+  const handleCombatAction = async (action) => {
      if (combatEnded || !currentEnemy) return;
-     if (combatTurn !== 'PLAYER' && !isEnemyAction) return;
-
      setCombatLoading(true);
      try {
          const response = await fetch('/api/explore/combat', {
@@ -148,54 +144,48 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
             return;
          }
 
-         data.logs?.forEach(msg => addCombatLog(msg));
-         setPlayerHP(data.newPlayerHp);
+         // Phase 1: Player Strike
+         data.initialLogs?.forEach(msg => addCombatLog(msg));
          setEnemyHP(data.newEnemyHp);
          if (data.newEnemyState) {
             setCurrentEnemy(prev => ({ ...prev, ...data.newEnemyState }));
          }
 
-         if (data.combatEnded) {
-             setCombatEnded(true);
-             if (data.win) {
-                 addCombatLog(`>> [VICTORY] You defeated the enemy! Gained ${data.expGained} EXP and ${data.goldGained} Gold.`);
-                 setTimeout(() => {
-                     setCombatActive(false);
-                     updateHero(data.updatedHero);
-                     setCombatTurn('PLAYER');
-                 }, 2000);
-             } else if (data.updatedHero.hp <= 0) {
-                 addCombatLog(`>> [DEFEAT] You were struck down...`);
-                 setTimeout(() => {
-                     setCombatActive(false);
-                     setActiveZone(null);
-                     updateHero(data.updatedHero);
-                     setCombatTurn('PLAYER');
-                 }, 3500);
+         // Phase 2: Enemy Sequential Retaliation (Delayed for UI fluidity)
+         setTimeout(() => {
+             data.delayedLogs?.forEach(msg => addCombatLog(msg));
+             setPlayerHP(data.newPlayerHp);
+
+             if (data.combatEnded) {
+                 setCombatEnded(true);
+                 if (data.win) {
+                     addCombatLog(`>> [VICTORY] You defeated the enemy! Gained ${data.expGained} EXP and ${data.goldGained} Gold.`);
+                     setTimeout(() => {
+                         setCombatActive(false);
+                         updateHero(data.updatedHero); // Finalize rewards globally
+                     }, 2000);
+                 } else if (data.updatedHero.hp <= 0) {
+                     addCombatLog(`>> [DEFEAT] You were struck down...`);
+                     setTimeout(() => {
+                         setCombatActive(false);
+                         setActiveZone(null);
+                         updateHero(data.updatedHero); // Handle death natively
+                     }, 3500);
+                 } else { // Flee success
+                     setTimeout(() => {
+                         setCombatActive(false);
+                         updateHero(data.updatedHero);
+                     }, 1500);
+                 }
              } else {
-                 // Fled successfully
-                 setTimeout(() => {
-                     setCombatActive(false);
-                     updateHero(data.updatedHero);
-                     setCombatTurn('PLAYER');
-                 }, 1500);
+                 updateHero(data.updatedHero);
              }
-         } else {
-             updateHero(data.updatedHero);
-             if (!isEnemyAction && action !== 'FLEE') {
-                 setCombatTurn('ENEMY');
-                 // Wait 1.5 seconds, then the enemy strikes back
-                 setTimeout(() => {
-                     handleCombatAction('ENEMY_TURN', true);
-                 }, 1500); 
-             } else {
-                 setCombatTurn('PLAYER');
-             }
-         }
+             setCombatLoading(false); // Unlock UI for next round natively
+         }, 1200);
+
      } catch(err) {
          console.error(err);
          addCombatLog(`❌ [SYSTEM ERROR]: Failed to contact server.`);
-     } finally {
          setCombatLoading(false);
      }
   };

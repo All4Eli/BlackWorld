@@ -74,7 +74,7 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
         const data = await response.json();
 
         if (!response.ok) {
-            addLog(`❌ [ERROR]: ${data.error}`);
+            addLog(`✖ [ERROR]: ${data.error}`);
             setIsPlayerTurn(true);
             return;
         }
@@ -95,7 +95,7 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
         }
 
     } catch (err) {
-        addLog(`❌ [SYSTEM ERROR]: ${err.message}`);
+        addLog(`✖ [SYSTEM ERROR]: ${err.message}`);
         setIsPlayerTurn(true);
     }
   };
@@ -110,7 +110,7 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
      const flaskHeal = 60 + c.flaskBonus;
      setIsPlayerTurn(false);
      setHero(prev => ({ ...prev, hp: Math.min(c.maxHp, prev.hp + flaskHeal), flasks: prev.flasks - 1 }));
-     addLog(`🩸 [CRIMSON FLASK]: Restored ${flaskHeal} HP.`);
+     addLog(`♦ [CRIMSON FLASK]: Restored ${flaskHeal} HP.`);
 
     setTimeout(() => {
       const rawDmg = Math.floor(Math.random() * 5) + enemy.attackDamage;

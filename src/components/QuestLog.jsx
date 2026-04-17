@@ -85,7 +85,7 @@ export default function QuestLog({ hero, updateHero, onBack }) {
                                     <div key={q.id} className={`border bg-black p-5 transition-colors flex justify-between ${completed ? 'border-green-900/50' : accepted ? 'border-yellow-900/50' : 'border-neutral-800 hover:border-neutral-700'}`}>
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-2">
-                                                <span className="text-lg">{q.icon || '⚔️'}</span>
+                                                <span className="text-lg">{q.icon || '⚔'}</span>
                                                 <h3 className="font-bold font-serif uppercase tracking-widest text-stone-300">{q.title || q.name}</h3>
                                                 {completed && <span className="text-[9px] px-2 py-[1px] font-mono tracking-widest uppercase border border-green-800 text-green-500 bg-green-950/20">Complete</span>}
                                                 {accepted && !completed && <span className="text-[9px] px-2 py-[1px] font-mono tracking-widest uppercase border border-yellow-800 text-yellow-500">Active</span>}

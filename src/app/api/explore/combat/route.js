@@ -54,7 +54,7 @@ export async function POST(request) {
         if (eBleed > 0) {
              const dmg = eBleed;
              eHp -= dmg;
-             logs.push(`🩸 [BLEED]: Enemy suffers ${dmg} bleed damage from your Serrated Blades!`);
+             logs.push(`♦ [BLEED]: Enemy suffers ${dmg} bleed damage from your Serrated Blades!`);
              if (eHp <= 0) { win = true; combatEnded = true; }
         }
 
@@ -66,17 +66,17 @@ export async function POST(request) {
              if (!isHitDodged(eStats.dodgeChance)) {
                  const dmg = rollDamage(pStats.baseDamageMin, pStats.baseDamageMax);
                  eHp -= dmg;
-                 initialLogs.push(`⚔️ [STRIKE]: You slashed the enemy for ${dmg} damage!`);
+                 initialLogs.push(`⚔ [STRIKE]: You slashed the enemy for ${dmg} damage!`);
                  if (pStats.passiveBleed) {
                       eBleed += pStats.passiveBleed;
                       initialLogs.push(`🔪 [LACERATED]: Bleeding stacks increased!`);
                  }
                  if (pStats.lifesteal) {
                       pHp = Math.min(pStats.maxHp, pHp + pStats.lifesteal);
-                      initialLogs.push(`🩸 [SIPHON]: You siphoned ${pStats.lifesteal} HP from the wound!`);
+                      initialLogs.push(`♦ [SIPHON]: You siphoned ${pStats.lifesteal} HP from the wound!`);
                  }
              } else {
-                 initialLogs.push(`💨 [MISS]: Your attack was dodged!`);
+                 initialLogs.push(`≈ [MISS]: Your attack was dodged!`);
              }
              
              if (eHp <= 0) {
@@ -89,12 +89,12 @@ export async function POST(request) {
                      pHp -= Math.max(1, eDmg - (pStats.damageReduction || 0));
                      delayedLogs.push(`👹 [ENEMY TURN]: The enemy lunges and hits you for ${eDmg} damage!`);
                  } else {
-                     delayedLogs.push(`💨 [EVADE]: You dodged the enemy's attack!`);
+                     delayedLogs.push(`≈ [EVADE]: You dodged the enemy's attack!`);
                  }
                  if (pHp <= 0) { win = false; combatEnded = true; }
              }
         } else if (action === 'DEFEND') {
-            initialLogs.push(`🛡️ [DEFEND]: You raised your guard!`);
+            initialLogs.push(`⛨ [DEFEND]: You raised your guard!`);
             
             // Full DEFEND mechanic (calculates against immediate enemy turn)
             if (!isHitDodged(pStats.dodgeChance + 0.3)) {
@@ -102,18 +102,18 @@ export async function POST(request) {
                 dmg = Math.max(0, Math.floor(dmg * 0.2) - (pStats.damageReduction || 0));
                 pHp -= dmg;
                 if (dmg > 0) {
-                     delayedLogs.push(`🛡️ [BLOCKED]: Enemy strikes your guard for a mere ${dmg} damage!`);
+                     delayedLogs.push(`⛨ [BLOCKED]: Enemy strikes your guard for a mere ${dmg} damage!`);
                 } else {
-                     delayedLogs.push(`🛡️ [PERFECT BLOCK]: You completely nullified the enemy attack!`);
+                     delayedLogs.push(`⛨ [PERFECT BLOCK]: You completely nullified the enemy attack!`);
                 }
                 
                 if (Math.random() < 0.4) {
                      const counter = Math.max(1, Math.floor(pStats.baseDamageMin * 0.5));
                      eHp -= counter;
-                     delayedLogs.push(`⚔️ [RIPOSTE]: You swiftly counterattacked for ${counter} damage!`);
+                     delayedLogs.push(`⚔ [RIPOSTE]: You swiftly counterattacked for ${counter} damage!`);
                 }
             } else {
-                delayedLogs.push(`💨 [EVADE]: You perfectly dodged while defending!`);
+                delayedLogs.push(`≈ [EVADE]: You perfectly dodged while defending!`);
             }
             if (pHp <= 0) combatEnded = true;
             if (eHp <= 0) { win = true; combatEnded = true; }
@@ -123,31 +123,31 @@ export async function POST(request) {
             }
             hero.flasks -= 1;
             pHp = Math.min(pStats.maxHp, pHp + 60);
-            initialLogs.push(`🩸 [HEAL]: You consume a flask. +60 HP`);
+            initialLogs.push(`♦ [HEAL]: You consume a flask. +60 HP`);
             
             // Enemy attacks back
             if (!isHitDodged(pStats.dodgeChance)) {
                 const dmg = rollDamage(eStats.damageMin, eStats.damageMax);
                 pHp -= Math.max(1, dmg - (pStats.damageReduction || 0));
-                delayedLogs.push(`🩸 [WOUNDED]: Enemy strikes while you drink for ${dmg}!`);
+                delayedLogs.push(`♦ [WOUNDED]: Enemy strikes while you drink for ${dmg}!`);
             } else {
-                delayedLogs.push(`💨 [EVADE]: You dodged the enemy's attack while drinking!`);
+                delayedLogs.push(`≈ [EVADE]: You dodged the enemy's attack while drinking!`);
             }
             if (pHp <= 0) combatEnded = true;
 
         } else if (action === 'FLEE') {
             if (Math.random() < 0.4) {
-                initialLogs.push(`💨 [ESCAPE]: You successfully fled the battle!`);
+                initialLogs.push(`≈ [ESCAPE]: You successfully fled the battle!`);
                 combatEnded = true;
                 // No rewards, just escaped
             } else {
-                initialLogs.push(`❌ [TRAPPED]: You failed to escape! Brace yourself!`);
+                initialLogs.push(`✖ [TRAPPED]: You failed to escape! Brace yourself!`);
                 if (!isHitDodged(pStats.dodgeChance)) {
                     const dmg = rollDamage(eStats.damageMin, eStats.damageMax);
                     pHp -= Math.max(1, dmg - (pStats.damageReduction || 0));
-                    delayedLogs.push(`🩸 [WOUNDED]: Enemy hits your exposed back for ${dmg}!`);
+                    delayedLogs.push(`♦ [WOUNDED]: Enemy hits your exposed back for ${dmg}!`);
                 } else {
-                    delayedLogs.push(`💨 [EVADE]: You dodged the pursuit!`);
+                    delayedLogs.push(`≈ [EVADE]: You dodged the pursuit!`);
                 }
                 if (pHp <= 0) combatEnded = true;
             }
@@ -177,7 +177,7 @@ export async function POST(request) {
                     hero.level += 1;
                     hero.unspentStatPoints += 3;
                     hero.skillPointsUnspent += 1;
-                    initialLogs.push(`✨ [LEVEL UP]: You reached Level ${hero.level}! (+3 Stat Points, +1 Skill Point)`);
+                    initialLogs.push(`▲ [LEVEL UP]: You reached Level ${hero.level}! (+3 Stat Points, +1 Skill Point)`);
                     requiredXp = calculateXPRequirement(hero.level);
                 }
 
@@ -186,7 +186,7 @@ export async function POST(request) {
                     const { generateLoot } = require('@/lib/gameData');
                     const loot = generateLoot(1);
                     hero.artifacts.push({ ...loot, acquired_at: new Date().toISOString() });
-                    initialLogs.push(`💎 [LOOT]: You recovered a ${loot.name}!`);
+                    initialLogs.push(`✦ [LOOT]: You recovered a ${loot.name}!`);
                 }
 
                 incrementQuestProgress(hero, 'SLAY_MONSTERS', 1);
@@ -197,7 +197,7 @@ export async function POST(request) {
                const goldLoss = Math.floor((hero.gold || 0) * 0.1);
                hero.gold = Math.max(0, (hero.gold || 0) - goldLoss);
                hero.hp = 1;
-               initialLogs.push(`☠️ [DEATH]: You have fallen. Lost ${goldLoss} gold.`);
+               initialLogs.push(`☠ [DEATH]: You have fallen. Lost ${goldLoss} gold.`);
             }
         }
 

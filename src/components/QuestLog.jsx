@@ -1,80 +1,73 @@
 'use client';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 
-export default function QuestLog({ quests, onClose, inline = false }) {
-  if (!quests || quests.length === 0) return null;
+export default function QuestLog({ hero, updateHero, onBack }) {
+    const [quests, setQuests] = useState([]);
+    const [tab, setTab] = useState('ALL');
+    const [loading, setLoading] = useState(true);
 
-  const allComplete = quests.every(q => q.progress >= q.target);
+    useEffect(() => {
+        const fetchQuests = async () => {
+            setLoading(true);
+            const { data } = await supabase.from('quests').select('*').limit(30);
+            if (data) setQuests(data);
+            setLoading(false);
+        };
+        fetchQuests();
+    }, []);
 
-  return (
-    <div className={inline ? "w-full animate-in fade-in duration-500" : "fixed inset-0 z-50 flex items-center justify-center bg-black/80 animate-in fade-in duration-200"}>
-      <div className={`bg-[#050505] border border-red-900/30 w-full ${inline ? 'max-w-4xl mx-auto border-t-0' : 'max-w-lg mx-4 shadow-[0_0_50px_rgba(153,27,27,0.2)] animate-in zoom-in-95 duration-300'}`}>
-        
-        {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-red-900/20">
-          <div>
-            <h2 className="text-xl font-serif font-black text-red-600 uppercase tracking-[0.2em]">Daily Contracts</h2>
-            <p className="text-xs text-stone-600 font-mono uppercase tracking-widest mt-1">Resets at midnight</p>
-          </div>
-          {!inline && (
-            <button onClick={onClose} className="text-stone-600 hover:text-white transition-colors text-xs font-mono uppercase tracking-widest">
-              Close
-            </button>
-          )}
-        </div>
+    const filteredQuests = tab === 'ALL' ? quests : quests.filter(q => q.quest_type.toUpperCase() === tab);
 
-        {/* Quest List */}
-        <div className="p-6 space-y-4">
-          {quests.map((quest) => {
-            const isDone = quest.progress >= quest.target;
-            const pct = Math.min(100, Math.floor((quest.progress / quest.target) * 100));
-
-            return (
-              <div key={quest.id} className={`border p-4 transition-all ${isDone ? 'border-emerald-900/50 bg-emerald-950/10' : 'border-neutral-800 bg-black/40'}`}>
-                <div className="flex items-start justify-between gap-4 mb-3">
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl">{quest.icon}</span>
-                    <div>
-                      <div className={`font-bold text-sm uppercase tracking-widest ${isDone ? 'text-emerald-500' : 'text-stone-200'}`}>
-                        {quest.title} {isDone && '✓'}
-                      </div>
-                      <div className="text-xs text-stone-500 mt-1">{quest.description}</div>
-                    </div>
-                  </div>
-                  <div className="text-right font-mono text-xs shrink-0">
-                    <div className={`font-bold ${isDone ? 'text-emerald-500' : 'text-stone-400'}`}>
-                      {quest.progress}/{quest.target}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="w-full h-1.5 bg-neutral-900 rounded-none overflow-hidden mb-3">
-                  <div
-                    className={`h-full transition-all duration-700 ${isDone ? 'bg-emerald-700' : 'bg-red-800'}`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-
-                {/* Reward */}
-                <div className="flex gap-4 font-mono text-[10px] uppercase tracking-widest text-stone-600">
-                  <span>Reward:</span>
-                  {quest.reward.gold && <span className="text-yellow-700">+{quest.reward.gold}g</span>}
-                  {quest.reward.xp && <span className="text-stone-500">+{quest.reward.xp} EXP</span>}
-                  {quest.reward.flasks && <span className="text-red-800">+{quest.reward.flasks} Flask</span>}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {allComplete && (
-          <div className="p-6 pt-0">
-            <div className="border border-emerald-900/50 bg-emerald-950/20 p-4 text-center font-mono text-xs uppercase tracking-widest text-emerald-600">
-              All contracts fulfilled. Return tomorrow for new orders.
+    return (
+        <div className="w-full max-w-5xl mx-auto flex flex-col gap-6 animate-in slide-in-from-right-4 duration-500 pb-10">
+            <div className="flex justify-between items-center mb-2">
+                <button onClick={onBack} className="text-stone-500 hover:text-stone-300 font-mono text-xs uppercase tracking-widest">
+                    ← Back to Sanctuary
+                </button>
             </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+
+            <div className="border border-stone-800 bg-[#050505] shadow-[0_0_50px_rgba(255,255,255,0.02)]">
+                <div className="flex border-b border-stone-800 font-mono text-xs text-stone-500 tracking-widest uppercase">
+                    {['ALL', 'MAIN', 'SIDE', 'DAILY', 'LEGENDARY'].map(t => (
+                        <button key={t} onClick={() => setTab(t)} className={`flex-1 py-3 ${tab === t ? 'bg-stone-900 text-stone-200 border-b-2 border-stone-500' : 'bg-black hover:bg-neutral-900'}`}>
+                            {t}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="p-8 min-h-[400px]">
+                    {loading ? (
+                        <div className="text-stone-600 font-mono text-xs uppercase text-center py-10">Reading Tomes...</div>
+                    ) : filteredQuests.length === 0 ? (
+                         <div className="text-stone-600 font-mono text-xs uppercase text-center py-10">No contracts available in this category.</div>
+                    ) : (
+                        <div className="grid grid-cols-1 gap-4">
+                            {filteredQuests.map(q => (
+                                <div key={q.id} className="border border-neutral-800 bg-black p-5 hover:border-neutral-700 transition-colors flex justify-between">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <h3 className="font-bold font-serif uppercase tracking-widest text-stone-300">{q.name}</h3>
+                                            <span className={`text-[9px] px-2 py-[1px] font-mono tracking-widest uppercase border ${q.quest_type === 'legendary' ? 'border-yellow-600 text-yellow-500' : 'border-stone-800 text-stone-500'}`}>{q.quest_type}</span>
+                                        </div>
+                                        <p className="font-serif text-sm text-stone-500 mb-4">{q.description}</p>
+                                        <div className="font-mono text-[10px] text-stone-600 uppercase tracking-widest flex items-center gap-4 border-t border-neutral-900 pt-3">
+                                            <span>Rewards:</span>
+                                            {q.rewards?.xp && <span className="text-blue-500">+{q.rewards.xp} XP</span>}
+                                            {q.rewards?.gold && <span className="text-yellow-600">+{q.rewards.gold} Gold</span>}
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col justify-center">
+                                        <button className="px-6 py-2 border border-stone-800 hover:border-stone-500 text-stone-400 font-mono text-xs uppercase tracking-widest transition-all hover:bg-stone-900">
+                                            Accept
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
 }

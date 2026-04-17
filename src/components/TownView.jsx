@@ -4,6 +4,7 @@ import HealerView from './HealerView';
 import BankView from './BankView';
 import CasinoView from './CasinoView';
 import ItemShopView from './ItemShopView';
+import CovenView from './CovenView';
 
 export default function TownView({ hero, updateHero }) {
   const [activeLocation, setActiveLocation] = useState(null);
@@ -24,7 +25,7 @@ export default function TownView({ hero, updateHero }) {
     {
       title: 'The Underbelly',
       locations: [
-        { id: 'covens', name: 'Blood Covens', description: 'Pledge loyalty to a community guild.', status: 'Coming Soon' },
+        { id: 'covens', name: 'Blood Covens', description: 'Pledge loyalty to a community guild.', status: null },
         { id: 'casino', name: 'Demon Casino', description: 'Wager gold on dark outcomes.', status: null },
       ]
     }
@@ -34,6 +35,7 @@ export default function TownView({ hero, updateHero }) {
   if (activeLocation === 'bank') return <BankView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
   if (activeLocation === 'casino') return <CasinoView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
   if (activeLocation === 'shop') return <ItemShopView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'covens') return <CovenView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col gap-8 animate-in slide-in-from-bottom-4 duration-700">
@@ -61,14 +63,10 @@ export default function TownView({ hero, updateHero }) {
                 {cat.locations.map((loc, idx) => (
                  <button 
                    key={loc.id}
-                   onClick={() => {
-                     // Set active location unless it's covens (not built yet)
-                     if (loc.id !== 'covens') setActiveLocation(loc.id);
-                   }}
-                   disabled={loc.id === 'covens'}
-                   className={`w-full flex justify-between items-center text-left p-5 transition-colors group ${
-                     loc.id === 'covens' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-neutral-900/50 cursor-pointer'
-                   } ${idx !== cat.locations.length - 1 ? 'border-b border-neutral-800' : ''}`}
+                   onClick={() => setActiveLocation(loc.id)}
+                   className={`w-full flex justify-between items-center text-left p-5 transition-colors group hover:bg-neutral-900/50 cursor-pointer ${
+                      idx !== cat.locations.length - 1 ? 'border-b border-neutral-800' : ''
+                   }`}
                  >
                    <div>
                      <div className="flex items-center gap-3">

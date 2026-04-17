@@ -24,7 +24,19 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ player: data });
+  // Inject trustworthy coven metadata into client payload
+  const payload = {
+     ...data,
+     hero_data: {
+       ...(data.hero_data || {}),
+       coven_id: data.coven_id,
+       coven_name: data.coven_name,
+       coven_tag: data.coven_tag,
+       coven_role: data.coven_role
+     }
+  };
+
+  return NextResponse.json({ player: payload });
 }
 
 // POST /api/player — Save/update player data
@@ -53,6 +65,7 @@ export async function POST(request) {
         hero_data: heroData,
         username: heroData?.name || existing.username,
         level: heroData?.level || existing.level || 1,
+        // Intentionally NOT updating coven details here to prevent client hacking of guild data.
         updated_at: new Date().toISOString()
       })
       .eq('clerk_user_id', userId)

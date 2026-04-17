@@ -4,7 +4,7 @@ import { useUser, UserButton, SignOutButton } from '@clerk/nextjs';
 import { getDailyQuests } from '@/lib/gameData';
 import BootScreen from '@/components/BootScreen';
 import CharacterCreator from '@/components/CharacterCreator';
-import ExplorationEngine from '@/components/ExplorationEngine';
+import GameShell from '@/components/GameShell';
 import CombatEngine from '@/components/CombatEngine';
 import DeathScreen from '@/components/DeathScreen';
 
@@ -131,7 +131,7 @@ export default function GameStateDirector() {
       <div className="w-full relative z-10 flex flex-col items-center justify-center flex-1">
         {stage === 'BOOT' && <BootScreen onStart={handleStartBoot} />}
         {stage === 'CREATOR' && <CharacterCreator onCreateCharacter={handleCreateCharacter} />}
-        {stage === 'EXPLORATION' && <ExplorationEngine hero={saveData.heroData} updateHero={updateHero} onFindCombat={handleEnterCombat} />}
+        {stage === 'EXPLORATION' && <GameShell hero={saveData.heroData} updateHero={updateHero} onFindCombat={handleEnterCombat} />}
         {stage === 'COMBAT' && <CombatEngine heroDef={saveData.heroData} zone={saveData.combatZone} onVictory={handleVictory} onHeroDeath={handleDeath} />}
         {stage === 'DEATH' && <DeathScreen onRestart={handleRestart} />}
       </div>

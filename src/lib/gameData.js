@@ -163,6 +163,11 @@ export function calculateEssence(lastRegenISO, currentEssence, maxEssence = 100)
   return { essence: newEssence, newTimestamp: new Date().toISOString() };
 }
 
+// XP Progression Curve
+export function calculateXPRequirement(level) {
+  return Math.floor(100 * Math.pow(1.4, Math.max(1, level) - 1));
+}
+
 // Global Combat Match Calculator based on Core Attributes + Skill Tree + Gear
 export function calcCombatStats(hero, skillBonuses) {
   // Base core stats fallback for legacy saves

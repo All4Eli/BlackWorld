@@ -44,11 +44,15 @@ export async function POST(request) {
         hero.level = hero.level || 1;
         hero.unspentStatPoints = hero.unspentStatPoints || 0;
         
-        if ((hero.xp || 0) >= 100) {
-             while (hero.xp >= 100) {
-                  hero.xp -= 100;
+        const { calculateXPRequirement } = require('@/lib/gameData');
+        let requiredXp = calculateXPRequirement(hero.level);
+
+        if ((hero.xp || 0) >= requiredXp) {
+             while ((hero.xp || 0) >= requiredXp) {
+                  hero.xp -= requiredXp;
                   hero.level += 1;
                   hero.unspentStatPoints += 3;
+                  requiredXp = calculateXPRequirement(hero.level);
              }
              modified = true;
         }

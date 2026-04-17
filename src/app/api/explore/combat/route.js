@@ -127,11 +127,15 @@ export async function POST(request) {
                 hero.level = hero.level || 1;
                 hero.unspentStatPoints = hero.unspentStatPoints || 0;
 
-                while (hero.xp >= 100) {
-                    hero.xp -= 100;
+                const { calculateXPRequirement } = require('@/lib/gameData');
+                let requiredXp = calculateXPRequirement(hero.level);
+
+                while ((hero.xp || 0) >= requiredXp) {
+                    hero.xp -= requiredXp;
                     hero.level += 1;
                     hero.unspentStatPoints += 3;
                     logs.push(`✨ [LEVEL UP]: You reached Level ${hero.level}! (+3 Stat Points)`);
+                    requiredXp = calculateXPRequirement(hero.level);
                 }
 
                 if (Math.random() > 0.8) {

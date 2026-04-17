@@ -13,36 +13,20 @@ export async function POST(request) {
          return NextResponse.json({ error: 'Invalid listing details.' }, { status: 400 });
       }
 
-      // Check if user has an active listing limit (optional, let's say 10max)
-      const { count } = await supabase
-        .from('auctions')
-        .select('*', { count: 'exact', head: true })
-        .eq('seller_id', userId)
-        .eq('status', 'ACTIVE');
-        
-      if (count >= 10) {
-          return NextResponse.json({ error: 'You cannot have more than 10 active listings.' }, { status: 400 });
-      }
+      const { data: auction, error } = await supabase.rpc('execute_auction_list', {
+          p_seller_id: userId,
+          p_seller_name: sellerName || 'Unknown',
+          p_item_id: item.id,
+          p_item_name: item.name,
+          p_item_type: item.type,
+          p_item_rarity: item.rarity,
+          p_item_stats: item.stats,
+          p_buyout_price: buyoutPrice
+      });
 
-      // Create the auction
-      const { data, error } = await supabase
-        .from('auctions')
-        .insert({
-           seller_id: userId,
-           seller_name: sellerName || 'Unknown',
-           item_id: item.id,
-           item_name: item.name,
-           item_type: item.type,
-           item_rarity: item.rarity,
-           item_stats: item.stats,
-           buyout_price: buyoutPrice
-        })
-        .select()
-        .single();
-        
-      if (error) throw error;
+      if (error) throw new Error(error.message);
 
-      return NextResponse.json({ auction: data });
+      return NextResponse.json({ auction });
   } catch(err) {
       return NextResponse.json({ error: err.message }, { status: 500 });
   }

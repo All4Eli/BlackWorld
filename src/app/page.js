@@ -60,8 +60,16 @@ export default function GameStateDirector() {
         flasks: 3,
         kills: 0,
         artifacts: [],
-        equippedWeapon: null,
-        equippedArmor: null,
+        equipped: {
+          mainHand: null,
+          offHand: null,
+          body: null,
+          head: null,
+          ring1: null,
+          ring2: null,
+          amulet: null,
+          boots: null
+        },
         essence: 100,
         essence_last_regen: new Date().toISOString(),
         daily_quests: getDailyQuests(),
@@ -102,7 +110,26 @@ export default function GameStateDirector() {
 
   // Enforce bypass of BOOT if character exists (1 Account = 1 Permanent Character)
   if (stage === 'BOOT' && saveData?.heroData) {
-     setSaveData(prev => ({ ...prev, stage: 'EXPLORATION' }));
+     
+     // Automatic Schema Migration: 2-slot legacy to 8-slot modern
+     let migratedHero = { ...saveData.heroData };
+     if (!migratedHero.equipped) {
+       migratedHero.equipped = {
+          mainHand: migratedHero.equippedWeapon || null,
+          offHand: null,
+          body: migratedHero.equippedArmor || null,
+          head: null,
+          ring1: null,
+          ring2: null,
+          amulet: null,
+          boots: null
+       };
+       // optional: clean up legacy properties
+       delete migratedHero.equippedWeapon;
+       delete migratedHero.equippedArmor;
+     }
+
+     setSaveData(prev => ({ ...prev, stage: 'EXPLORATION', heroData: migratedHero }));
      return null; // Let the next render handle it
   }
 

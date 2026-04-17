@@ -180,15 +180,36 @@ export function calcCombatStats(hero, skillBonuses) {
   const baseMaxMana = 50 + (int * 3);
   const baseMagicPower = int * 1;
 
+  // Equipment Aggregation
+  let gearHp = 0, gearDmg = 0, gearDef = 0, gearCrit = 0;
+  let gearMana = 0, gearMagic = 0, gearLifesteal = 0;
+
+  if (hero?.equipped) {
+    Object.values(hero.equipped).forEach(item => {
+      if (!item || !item.stats) return;
+      gearHp += item.stats.hp || 0;
+      gearDmg += item.stats.dmg || 0;
+      gearDef += item.stats.def || 0;
+      gearCrit += item.stats.crit || 0;
+      gearMana += item.stats.maxMana || 0;
+      gearMagic += item.stats.magicDmg || 0;
+      gearLifesteal += item.stats.lifesteal || 0;
+    });
+  } else {
+    // Legacy fallback
+    gearHp += hero?.equippedArmor?.stat || 0;
+    gearDmg += hero?.equippedWeapon?.stat || 0;
+  }
+
   // Total Math (Base + Skil Tree + Gear)
   return {
-    maxHp: baseHp + (hero?.equippedArmor?.stat || 0) + (skillBonuses?.maxHp || 0),
-    attackDamage: baseAttackDmg + (hero?.equippedWeapon?.stat || 0) + (skillBonuses?.baseDmg || 0),
-    damageReduction: baseDamageReduction + (skillBonuses?.damageReduction || 0),
-    critChance: baseCritChance + (skillBonuses?.critChance || 0),
-    maxMana: baseMaxMana + (skillBonuses?.maxMana || 0),
-    magicPower: baseMagicPower + (skillBonuses?.magicDmg || 0),
-    lifesteal: skillBonuses?.lifesteal || 0,
+    maxHp: baseHp + gearHp + (skillBonuses?.maxHp || 0),
+    attackDamage: baseAttackDmg + gearDmg + (skillBonuses?.baseDmg || 0),
+    damageReduction: baseDamageReduction + gearDef + (skillBonuses?.damageReduction || 0),
+    critChance: baseCritChance + gearCrit + (skillBonuses?.critChance || 0),
+    maxMana: baseMaxMana + gearMana + (skillBonuses?.maxMana || 0),
+    magicPower: baseMagicPower + gearMagic + (skillBonuses?.magicDmg || 0),
+    lifesteal: gearLifesteal + (skillBonuses?.lifesteal || 0),
     flaskBonus: skillBonuses?.flaskBonus || 0,
   };
 }

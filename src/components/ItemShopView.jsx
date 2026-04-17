@@ -1,47 +1,55 @@
 'use client';
-import { useState } from 'react';
-
-// Static Merchant Inventory
-const SHOP_ITEMS = [
-  { name: 'Iron Longsword', type: 'WEAPON', stat: 8, cost: 150, desc: 'A basic but sturdy blade.', tier: 'COMMON' },
-  { name: 'Rusted Chainmail', type: 'ARMOR', stat: 20, cost: 120, desc: 'Offers minor protection from slashing.', tier: 'COMMON' },
-  { name: 'Blood-Steel Axe', type: 'WEAPON', stat: 18, cost: 650, desc: 'Heavy and stained with the past.', tier: 'UNCOMMON' },
-  { name: 'Sanctified Half-Plate', type: 'ARMOR', stat: 60, cost: 800, desc: 'Blessed by the Hollow Priests.', tier: 'UNCOMMON' },
-  { name: 'The Obsidian Cleaver', type: 'WEAPON', stat: 35, cost: 2500, desc: 'An unnaturally sharp shard of void glass.', tier: 'RARE' },
-  { name: 'Carapace of the Void', type: 'ARMOR', stat: 120, cost: 3200, desc: 'Pulsing with dark energy. Very heavy.', tier: 'RARE' },
-  { name: 'Sovereign Demise (Scythe)', type: 'WEAPON', stat: 65, cost: 10000, desc: 'The weapon of a fallen king.', tier: 'LEGENDARY' },
-];
+import { useState, useEffect } from 'react';
+import { generateLoot } from '@/lib/items';
 
 export default function ItemShopView({ hero, updateHero, onBack }) {
   const currentGold = hero?.gold || 0;
   const [purchaseMsg, setPurchaseMsg] = useState(null);
+  const [shopItems, setShopItems] = useState([]);
+
+  // Generate 8 random items on shop load
+  useEffect(() => {
+    const items = [];
+    // Ensure varied tiers (mix of common to epic)
+    for(let i=0; i<8; i++) {
+       const itemLevel = hero?.level || 1;
+       const item = generateLoot(itemLevel);
+       
+       // Calculate cost based on rarity and level
+       const rarityCostMult = {
+         'COMMON': 1, 'UNCOMMON': 2.5, 'RARE': 5, 'EPIC': 12, 'LEGENDARY': 30, 'CELESTIAL': 100
+       }[item.rarity];
+       item.cost = Math.floor(Math.random() * 50 * item.level * rarityCostMult) + (50 * item.level * rarityCostMult);
+       items.push(item);
+    }
+    setShopItems(items);
+  }, [hero?.level]);
 
   const handleBuy = (item) => {
     if (currentGold >= item.cost) {
-      const boughtItem = { 
-        name: item.name, 
-        type: item.type, 
-        stat: item.stat, 
-        id: Math.random().toString(36).substr(2, 9) 
-      };
-      
       updateHero({
         ...hero,
         gold: currentGold - item.cost,
-        artifacts: [...(hero.artifacts || []), boughtItem]
+        artifacts: [...(hero.artifacts || []), item]
       });
+
+      // Remove from shop
+      setShopItems(prev => prev.filter(i => i.id !== item.id));
 
       setPurchaseMsg(`Purchased: ${item.name}`);
       setTimeout(() => setPurchaseMsg(null), 3000);
     }
   };
 
+
   const getTierColor = (tier) => {
     switch(tier) {
       case 'COMMON': return 'text-stone-400 border-stone-800';
       case 'UNCOMMON': return 'text-green-500 border-green-900/50';
       case 'RARE': return 'text-blue-500 border-blue-900/50';
+      case 'EPIC': return 'text-purple-500 border-purple-900/50';
       case 'LEGENDARY': return 'text-yellow-500 border-yellow-600/50';
+      case 'CELESTIAL': return 'text-cyan-400 border-cyan-800/50';
       default: return 'text-stone-400';
     }
   };
@@ -71,25 +79,31 @@ export default function ItemShopView({ hero, updateHero, onBack }) {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {SHOP_ITEMS.map((item, idx) => (
-            <div key={idx} className="flex flex-col md:flex-row justify-between bg-[#020202] border border-neutral-800 p-4 font-mono group hover:border-neutral-700 transition-colors">
+          {shopItems.length === 0 ? (
+             <div className="text-stone-600 font-mono italic p-4 border border-neutral-900">The merchant's stock is empty. Return later.</div>
+          ) : shopItems.map((item, idx) => (
+            <div key={item.id} className="flex flex-col xl:flex-row justify-between bg-[#020202] border border-neutral-800 p-4 font-mono group hover:border-neutral-700 transition-colors">
               <div className="flex-1 pr-4">
                 <div className="flex items-center gap-3 mb-1">
-                  <h3 className={`font-bold uppercase tracking-widest text-sm ${getTierColor(item.tier).split(' ')[0]}`}>
+                  <h3 className={`font-bold uppercase tracking-widest text-sm ${getTierColor(item.rarity).split(' ')[0]}`}>
                     {item.name}
                   </h3>
-                  <span className={`text-[9px] px-2 py-0.5 border ${getTierColor(item.tier)}`}>
-                    {item.tier}
+                  <span className={`text-[9px] px-2 py-0.5 border ${getTierColor(item.rarity)}`}>
+                    {item.rarity}
                   </span>
                 </div>
-                <div className="flex gap-4 text-[10px] text-stone-600 uppercase tracking-widest mb-3">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-stone-600 uppercase tracking-widest mb-3">
                   <span>Type: <span className="text-stone-400">{item.type}</span></span>
-                  <span>Power: <span className="text-stone-400">+{item.stat} {item.type === 'WEAPON' ? 'DMG' : 'HP'}</span></span>
+                  {item.stats?.dmg > 0 && <span className="text-red-500">+{item.stats.dmg} DMG</span>}
+                  {item.stats?.def > 0 && <span className="text-stone-400">+{item.stats.def} DEF</span>}
+                  {item.stats?.hp > 0 && <span className="text-stone-300">+{item.stats.hp} HP</span>}
+                  {item.stats?.crit > 0 && <span className="text-yellow-500">+{item.stats.crit}% CRIT</span>}
+                  {item.stats?.magicDmg > 0 && <span className="text-purple-400">+{item.stats.magicDmg} MAGIC</span>}
+                  {item.stats?.lifesteal > 0 && <span className="text-red-400">+{item.stats.lifesteal} LIFESTEAL</span>}
                 </div>
-                <p className="text-xs text-stone-500 italic max-w-sm">{item.desc}</p>
               </div>
 
-              <div className="mt-4 md:mt-0 flex flex-col justify-between items-end border-t md:border-t-0 md:border-l border-neutral-800 pt-4 md:pt-0 md:pl-4 min-w-[120px]">
+              <div className="mt-4 xl:mt-0 flex flex-col justify-between items-end border-t xl:border-t-0 xl:border-l border-neutral-800 pt-4 xl:pt-0 xl:pl-4 min-w-[120px]">
                 <div className="text-lg font-bold text-yellow-600 mb-4">{item.cost.toLocaleString()}g</div>
                 <button 
                   onClick={() => handleBuy(item)}

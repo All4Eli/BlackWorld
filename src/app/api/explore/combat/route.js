@@ -189,7 +189,7 @@ export async function POST(request) {
                     hero.level += 1;
                     hero.unspentStatPoints += 3;
                     hero.skillPointsUnspent += 1;
-                    logs.push(`✨ [LEVEL UP]: You reached Level ${hero.level}! (+3 Stat Points, +1 Skill Point)`);
+                    initialLogs.push(`✨ [LEVEL UP]: You reached Level ${hero.level}! (+3 Stat Points, +1 Skill Point)`);
                     requiredXp = calculateXPRequirement(hero.level);
                 }
 
@@ -198,7 +198,7 @@ export async function POST(request) {
                     const { generateLoot } = require('@/lib/gameData');
                     const loot = generateLoot(1);
                     hero.artifacts.push({ ...loot, acquired_at: new Date().toISOString() });
-                    logs.push(`💎 [LOOT]: You recovered a ${loot.name}!`);
+                    initialLogs.push(`💎 [LOOT]: You recovered a ${loot.name}!`);
                 }
 
                 incrementQuestProgress(hero, 'SLAY_MONSTERS', 1);
@@ -208,7 +208,7 @@ export async function POST(request) {
                const goldLoss = Math.floor((hero.gold || 0) * 0.1);
                hero.gold = Math.max(0, (hero.gold || 0) - goldLoss);
                hero.hp = 1;
-               logs.push(`☠️ [DEATH]: You have fallen. Lost ${goldLoss} gold.`);
+               initialLogs.push(`☠️ [DEATH]: You have fallen. Lost ${goldLoss} gold.`);
             }
         }
 

@@ -91,9 +91,11 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
   const initCombat = async (zone) => {
     // Phase 14: Resource Check
     const cost = 10; // Base cost for PvE
-    const check = validateAndConsume(hero, hero?.player_resources, cost, 'vitae');
+    const limits = hero?.player_resources || {};
+    const check = validateAndConsume(hero, { ...hero, ...limits }, cost, 'vitae');
     if (!check.success) {
-        return alert(`Insufficient Vitae. You lack ${check.deficit}.`);
+        setLog(prev => [...prev, `❌ [EXHAUSTED]: Your body fails you. You lack the Vitae (${cost}) to fight, forcing a desperate retreat.`]);
+        return;
     }
 
     setCombatActive(true);

@@ -90,7 +90,9 @@ export default function QuestLog({ hero, updateHero, onBack }) {
                                                 {completed && <span className="text-[9px] px-2 py-[1px] font-mono tracking-widest uppercase border border-green-800 text-green-500 bg-green-950/20">Complete</span>}
                                                 {accepted && !completed && <span className="text-[9px] px-2 py-[1px] font-mono tracking-widest uppercase border border-yellow-800 text-yellow-500">Active</span>}
                                             </div>
-                                            <p className="font-serif text-sm text-stone-500 mb-4">{q.description}</p>
+                                            <p className="font-serif text-sm text-stone-500 mb-4">
+                                                {q.description?.replace('Blood Essence', 'Essence')}
+                                            </p>
                                             
                                             {/* Progress bar */}
                                             {accepted && (

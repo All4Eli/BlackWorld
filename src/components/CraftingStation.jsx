@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import EnhancementForge from './EnhancementForge';
+import { validateAndConsume } from '@/lib/resources';
 
 export default function CraftingStation({ hero, updateHero, onBack }) {
     const [recipes, setRecipes] = useState([]);
@@ -21,19 +22,25 @@ export default function CraftingStation({ hero, updateHero, onBack }) {
     const craftItem = (recipe) => {
         if (hero.gold < recipe.gold_cost) return alert("Not enough gold to forge.");
         
+        // Phase 14: Essence cost varies by recipe tier, we'll use base 10 for prototype
+        const check = validateAndConsume(hero, hero?.player_resources, 10, 'essence');
+        if (!check.success) return alert(`Not enough Essence. Short ${check.deficit}.`);
+        
         // Simulating infinite progression logic:
         // No skill caps, exponential cost check
         const chance = Math.random();
         if (chance <= recipe.success_chance) {
             updateHero({ 
                 ...hero, 
-                gold: hero.gold - recipe.gold_cost
+                gold: hero.gold - recipe.gold_cost,
+                player_resources: { ...hero.player_resources, essence_current: check.new_current }
             });
             alert(`Forged!`);
         } else {
              updateHero({ 
                 ...hero, 
-                gold: hero.gold - recipe.gold_cost
+                gold: hero.gold - recipe.gold_cost,
+                player_resources: { ...hero.player_resources, essence_current: check.new_current }
             });
             alert(`The forge ruined the material... (${(recipe.success_chance * 100).toFixed(0)}% success chance)`);
         }

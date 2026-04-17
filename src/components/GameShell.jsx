@@ -10,11 +10,14 @@ import QuestLog from './QuestLog';
 import AchievementPanel from './AchievementPanel';
 import BattlePassHub from './BattlePassHub';
 import PremiumStore from './PremiumStore';
+import ResourceBars from './ResourceBars';
+import ResourceRefillModal from './ResourceRefillModal';
 import WorldEventBanner from './WorldEventBanner';
 
 export default function GameShell({ hero, updateHero, onFindCombat }) {
   const [activeTab, setActiveTab] = useState('DASHBOARD');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [refillModal, setRefillModal] = useState(null);
 
   // Recalculate essence on mount (server-side regen)
   useEffect(() => {
@@ -149,6 +152,34 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
         {activeTab === 'BATTLE_PASS' && <BattlePassHub hero={hero} updateHero={updateHero} />}
         {activeTab === 'STORE' && <PremiumStore hero={hero} updateHero={updateHero} />}
       </main>
+
+      {/* Persistent Resource Bars on Desktop */}
+      <div className="hidden lg:block fixed bottom-8 right-8 w-64 z-30">
+          <ResourceBars hero={hero} onRefillClick={(t) => setRefillModal({ type: t })} />
+      </div>
+
+      {refillModal && (
+        <ResourceRefillModal 
+          hero={hero} 
+          type={refillModal.type} 
+          requiredCost={refillModal.required} 
+          costReason={refillModal.reason}
+          onRefillStones={(type, cost) => {
+              const currentStones = hero.blood_stones || 0;
+              if (currentStones < cost) return alert("Not enough Blood Stones. Visit Store.");
+              updateHero({
+                 ...hero,
+                 blood_stones: currentStones - cost,
+                 player_resources: {
+                     ...(hero.player_resources || {}),
+                     [`${type}_current`]: 9999
+                 }
+              });
+              setRefillModal(null);
+          }}
+          onClose={() => setRefillModal(null)} 
+        />
+      )}
 
     </div>
     </>

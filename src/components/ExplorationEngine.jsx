@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ZONES } from '@/lib/gameData';
 import { supabase } from '@/lib/supabase';
 import { calcPlayerStats, rollDamage, calcMonsterStats, isHitDodged } from '@/lib/combat';
+import { validateAndConsume } from '@/lib/resources';
 
 export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
   const [log, setLog] = useState(["[ENTRY]: You descend into the dark. Choose your ground."]);
@@ -36,6 +37,22 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
   const lockedZones = ZONES.filter(z => hero.level < z.levelReq);
 
   const initCombat = async (zone) => {
+    // Phase 14: Resource Check
+    const cost = 10; // Base cost for PvE
+    const check = validateAndConsume(hero, hero?.player_resources, cost, 'vitae');
+    if (!check.success) {
+        return alert(`Insufficient Vitae. You lack ${check.deficit}.`);
+    }
+    
+    // Process payment immediately
+    updateHero({
+        ...hero,
+        player_resources: {
+            ...hero.player_resources,
+            vitae_current: check.new_current
+        }
+    });
+
     setCombatActive(true);
     setCombatEnded(false);
     setCombatLoading(true);

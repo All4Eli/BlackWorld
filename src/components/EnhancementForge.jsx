@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { validateAndConsume } from '@/lib/resources';
 
 const ENHANCEMENT_TABLE = {
   1:  { success: 1.00, break: 0.00, gold: 100,    stones: 1 },
@@ -62,9 +63,13 @@ export default function EnhancementForge({ hero, updateHero }) {
         if (!selectedItem) return;
         if (hero.gold < tableInfo.gold) return alert("Not enough gold.");
 
+        // Phase 14: Essence Check (Flat cost of 50 for prototype)
+        const check = validateAndConsume(hero, hero?.player_resources, 50, 'essence');
+        if (!check.success) return alert(`Not enough Essence. Short ${check.deficit}.`);
+
         const roll = Math.random();
         
-        let newHero = { ...hero, gold: hero.gold - tableInfo.gold };
+        let newHero = { ...hero, gold: hero.gold - tableInfo.gold, player_resources: { ...hero.player_resources, essence_current: check.new_current } };
         
         if (roll <= modifiedSuccess) {
             alert("Enhancement SUCCESS!");

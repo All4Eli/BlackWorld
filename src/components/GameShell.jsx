@@ -147,7 +147,7 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
         {activeTab === 'EXPLORE' && <ExplorationEngine hero={hero} updateHero={updateHero} onFindCombat={onFindCombat} />}
         {activeTab === 'ARSENAL' && <ArsenalView hero={hero} updateHero={updateHero} />}
         {activeTab === 'SKILLS' && <SkillTreePanel hero={hero} updateHero={updateHero} inline={true} />}
-        {activeTab === 'CONTRACTS' && <QuestLog quests={hero.daily_quests} inline={true} />}
+        {activeTab === 'CONTRACTS' && <QuestLog hero={hero} updateHero={updateHero} onBack={() => setActiveTab('DASHBOARD')} />}
         {activeTab === 'ACHIEVEMENTS' && <AchievementPanel hero={hero} updateHero={updateHero} />}
         {activeTab === 'BATTLE_PASS' && <BattlePassHub hero={hero} updateHero={updateHero} />}
         {activeTab === 'STORE' && <PremiumStore hero={hero} updateHero={updateHero} />}

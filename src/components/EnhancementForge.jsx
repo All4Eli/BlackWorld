@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
 import { validateAndConsume } from '@/lib/resources';
 
 const ENHANCEMENT_TABLE = {

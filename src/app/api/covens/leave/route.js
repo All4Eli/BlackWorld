@@ -38,12 +38,9 @@ export async function POST(request) {
 
       if (updateError) throw updateError;
 
-      // 4. Decrement Coven Member Count
+      // 4. Atomically decrement Coven Member Count
       if (coven) {
-          await supabase
-            .from('covens')
-            .update({ member_count: Math.max(0, coven.member_count - 1) })
-            .eq('id', covenId);
+          await supabase.rpc('decrement_member_count', { coven_uuid: coven.id });
       }
 
       return NextResponse.json({ success: true });

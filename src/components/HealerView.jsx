@@ -14,29 +14,23 @@ export default function HealerView({ hero, updateHero, onBack }) {
   const currentCost = isAlive ? healCost : reviveCost;
 
   const handleHeal = async () => {
-    if (!isAlive) {
-       // Revive path — server-authoritative
-       if (hero.gold < reviveCost) return setErrorMsg(`Need ${reviveCost}g to revive.`);
-       setHealing(true);
-       setErrorMsg('');
-       try {
-           const res = await fetch('/api/healer/revive', { method: 'POST' });
-           const data = await res.json();
-           if (res.ok) {
-               updateHero(data.updatedHero);
-           } else {
-               setErrorMsg(data.error);
-           }
-       } catch (err) {
-           setErrorMsg(err.message);
-       } finally {
-           setHealing(false);
-       }
-    } else {
-       // Normal healing for minor wounds
-       if (hero.gold >= healCost && hero.hp < c.maxHp) {
-           updateHero({ ...hero, gold: hero.gold - healCost, hp: c.maxHp });
-       }
+    setHealing(true);
+    setErrorMsg('');
+    
+    try {
+      const endpoint = isAlive ? '/api/healer/heal' : '/api/healer/revive';
+      const res = await fetch(endpoint, { method: 'POST' });
+      const data = await res.json();
+      
+      if (res.ok) {
+        updateHero(data.updatedHero);
+      } else {
+        setErrorMsg(data.error);
+      }
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setHealing(false);
     }
   };
 
@@ -73,8 +67,9 @@ export default function HealerView({ hero, updateHero, onBack }) {
               disabled={healing || hero.gold < currentCost || (isAlive && hero.hp >= c.maxHp)}
               className="w-full py-3 border border-red-900/50 bg-red-950/20 text-red-500 hover:bg-neutral-900 hover:text-stone-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-[0.2em] text-xs"
             >
-              Pay Tithe
+              {healing ? 'Channeling...' : 'Pay Tithe'}
             </button>
+            {errorMsg && <p className="text-red-500 text-[10px] mt-2">{errorMsg}</p>}
           </div>
 
           <div className="border border-neutral-900 bg-black/40 p-6 flex flex-col justify-between">

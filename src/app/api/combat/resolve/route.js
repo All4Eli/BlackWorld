@@ -47,7 +47,7 @@ export async function POST(request) {
 
         for (let i = 0; i < maxRounds; i++) {
             // Player attacks
-            if (!isHitDodged(fetchedEnemy.dodge_chance)) {
+            if (!isHitDodged(eStats.dodgeChance)) {
                 eHp -= rollDamage(pStats.baseDamageMin, pStats.baseDamageMax);
             }
             if (eHp <= 0) {
@@ -55,9 +55,9 @@ export async function POST(request) {
                 break;
             }
 
-            // Enemy attacks
+            // Enemy attacks — use scaled stats from calcMonsterStats
             if (!isHitDodged(pStats.dodgeChance)) {
-                pHp -= rollDamage(fetchedEnemy.base_damage_min, fetchedEnemy.base_damage_max);
+                pHp -= rollDamage(eStats.damageMin, eStats.damageMax);
             }
             if (pHp <= 0) {
                 win = false;

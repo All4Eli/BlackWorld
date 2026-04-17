@@ -133,9 +133,14 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
     setTimeout(() => {
       const rawDmg = Math.floor(Math.random() * 5) + enemy.attackDamage;
       const reduced = Math.max(1, rawDmg - c.damageReduction);
-      setHero(prev => ({ ...prev, hp: Math.max(0, prev.hp - reduced) }));
+      let died = false;
+      setHero(prev => {
+        const newHp = Math.max(0, prev.hp - reduced);
+        if (newHp <= 0) died = true;
+        return { ...prev, hp: newHp };
+      });
       addLog(`⚠️ ${enemy.name} strikes during recovery for ${reduced} damage!`);
-      if (hero.hp - reduced <= 0) {
+      if (died) {
         addLog("🛑 [PERISHED]: The dark consumes you...");
       } else {
         setIsPlayerTurn(true);

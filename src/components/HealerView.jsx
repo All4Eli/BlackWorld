@@ -8,11 +8,17 @@ export default function HealerView({ hero, updateHero, onBack }) {
   const [errorMsg, setErrorMsg] = useState('');
 
   const c = calcCombatStats(hero, calculateSkillBonuses(hero?.skillPoints || {}));
-  const dynamicCost = Math.floor((hero?.level || 1) * 10 * 0.1) + 10;
+  const healCost = 20;
+  const reviveCost = Math.floor((hero?.level || 1) * 10 * 0.1) + 10;
+  const isAlive = hero.hp > 0;
+  const currentCost = isAlive ? healCost : reviveCost;
 
   const handleHeal = async () => {
-    if (hero.gold >= dynamicCost && hero.hp <= 0) {
+    if (!isAlive) {
+       // Revive path — server-authoritative
+       if (hero.gold < reviveCost) return setErrorMsg(`Need ${reviveCost}g to revive.`);
        setHealing(true);
+       setErrorMsg('');
        try {
            const res = await fetch('/api/healer/revive', { method: 'POST' });
            const data = await res.json();
@@ -26,10 +32,10 @@ export default function HealerView({ hero, updateHero, onBack }) {
        } finally {
            setHealing(false);
        }
-    } else if (hero.hp > 0) {
-       // Support normal local healing for minor wounds if not dead
-       if (hero.gold >= 20 && hero.hp < c.maxHp) {
-           updateHero({ ...hero, gold: hero.gold - 20, hp: c.maxHp });
+    } else {
+       // Normal healing for minor wounds
+       if (hero.gold >= healCost && hero.hp < c.maxHp) {
+           updateHero({ ...hero, gold: hero.gold - healCost, hp: c.maxHp });
        }
     }
   };
@@ -58,13 +64,13 @@ export default function HealerView({ hero, updateHero, onBack }) {
         <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6 font-mono">
           <div className="border border-neutral-900 bg-black/40 p-6 flex flex-col justify-between">
             <div>
-              <h3 className="text-red-700 uppercase tracking-widest mb-2">Rejuvenation</h3>
-              <p className="text-[10px] text-stone-500 mb-4">Mend your wounds fully to {c.maxHp} HP.</p>
-              <div className="text-xl font-bold text-yellow-600 mb-6 border-t border-neutral-900 pt-4">20g</div>
+              <h3 className="text-red-700 uppercase tracking-widest mb-2">{isAlive ? 'Rejuvenation' : 'Resurrection'}</h3>
+              <p className="text-[10px] text-stone-500 mb-4">{isAlive ? `Mend your wounds fully to ${c.maxHp} HP.` : 'Return from the dead.'}</p>
+              <div className="text-xl font-bold text-yellow-600 mb-6 border-t border-neutral-900 pt-4">{currentCost}g</div>
             </div>
             <button 
               onClick={handleHeal}
-              disabled={hero.gold < 20 || hero.hp >= c.maxHp}
+              disabled={healing || hero.gold < currentCost || (isAlive && hero.hp >= c.maxHp)}
               className="w-full py-3 border border-red-900/50 bg-red-950/20 text-red-500 hover:bg-neutral-900 hover:text-stone-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-[0.2em] text-xs"
             >
               Pay Tithe

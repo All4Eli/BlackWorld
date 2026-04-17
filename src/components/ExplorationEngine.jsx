@@ -32,9 +32,57 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
   const addLog = (msg) => setLog(prev => [...prev, msg]);
   const addCombatLog = (msg) => setCombatLog(prev => [...prev, msg]);
 
-  const currentEssence = hero.essence ?? 100;
+  const currentEssence = hero?.player_resources?.essence_current ?? hero.essence ?? 100;
   const availableZones = ZONES.filter(z => hero.level >= z.levelReq);
   const lockedZones = ZONES.filter(z => hero.level < z.levelReq);
+
+  const handleEnterZone = (zone) => {
+    setActiveZone(zone);
+    setLog([`[ENTRY]: You cross into the ${zone.name}.`]);
+  };
+
+  const handleAction = async (actionType) => {
+    if (!activeZone) return;
+    try {
+      const response = await fetch('/api/explore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ zoneId: activeZone.id, type: actionType })
+      });
+      const data = await response.json();
+      
+      if (!response.ok) {
+         addLog(`❌ [ERROR] ${data.error}`);
+         return;
+      }
+      
+      addLog(`>> ${data.narrative}`);
+      if (data.loot) {
+         addLog(`✨ [LOOT] Acquired ${data.loot.name}!`);
+      }
+      
+      const updatedHero = { ...hero };
+      if (updatedHero.player_resources) {
+          updatedHero.player_resources.essence_current = data.energyRemaining;
+      } else {
+          updatedHero.essence = data.energyRemaining;
+      }
+      
+      if (data.loot) {
+          if (!updatedHero.artifacts) updatedHero.artifacts = [];
+          updatedHero.artifacts.push(data.loot);
+      }
+      updateHero(updatedHero);
+      
+      if (data.encounter === 'enemy') {
+         setTimeout(() => initCombat(activeZone), 1500);
+      }
+      
+    } catch(err) {
+      addLog(`❌ [SYSTEM] Cannot connect to server.`);
+    }
+  };
+
 
   const initCombat = async (zone) => {
     // Phase 14: Resource Check
@@ -165,7 +213,7 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
               const postFleeHp = Math.max(0, playerHP - mDamage);
               setPlayerHP(postFleeHp);
               addCombatLog(`🩸 [WOUNDED]: Hit for ${mDamage} damage!`);
-              if (postFleeHp <= 0) handleDefeat();
+              if (postFleeHp <= 0) handleDefeatServer();
           }
       }
   };

@@ -2,13 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { incrementQuestProgress } from '@/lib/quests';
-
-const getRandomLoot = () => {
-    const roll = Math.random();
-    if (roll > 0.8) return { type: 'item', name: 'Ancient Core', description: 'Power source from an old age.' };
-    if (roll > 0.5) return { type: 'item', name: 'Demon Fang', description: 'Sharp and corrupted.' };
-    return { type: 'item', name: 'Rusty Scrap', description: 'Might be useful for crafting.' };
-};
+import { generateLoot } from '@/lib/gameData';
 
 export async function POST(request) {
     const { userId } = await auth();
@@ -70,7 +64,7 @@ export async function POST(request) {
             narrative = 'A corrupted creature steps out of the gloom!';
         } else if (roll > 0.4) {
             encounterType = 'resource';
-            loot = getRandomLoot();
+            loot = generateLoot(1);
             narrative = `You discovered something hidden: ${loot.name}.`;
             
             // Add to artifacts

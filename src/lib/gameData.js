@@ -124,7 +124,7 @@ export function getDailyQuests() {
       id: `q1_${today}`,
       title: 'Blood Harvest',
       description: 'Slay 5 enemies in any zone.',
-      type: 'KILLS',
+      type: 'SLAY_MONSTERS',
       target: 5,
       progress: 0,
       reward: { gold: 200, xp: 80 },
@@ -218,4 +218,68 @@ export function calcCombatStats(hero, skillBonuses) {
     lifesteal: gearLifesteal + (skillBonuses?.lifesteal || 0),
     flaskBonus: skillBonuses?.flaskBonus || 0,
   };
+}
+
+// Procedural Loot & Item Generation
+export const LOOT_TABLE = [
+  { id: 'l_scrap', name: 'Rusty Scrap', tier: 'COMMON', dropWeight: 100, description: 'Might be useful for crafting.' },
+  { id: 'l_bone', name: 'Charred Bone', tier: 'COMMON', dropWeight: 90, description: 'A remnant of a lost soul.' },
+  { id: 'l_fang', name: 'Demon Fang', tier: 'UNCOMMON', dropWeight: 50, description: 'Sharp and corrupted.' },
+  { id: 'l_silk', name: 'Grave Silk', tier: 'UNCOMMON', dropWeight: 45, description: 'Woven with dark intent.' },
+  { id: 'l_core', name: 'Ancient Core', tier: 'RARE', dropWeight: 20, description: 'Power source from an old age.' },
+  { id: 'l_blood', name: 'Vampiric Bloodlet', tier: 'RARE', dropWeight: 15, description: 'Pulsing with dark energy.' },
+  { id: 'l_essence', name: 'Pure Void Essence', tier: 'EPIC', dropWeight: 5, description: 'Raw creation material.' },
+];
+
+export function generateLoot(zoneLevel = 1) {
+    const table = LOOT_TABLE.map(item => ({
+        ...item,
+        // Boost higher rarity drops slightly in higher level zones
+        modifiedWeight: item.tier === 'EPIC' || item.tier === 'RARE' 
+            ? item.dropWeight + (zoneLevel * 2) 
+            : Math.max(10, item.dropWeight - zoneLevel)
+    }));
+    
+    const totalWeight = table.reduce((sum, item) => sum + item.modifiedWeight, 0);
+    let roll = Math.random() * totalWeight;
+    
+    for (const item of table) {
+        if (roll < item.modifiedWeight) {
+            return { type: 'item', name: item.name, tier: item.tier, description: item.description };
+        }
+        roll -= item.modifiedWeight;
+    }
+    return { type: 'item', name: 'Rusty Scrap', tier: 'COMMON', description: 'Fallback item.' };
+}
+
+// Procedural Enemy Generation
+export const ENEMY_TABLE = [
+  { id: 'e_thrall', name: 'Corrupted Thrall', tier: 'COMMON', minZone: 1, baseHp: 40, dmgMin: 3, dmgMax: 8, dodge: 0.05 },
+  { id: 'e_hound', name: 'Plague Hound', tier: 'COMMON', minZone: 1, baseHp: 30, dmgMin: 5, dmgMax: 12, dodge: 0.15 },
+  { id: 'e_knight', name: 'Grave Knight', tier: 'UNCOMMON', minZone: 2, baseHp: 120, dmgMin: 12, dmgMax: 20, dodge: 0.02 },
+  { id: 'e_vampire', name: 'Vampiric Thrall', tier: 'UNCOMMON', minZone: 2, baseHp: 90, dmgMin: 15, dmgMax: 25, dodge: 0.1 },
+  { id: 'e_stalker', name: 'Void Stalker', tier: 'RARE', minZone: 3, baseHp: 180, dmgMin: 20, dmgMax: 35, dodge: 0.2 },
+  { id: 'e_crypt', name: 'Crypt Crawler', tier: 'RARE', minZone: 3, baseHp: 220, dmgMin: 18, dmgMax: 30, dodge: 0.05 },
+];
+
+export function generateEnemy(zoneLevel = 1) {
+    const validEnemies = ENEMY_TABLE.filter(e => e.minZone <= zoneLevel);
+    // Pick a random enemy from valid array
+    const baseEnemy = validEnemies[Math.floor(Math.random() * validEnemies.length)];
+    
+    // Scale enemy stats heavily by zone level delta
+    const zoneMultiplier = 1 + ((zoneLevel - baseEnemy.minZone) * 0.4); 
+    
+    const eHp = Math.floor(baseEnemy.baseHp * zoneMultiplier * (1 + (Math.random() * 0.2)));
+    
+    return {
+        id: baseEnemy.id,
+        name: `${zoneLevel > baseEnemy.minZone ? 'Elder ' : ''}${baseEnemy.name}`,
+        tier: baseEnemy.tier,
+        hp: eHp,
+        maxHp: eHp,
+        damageMin: Math.floor(baseEnemy.dmgMin * zoneMultiplier),
+        damageMax: Math.floor(baseEnemy.dmgMax * zoneMultiplier),
+        dodgeChance: baseEnemy.dodge
+    };
 }

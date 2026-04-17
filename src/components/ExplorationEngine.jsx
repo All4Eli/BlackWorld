@@ -135,7 +135,7 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
          const response = await fetch('/api/explore/combat', {
              method: 'POST',
              headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ enemyId: currentEnemy.id || 'void_stalker', action, enemyState: { hp: enemyHP } })
+             body: JSON.stringify({ enemyId: currentEnemy.id || 'void_stalker', action, enemyState: { ...currentEnemy, hp: enemyHP } })
          });
          const data = await response.json();
          if (!response.ok) {
@@ -147,6 +147,9 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
          data.logs?.forEach(msg => addCombatLog(msg));
          setPlayerHP(data.newPlayerHp);
          setEnemyHP(data.newEnemyHp);
+         if (data.newEnemyState) {
+            setCurrentEnemy(prev => ({ ...prev, ...data.newEnemyState }));
+         }
 
          if (data.combatEnded) {
              setCombatEnded(true);
@@ -266,9 +269,12 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
 
              {/* Action Bar */}
              {!combatEnded && !combatLoading && (
-                <div className="grid grid-cols-3 gap-1 border-t border-neutral-900 bg-black p-2 font-mono text-xs uppercase tracking-widest font-bold">
+                <div className="grid grid-cols-4 gap-1 border-t border-neutral-900 bg-black p-2 font-mono text-xs uppercase tracking-widest font-bold">
                    <button onClick={handleAttack} className="bg-[#020202] hover:bg-neutral-900 border border-neutral-800 py-6 text-stone-300 hover:text-white transition-colors border-r-0">
                       [Attack]
+                   </button>
+                   <button onClick={() => processCombatTurn('DEFEND')} className="bg-[#020202] hover:bg-neutral-900 border border-neutral-800 py-6 text-stone-400 hover:text-stone-200 transition-colors border-r-0">
+                      [Defend]
                    </button>
                    <button onClick={handleUseItem} className="bg-[#020202] hover:bg-neutral-900 border border-neutral-800 py-6 text-emerald-600 hover:text-emerald-400 transition-colors border-r-0 flex flex-col items-center gap-1">
                       [Use Item]

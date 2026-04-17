@@ -43,6 +43,7 @@ export async function POST(request) {
         // 3. Retroactive Level Loop
         hero.level = hero.level || 1;
         hero.unspentStatPoints = hero.unspentStatPoints || 0;
+        hero.skillPointsUnspent = hero.skillPointsUnspent || 0;
         
         const { calculateXPRequirement } = require('@/lib/gameData');
         let requiredXp = calculateXPRequirement(hero.level);
@@ -52,6 +53,7 @@ export async function POST(request) {
                   hero.xp -= requiredXp;
                   hero.level += 1;
                   hero.unspentStatPoints += 3;
+                  hero.skillPointsUnspent += 1;
                   requiredXp = calculateXPRequirement(hero.level);
              }
              modified = true;

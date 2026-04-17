@@ -11,6 +11,7 @@ export const SKILL_TREE = {
       { id: 'sharpened_edge', name: 'Sharpened Edge', maxRank: 5, description: '+3 Base Damage per rank', effect: { baseDmg: 3 } },
       { id: 'berserker', name: 'Berserker', maxRank: 3, description: '+5% Critical Hit chance per rank', effect: { critChance: 5 }, requires: 'sharpened_edge', reqRank: 2 },
       { id: 'executioner', name: 'Executioner', maxRank: 1, description: 'Killing blows restore 20 HP', effect: { killHeal: 20 }, requires: 'berserker', reqRank: 2 },
+      { id: 'serrated_blades', name: 'Keystone: Serrated Blades', maxRank: 1, description: 'Your successful physical attacks inflict a stacking Bleed dealing 5 damage per turn.', effect: { passiveBleed: 5 }, requires: 'executioner', reqRank: 1 },
     ]
   },
   blood_magic: {
@@ -22,6 +23,7 @@ export const SKILL_TREE = {
       { id: 'blood_siphon', name: 'Blood Siphon', maxRank: 3, description: 'Attacks heal 3 HP per rank', effect: { lifesteal: 3 } },
       { id: 'soul_burn', name: 'Soul Burn', maxRank: 3, description: '+6 Magic Damage per rank', effect: { magicDmg: 6 }, requires: 'mana_well', reqRank: 2 },
       { id: 'death_mark', name: 'Death Mark', maxRank: 1, description: 'Enemies take 15% more damage', effect: { enemyVuln: 15 }, requires: 'soul_burn', reqRank: 2 },
+      { id: 'blood_aegis', name: 'Keystone: Blood Aegis', maxRank: 1, description: 'Upon dropping below 30% HP, gain a shield absorbing damage equal to your Max HP for one turn.', effect: { criticalAegis: true }, requires: 'death_mark', reqRank: 1 },
     ]
   },
   survival: {
@@ -33,6 +35,7 @@ export const SKILL_TREE = {
       { id: 'efficient_flasks', name: 'Efficient Flasks', maxRank: 3, description: '+15 Flask heal per rank', effect: { flaskBonus: 15 } },
       { id: 'essence_flow', name: 'Essence Flow', maxRank: 3, description: '+5 Max Blood Essence per rank', effect: { maxEssence: 5 } },
       { id: 'undying', name: 'Undying', maxRank: 1, description: 'Survive a killing blow with 1 HP (once per combat)', effect: { undying: true }, requires: 'thick_skin', reqRank: 3 },
+      { id: 'thorns', name: 'Keystone: Barbed Carapace', maxRank: 1, description: 'Reflect 25% of all mitigated damage back at your attacker automatically.', effect: { passiveThorns: 25 }, requires: 'undying', reqRank: 1 },
     ]
   }
 };

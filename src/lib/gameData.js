@@ -162,3 +162,33 @@ export function calculateEssence(lastRegenISO, currentEssence, maxEssence = 100)
   const newEssence = Math.min(maxEssence, currentEssence + gained);
   return { essence: newEssence, newTimestamp: new Date().toISOString() };
 }
+
+// Global Combat Match Calculator based on Core Attributes + Skill Tree + Gear
+export function calcCombatStats(hero, skillBonuses) {
+  // Base core stats fallback for legacy saves
+  const str = hero?.str ?? 5;
+  const def = hero?.def ?? 5;
+  const dex = hero?.dex ?? 5;
+  const int = hero?.int ?? 5;
+  const vit = hero?.vit ?? 5;
+
+  // Base Math Scaling
+  const baseHp = 100 + (vit * 5);
+  const baseAttackDmg = 12 + (str * 1);
+  const baseDamageReduction = Math.floor(def * 0.5);
+  const baseCritChance = Math.floor(dex * 1.5);
+  const baseMaxMana = 50 + (int * 3);
+  const baseMagicPower = int * 1;
+
+  // Total Math (Base + Skil Tree + Gear)
+  return {
+    maxHp: baseHp + (hero?.equippedArmor?.stat || 0) + (skillBonuses?.maxHp || 0),
+    attackDamage: baseAttackDmg + (hero?.equippedWeapon?.stat || 0) + (skillBonuses?.baseDmg || 0),
+    damageReduction: baseDamageReduction + (skillBonuses?.damageReduction || 0),
+    critChance: baseCritChance + (skillBonuses?.critChance || 0),
+    maxMana: baseMaxMana + (skillBonuses?.maxMana || 0),
+    magicPower: baseMagicPower + (skillBonuses?.magicDmg || 0),
+    lifesteal: skillBonuses?.lifesteal || 0,
+    flaskBonus: skillBonuses?.flaskBonus || 0,
+  };
+}

@@ -1,7 +1,8 @@
 'use client';
 import { usePlayerData } from '@/hooks/usePlayerData';
 import { useUser, UserButton, SignOutButton } from '@clerk/nextjs';
-import { getDailyQuests } from '@/lib/gameData';
+import { getDailyQuests, calcCombatStats } from '@/lib/gameData';
+import { calculateSkillBonuses } from '@/lib/skillTree';
 import BootScreen from '@/components/BootScreen';
 import CharacterCreator from '@/components/CharacterCreator';
 import GameShell from '@/components/GameShell';
@@ -111,7 +112,7 @@ export default function GameStateDirector() {
               <div className="hidden md:flex gap-6 text-xs uppercase tracking-widest text-stone-500">
                 <span>{saveData.heroData.name} <span className="text-red-700">Lvl {saveData.heroData.level}</span></span>
                 <span className="text-yellow-600">{saveData.heroData.gold}g</span>
-                <span className="text-red-500">{saveData.heroData.hp}/{saveData.heroData.maxHp} HP</span>
+                <span className="text-red-500">{saveData.heroData.hp}/{calcCombatStats(saveData.heroData, calculateSkillBonuses(saveData.heroData.skillPoints || {})).maxHp} HP</span>
               </div>
             )}
           </div>

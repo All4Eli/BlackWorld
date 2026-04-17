@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { calcPlayerStats } from '@/lib/combat';
+import { validateAndConsume } from '@/lib/resources';
 
 export default function ArenaHub({ hero, updateHero, onBack }) {
     const [tab, setTab] = useState('CHALLENGE');
@@ -72,7 +73,17 @@ export default function ArenaHub({ hero, updateHero, onBack }) {
                                             <div className="text-xs text-stone-600 font-mono mt-1">Level {p.level} • {p.pvp_stats?.[0]?.rank_tier || 'Unranked'} ({p.pvp_stats?.[0]?.elo_rating || 1000} ELO)</div>
                                             <div className="text-[9px] text-red-900 uppercase tracking-widest mt-2">{p.pvp_flag ? 'PVP Flagged' : 'Protected'}</div>
                                         </div>
-                                        <button className="bg-black hover:bg-red-950/40 text-red-500 border border-red-900/40 py-2 px-4 font-mono text-xs uppercase tracking-widest transition-colors">
+                                        <button 
+                                            onClick={() => {
+                                                const check = validateAndConsume(hero, hero?.player_resources, 5, 'resolve');
+                                                if (!check.success) return alert(`Not enough Resolve. Short ${check.deficit}.`);
+                                                updateHero({
+                                                    ...hero,
+                                                    player_resources: { ...hero.player_resources, resolve_current: check.new_current }
+                                                });
+                                                alert("Duel starting (simulated)...");
+                                            }}
+                                            className="bg-black hover:bg-red-950/40 text-red-500 border border-red-900/40 py-2 px-4 font-mono text-xs uppercase tracking-widest transition-colors">
                                             Duel
                                         </button>
                                     </div>

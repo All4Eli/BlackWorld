@@ -9,6 +9,7 @@ import AuctionView from './AuctionView';
 import ArenaHub from './ArenaHub';
 import QuestLog from './QuestLog';
 import CraftingStation from './CraftingStation';
+import LeaderboardHub from './LeaderboardHub';
 
 export default function TownView({ hero, updateHero }) {
   const [activeLocation, setActiveLocation] = useState(null);
@@ -42,6 +43,12 @@ export default function TownView({ hero, updateHero }) {
         { id: 'covens', name: 'Blood Covens', description: 'Pledge loyalty to a community guild.', status: null },
         { id: 'casino', name: 'Demon Casino', description: 'Wager gold on dark outcomes.', status: null },
       ]
+    },
+    {
+      title: 'Hall of Legends',
+      locations: [
+        { id: 'leaderboard', name: 'The Monuments', description: 'Gaze upon the server rankings and living legends.', status: null },
+      ]
     }
   ];
 
@@ -54,6 +61,7 @@ export default function TownView({ hero, updateHero }) {
   if (activeLocation === 'arena') return <ArenaHub hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
   if (activeLocation === 'quests') return <QuestLog hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
   if (activeLocation === 'forge') return <CraftingStation hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'leaderboard') return <LeaderboardHub hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col gap-8 animate-in slide-in-from-bottom-4 duration-700">

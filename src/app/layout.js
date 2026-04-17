@@ -17,6 +17,8 @@ export const metadata = {
   description: "A brutal, turn-based dark fantasy MMORPG. Descend into the abyss, master ancient blood magic, and survive the apocalypse.",
 };
 
+import ErrorBoundary from "@/components/ErrorBoundary";
+
 export default function RootLayout({ children }) {
   return (
     <html
@@ -25,7 +27,9 @@ export default function RootLayout({ children }) {
     >
       <body className="min-h-full flex flex-col">
         <ClerkProvider>
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </ClerkProvider>
       </body>
     </html>

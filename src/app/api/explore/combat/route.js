@@ -124,6 +124,15 @@ export async function POST(request) {
                 goldGained = Math.floor(Math.random() * 20) + 10;
                 hero.xp = (hero.xp || 0) + expGained;
                 hero.gold = (hero.gold || 0) + goldGained;
+                hero.level = hero.level || 1;
+                hero.unspentStatPoints = hero.unspentStatPoints || 0;
+
+                while (hero.xp >= 100) {
+                    hero.xp -= 100;
+                    hero.level += 1;
+                    hero.unspentStatPoints += 3;
+                    logs.push(`✨ [LEVEL UP]: You reached Level ${hero.level}! (+3 Stat Points)`);
+                }
 
                 if (Math.random() > 0.8) {
                     if (!hero.artifacts) hero.artifacts = [];

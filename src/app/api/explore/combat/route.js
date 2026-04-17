@@ -52,6 +52,7 @@ export async function POST(request) {
              }
              if (!hero.player_resources) hero.player_resources = {};
              hero.player_resources.vitae_current = check.new_current;
+             hero.player_resources.vitae_last_update = check.new_last_update;
         }
 
         if (action === 'ATTACK') {

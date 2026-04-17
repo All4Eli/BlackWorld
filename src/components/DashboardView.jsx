@@ -93,7 +93,7 @@ export default function DashboardView({ hero, updateHero }) {
           </div>
           <div>
              <div className="flex justify-between text-[10px] font-mono uppercase text-stone-500 mb-1">
-               <span>Integrity</span><span className="text-red-500">{currentHp} / {maxHp}</span>
+               <span>HP</span><span className="text-red-500">{currentHp} / {maxHp}</span>
              </div>
              <div className="h-1 bg-neutral-900 w-full">
                <div className="h-full bg-red-700" style={{ width: `${(currentHp / maxHp) * 100}%` }} />

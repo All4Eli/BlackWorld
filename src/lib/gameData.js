@@ -176,9 +176,10 @@ export function calcCombatStats(hero, skillBonuses) {
   const dex = hero?.dex ?? 5;
   const int = hero?.int ?? 5;
   const vit = hero?.vit ?? 5;
+  const level = hero?.level ?? 1;
 
   // Base Math Scaling
-  const baseHp = 100 + (vit * 5);
+  const baseHp = 100 + (vit * 5) + (level * 5);
   const baseAttackDmg = 12 + (str * 1);
   const baseDamageReduction = Math.floor(def * 0.5);
   const baseCritChance = Math.floor(dex * 1.5);

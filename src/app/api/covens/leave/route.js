@@ -43,7 +43,23 @@ export async function POST(request) {
           await supabase.rpc('decrement_member_count', { coven_uuid: coven.id });
       }
 
-      return NextResponse.json({ success: true });
+      // Fetch the mutated player row for authoritative response
+      const { data: updatedPlayer } = await supabase
+         .from('players')
+         .select('*')
+         .eq('clerk_user_id', userId)
+         .single();
+         
+      const payload = {
+         ...(updatedPlayer?.hero_data || {}),
+         coven_id: updatedPlayer?.coven_id,
+         coven_name: updatedPlayer?.coven_name,
+         coven_tag: updatedPlayer?.coven_tag,
+         coven_role: updatedPlayer?.coven_role,
+         bankedGold: updatedPlayer?.bank_balance
+      };
+
+      return NextResponse.json({ success: true, updatedHero: payload });
   } catch(err) {
       return NextResponse.json({ error: err.message }, { status: 500 });
   }

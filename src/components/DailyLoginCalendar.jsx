@@ -6,20 +6,20 @@ export default function DailyLoginCalendar({ hero, updateHero }) {
     const streak = hero?.login_streak || 1;
     const currentDay = hero?.login_day || 1; // 1 to 30
 
-    const claimReward = () => {
+    const claimReward = async () => {
         if (claimedToday) return;
-        setClaimedToday(true);
-        // Reward based on currentDay
-        const newGold = (hero?.gold || 0) + 500;
-        const newBS = (hero?.blood_stones || 0) + 5;
-        alert(`Claimed Day ${currentDay} Reward!\n+500 Gold\n+5 Blood Stones (includes streak bonus)`);
-        updateHero({
-            ...hero,
-            gold: newGold,
-            blood_stones: newBS,
-            login_day: (currentDay % 30) + 1,
-            login_streak: streak + 1
-        });
+        
+        try {
+            const res = await fetch('/api/rewards/daily', { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            setClaimedToday(true);
+            updateHero(data.updatedHero);
+            alert(`Claimed Day ${currentDay} Reward!\n+500 Gold\n+5 Blood Stones (includes streak bonus)`);
+        } catch (err) {
+            alert(`Failed to claim: ${err.message}`);
+        }
     };
 
     // Generate 30 days grid

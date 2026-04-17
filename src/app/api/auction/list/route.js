@@ -26,7 +26,13 @@ export async function POST(request) {
 
       if (error) throw new Error(error.message);
 
-      return NextResponse.json({ auction });
+      const { data: player } = await supabase
+          .from('players')
+          .select('hero_data')
+          .eq('clerk_user_id', userId)
+          .single();
+
+      return NextResponse.json({ auction, updatedHero: player?.hero_data });
   } catch(err) {
       return NextResponse.json({ error: err.message }, { status: 500 });
   }

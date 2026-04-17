@@ -2,33 +2,20 @@
 import { useState } from 'react';
 
 export default function ArsenalView({ hero, updateHero }) {
-  const equipArtifact = (artifact) => {
-    // legacy support check mapping
-    let slot = null;
-    
-    if (artifact.type === 'WEAPON') slot = 'mainHand';
-    else if (artifact.type === 'ARMOR') slot = 'body';
-    else if (artifact.type === 'MAIN_HAND') slot = 'mainHand';
-    else if (artifact.type === 'OFF_HAND') slot = 'offHand';
-    else if (artifact.type === 'BODY') slot = 'body';
-    else if (artifact.type === 'HEAD') slot = 'head';
-    else if (artifact.type === 'BOOTS') slot = 'boots';
-    else if (artifact.type === 'AMULET') slot = 'amulet';
-    else if (artifact.type === 'RING') {
-      if (!hero.equipped?.ring1) slot = 'ring1';
-      else if (!hero.equipped?.ring2) slot = 'ring2';
-      else slot = 'ring1'; // default overwrite ring 1
+  const equipArtifact = async (artifact) => {
+    try {
+      const res = await fetch('/api/arsenal/equip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ artifactId: artifact.id })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      updateHero(data.updatedHero);
+    } catch(err) {
+      alert(`Failed to equip: ${err.message}`);
     }
-
-    if (!slot) return;
-
-    updateHero({ 
-      ...hero, 
-      equipped: {
-        ...(hero.equipped || {}),
-        [slot]: artifact
-      }
-    });
   };
 
   const getTierColor = (tier) => {

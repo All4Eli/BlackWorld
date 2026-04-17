@@ -4,12 +4,12 @@ import { useState, useEffect } from 'react';
 export default function BattlePassHub({ hero, updateHero }) {
     const [tab, setTab] = useState('TRACK');
     const [activeSeason, setActiveSeason] = useState({ name: 'Season 1: Ascendance', max_tier: 50, days_left: 42 });
-    const [playerBP, setPlayerBP] = useState({ 
+    const [playerBP, setPlayerBP] = useState(hero?.battlepass || { 
         current_tier: 12, 
         current_xp: 450,
         xp_per_tier: 1000, 
         is_premium: false,
-        claimed_free: [1, 2, 3],
+        claimed_free: [],
         claimed_premium: []
     });
 
@@ -21,13 +21,22 @@ export default function BattlePassHub({ hero, updateHero }) {
         { tier: 50,  free: 'Title: Season Veteran', premium: 'Title: Season Champion' },
     ];
 
-    const purchasePremium = () => {
-        if (!hero?.blood_stones || hero.blood_stones < 1000) {
-            return alert("Insufficient Blood Stones. Visit the Premium Store.");
+    const purchasePremium = async () => {
+        try {
+            const res = await fetch('/api/battlepass', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'BUY_PREMIUM' })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            updateHero(data.updatedHero);
+            setPlayerBP(data.updatedHero.battlepass);
+            alert("Battle Pass Premium Unlocked!");
+        } catch(err) {
+            alert(`Purchase Failed: ${err.message}`);
         }
-        updateHero({ ...hero, blood_stones: hero.blood_stones - 1000 });
-        setPlayerBP({ ...playerBP, is_premium: true });
-        alert("Battle Pass Premium Unlocked!");
     };
 
     return (
@@ -94,7 +103,16 @@ export default function BattlePassHub({ hero, updateHero }) {
                                                         <div className={`font-serif tracking-widest uppercase ${unlocked ? 'text-stone-300' : 'text-stone-600'}`}>{r.free}</div>
                                                     </div>
                                                     {unlocked && !playerBP.claimed_free.includes(r.tier) && (
-                                                        <button onClick={() => { setPlayerBP({...playerBP, claimed_free: [...playerBP.claimed_free, r.tier]}); alert(`Claimed free reward: ${r.free}`); }} className="text-[10px] border border-neutral-700 px-3 py-1 text-stone-400 uppercase tracking-widest hover:border-stone-500">Claim</button>
+                                                        <button onClick={async () => {
+                                                            try {
+                                                                const res = await fetch('/api/battlepass', { method: 'POST', body: JSON.stringify({ action: 'CLAIM', tier: r.tier, type: 'FREE' }) });
+                                                                const data = await res.json();
+                                                                if (!res.ok) throw new Error(data.error);
+                                                                updateHero(data.updatedHero);
+                                                                setPlayerBP(data.updatedHero.battlepass);
+                                                                alert(`Claimed free reward: ${r.free}`);
+                                                            } catch(err) { alert(err.message); }
+                                                        }} className="text-[10px] border border-neutral-700 px-3 py-1 text-stone-400 uppercase tracking-widest hover:border-stone-500">Claim</button>
                                                     )}
                                                     {unlocked && playerBP.claimed_free.includes(r.tier) && (
                                                         <span className="text-[10px] text-green-600 uppercase tracking-widest">✓</span>
@@ -110,7 +128,16 @@ export default function BattlePassHub({ hero, updateHero }) {
                                                         <div className={`font-serif tracking-widest uppercase ${unlocked && playerBP.is_premium ? 'text-orange-400' : 'text-stone-600'}`}>{r.premium}</div>
                                                     </div>
                                                     {unlocked && playerBP.is_premium && !playerBP.claimed_premium.includes(r.tier) && (
-                                                        <button onClick={() => { setPlayerBP({...playerBP, claimed_premium: [...playerBP.claimed_premium, r.tier]}); alert(`Claimed premium reward: ${r.premium}`); }} className="text-[10px] bg-orange-900/20 text-orange-500 border border-orange-800/50 px-3 py-1 uppercase tracking-widest hover:bg-orange-800 hover:text-white">Claim</button>
+                                                        <button onClick={async () => {
+                                                            try {
+                                                                const res = await fetch('/api/battlepass', { method: 'POST', body: JSON.stringify({ action: 'CLAIM', tier: r.tier, type: 'PREMIUM' }) });
+                                                                const data = await res.json();
+                                                                if (!res.ok) throw new Error(data.error);
+                                                                updateHero(data.updatedHero);
+                                                                setPlayerBP(data.updatedHero.battlepass);
+                                                                alert(`Claimed premium reward: ${r.premium}`);
+                                                            } catch(err) { alert(err.message); }
+                                                        }} className="text-[10px] bg-orange-900/20 text-orange-500 border border-orange-800/50 px-3 py-1 uppercase tracking-widest hover:bg-orange-800 hover:text-white">Claim</button>
                                                     )}
                                                     {unlocked && playerBP.is_premium && playerBP.claimed_premium.includes(r.tier) && (
                                                         <span className="text-[10px] text-green-600 uppercase tracking-widest">✓</span>

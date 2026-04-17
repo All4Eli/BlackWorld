@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { calculateEssence, getDailyQuests } from '@/lib/gameData';
+import { calculateEssence } from '@/lib/gameData';
 import DashboardView from './DashboardView';
 import ExplorationEngine from './ExplorationEngine';
 import TownView from './TownView';
@@ -19,27 +19,23 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [refillModal, setRefillModal] = useState(null);
 
-  // Recalculate essence on mount (server-side regen)
   useEffect(() => {
     if (!hero) return;
-    const { essence, newTimestamp } = calculateEssence(
-      hero.essence_last_regen,
-      hero.essence ?? 100,
-      100
-    );
-    if (essence !== (hero.essence ?? 100)) {
-      updateHero({ ...hero, essence, essence_last_regen: newTimestamp });
-    }
-  }, []);
-
-  // Initialize daily quests if missing or stale
-  useEffect(() => {
-    if (!hero) return;
-    const today = new Date().toISOString().split('T')[0];
-    const existingQuests = hero.daily_quests;
-    if (!existingQuests || !existingQuests[0]?.id?.includes(today)) {
-      updateHero({ ...hero, daily_quests: getDailyQuests() });
-    }
+    
+    // Server-side initialization of timers (Essence Regen & Daily Quests)
+    const syncTimers = async () => {
+        try {
+            const res = await fetch('/api/player/sync-timers', { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                updateHero(data.updatedHero);
+            }
+        } catch (err) {
+            console.error('Failed to sync game timers:', err);
+        }
+    };
+    
+    syncTimers();
   }, []);
 
   const unspentPoints = hero?.unspentSkillPoints ?? 0;
@@ -164,18 +160,22 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
           type={refillModal.type} 
           requiredCost={refillModal.required} 
           costReason={refillModal.reason}
-          onRefillStones={(type, cost) => {
-              const currentStones = hero.blood_stones || 0;
-              if (currentStones < cost) return alert("Not enough Blood Stones. Visit Store.");
-              updateHero({
-                 ...hero,
-                 blood_stones: currentStones - cost,
-                 player_resources: {
-                     ...(hero.player_resources || {}),
-                     [`${type}_current`]: 9999
-                 }
-              });
-              setRefillModal(null);
+          onRefillStones={async (type, cost) => {
+              try {
+                  const res = await fetch('/api/player/refill', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ type, cost })
+                  });
+                  const data = await res.json();
+                  if (!res.ok) {
+                      return alert(data.error);
+                  }
+                  updateHero(data.updatedHero);
+                  setRefillModal(null);
+              } catch(err) {
+                  alert("Failed to refill resources.");
+              }
           }}
           onClose={() => setRefillModal(null)} 
         />

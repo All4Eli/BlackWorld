@@ -85,7 +85,8 @@ export async function POST(request) {
             encounter: encounterType,
             narrative,
             loot,
-            energyRemaining: Math.max(0, energy - 1)
+            energyRemaining: Math.max(0, energy - 1),
+            updatedHero: hero
         });
     } catch(err) {
         return NextResponse.json({ error: err.message }, { status: 500 });

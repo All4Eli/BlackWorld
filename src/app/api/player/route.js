@@ -32,7 +32,9 @@ export async function GET() {
        coven_id: data.coven_id,
        coven_name: data.coven_name,
        coven_tag: data.coven_tag,
-       coven_role: data.coven_role
+       coven_role: data.coven_role,
+       bankedGold: data.bank_balance,
+       pvp_flag: data.pvp_flag
      }
   };
 
@@ -57,17 +59,23 @@ export async function POST(request) {
     .single();
 
   if (existing) {
+    const updatePayload = {
+      stage,
+      updated_at: new Date().toISOString()
+    };
+    
+    // Only allow injection of hero_data on new character initialization
+    // ALL OTHER hero_data updates MUST come from controlled gameplay APIs
+    if (stage === 'CREATION' || existing.stage === 'BOOT') {
+        updatePayload.hero_data = heroData;
+        updatePayload.username = heroData?.name || existing.username;
+        updatePayload.level = heroData?.level || existing.level || 1;
+    }
+
     // Update existing record
     const { data, error } = await supabase
       .from('players')
-      .update({
-        stage,
-        hero_data: heroData,
-        username: heroData?.name || existing.username,
-        level: heroData?.level || existing.level || 1,
-        // Intentionally NOT updating coven details here to prevent client hacking of guild data.
-        updated_at: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq('clerk_user_id', userId)
       .select()
       .single();

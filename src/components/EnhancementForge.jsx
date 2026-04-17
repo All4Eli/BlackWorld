@@ -58,52 +58,61 @@ export default function EnhancementForge({ hero, updateHero }) {
         return baseBreak; // downgrade still checks break but alters outcome
     }
 
-    const attemptEnhancement = () => {
+    const attemptEnhancement = async () => {
         if (!selectedItem) return;
-        if (hero.gold < tableInfo.gold) return alert("Not enough gold.");
-
-        // Phase 14: Essence Check (Flat cost of 50 for prototype)
-        const check = validateAndConsume(hero, hero?.player_resources, 50, 'essence');
-        if (!check.success) return alert(`Not enough Essence. Short ${check.deficit}.`);
-
-        const roll = Math.random();
         
-        let newHero = { ...hero, gold: hero.gold - tableInfo.gold, player_resources: { ...hero.player_resources, essence_current: check.new_current } };
-        
-        if (roll <= modifiedSuccess) {
-            alert("Enhancement SUCCESS!");
-            updateHero(newHero);
-            setInventory(inventory.map(i => i.id === selectedItem.id ? { ...i, level: i.level + 1 } : i));
-            setSelectedItem({ ...selectedItem, level: selectedItem.level + 1 });
-            setPityCount(0);
-        } else {
-            const breakChance = calculateBreakChance(tableInfo.break, protection);
-            const breakRoll = Math.random();
+        try {
+            const res = await fetch('/api/forge/enhance', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({ targetLevel: level + 1 })
+            });
+            const data = await res.json();
             
-            if (breakRoll <= breakChance) {
-                if (protection?.type === 'downgrade') {
-                    const levelsLost = Math.min(selectedItem.level - 1, Math.ceil(Math.random() * 3));
-                    alert(`Enhancement FAILED! Item Downgraded by ${levelsLost} levels.`);
-                    setInventory(inventory.map(i => i.id === selectedItem.id ? { ...i, level: Math.max(0, i.level - levelsLost) } : i));
-                    setSelectedItem({ ...selectedItem, level: Math.max(0, selectedItem.level - levelsLost) });
-                } else if (protection?.type === 'full') {
-                    alert("Enhancement FAILED! Protected from breaking.");
-                } else {
-                    alert("Enhancement FAILED! Item BROKEN (Destroyed).");
-                    setInventory(inventory.filter(i => i.id !== selectedItem.id));
-                    setSelectedItem(null);
-                }
-            } else {
-                alert("Enhancement FAILED! Materials lost, item safe.");
-                setPityCount(c => c + 1);
+            if (!res.ok) {
+                return alert(data.error);
             }
-            updateHero(newHero);
-        }
+            
+            let newHero = data.updatedHero;
+            const roll = Math.random();
+            
+            if (roll <= modifiedSuccess) {
+                alert("Enhancement SUCCESS!");
+                updateHero(newHero);
+                setInventory(inventory.map(i => i.id === selectedItem.id ? { ...i, level: i.level + 1 } : i));
+                setSelectedItem({ ...selectedItem, level: selectedItem.level + 1 });
+                setPityCount(0);
+            } else {
+                const breakChance = calculateBreakChance(tableInfo.break, protection);
+                const breakRoll = Math.random();
+                
+                if (breakRoll <= breakChance) {
+                    if (protection?.type === 'downgrade') {
+                        const levelsLost = Math.min(selectedItem.level - 1, Math.ceil(Math.random() * 3));
+                        alert(`Enhancement FAILED! Item Downgraded by ${levelsLost} levels.`);
+                        setInventory(inventory.map(i => i.id === selectedItem.id ? { ...i, level: Math.max(0, i.level - levelsLost) } : i));
+                        setSelectedItem({ ...selectedItem, level: Math.max(0, selectedItem.level - levelsLost) });
+                    } else if (protection?.type === 'full') {
+                        alert("Enhancement FAILED! Protected from breaking.");
+                    } else {
+                        alert("Enhancement FAILED! Item BROKEN (Destroyed).");
+                        setInventory(inventory.filter(i => i.id !== selectedItem.id));
+                        setSelectedItem(null);
+                    }
+                } else {
+                    alert("Enhancement FAILED! Materials lost, item safe.");
+                    setPityCount(c => c + 1);
+                }
+                updateHero(newHero);
+            }
 
-        // Consume protection
-        if (protection) {
-            setProtections(protections.filter(p => p.id !== protection.id));
-            setProtection(null);
+            // Consume protection
+            if (protection) {
+                setProtections(protections.filter(p => p.id !== protection.id));
+                setProtection(null);
+            }
+        } catch(err) {
+            console.error('Failed to enhance', err);
         }
     };
 

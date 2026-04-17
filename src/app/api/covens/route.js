@@ -24,7 +24,21 @@ export async function POST(request) {
          return NextResponse.json({ error: 'Invalid name or tag format.' }, { status: 400 });
       }
 
-      // 1. Create the Coven
+      // 1. Validate Gold First
+      const { data: playerRows, error: pError } = await supabase
+        .from('players')
+        .select('*')
+        .eq('clerk_user_id', userId)
+        .single();
+
+      if (pError || !playerRows) throw new Error('Player not found.');
+
+      let hero = playerRows.hero_data || {};
+      if ((hero.gold || 0) < 1000) {
+        return NextResponse.json({ error: 'Not enough gold.' }, { status: 400 });
+      }
+
+      // 2. Create the Coven
       const { data: newCoven, error: createError } = await supabase
         .from('covens')
         .insert({
@@ -39,20 +53,35 @@ export async function POST(request) {
         
       if (createError) throw createError;
 
-      // 2. Update the Creator's player row
-      const { error: updateError } = await supabase
+      // 3. Deduct Gold & Update the Creator's player row
+      hero.gold -= 1000;
+      
+      const { data: updatedPlayerRows, error: updateError } = await supabase
         .from('players')
         .update({
+           hero_data: hero,
            coven_id: newCoven.id,
            coven_name: newCoven.name,
            coven_tag: newCoven.tag,
            coven_role: 'Leader'
         })
-        .eq('clerk_user_id', userId);
+        .eq('clerk_user_id', userId)
+        .select('*')
+        .single();
 
       if (updateError) throw updateError;
+      
+      // Inject updated payload
+      const payload = {
+         ...(updatedPlayerRows?.hero_data || {}),
+         coven_id: updatedPlayerRows?.coven_id,
+         coven_name: updatedPlayerRows?.coven_name,
+         coven_tag: updatedPlayerRows?.coven_tag,
+         coven_role: updatedPlayerRows?.coven_role,
+         bankedGold: updatedPlayerRows?.bank_balance
+      };
 
-      return NextResponse.json({ coven: newCoven });
+      return NextResponse.json({ coven: newCoven, updatedHero: payload });
   } catch(err) {
       if (err.code === '23505') { // Postgres Uniqueness violation
          return NextResponse.json({ error: 'A Coven with that name already exists.' }, { status: 400 });

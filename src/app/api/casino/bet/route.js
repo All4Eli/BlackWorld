@@ -76,7 +76,7 @@ export async function POST(request) {
             success: true,
             win,
             net_change: netChange,
-            new_balance: hero.gold,
+            updatedHero: hero,
             game_type: gameType
         });
     } catch (err) {

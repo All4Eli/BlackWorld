@@ -17,14 +17,21 @@ export default function SkillTreePanel({ hero, updateHero, onClose, inline = fal
     return true;
   };
 
-  const allocate = (skillId) => {
-    const current = skillPoints[skillId] || 0;
-    const newSkillPoints = { ...skillPoints, [skillId]: current + 1 };
-    updateHero({
-      ...hero,
-      skillPoints: newSkillPoints,
-      unspentSkillPoints: availablePoints - 1,
-    });
+  const allocate = async (skillId) => {
+    try {
+        const res = await fetch('/api/skills/allocate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ skillId })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        // Success - UI syncs to Backend Truth
+        updateHero(data.updatedHero);
+    } catch(err) {
+        alert(`Failed to allocate skill: ${err.message}`);
+    }
   };
 
   const getRarityColor = (skill) => {

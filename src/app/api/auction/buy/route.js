@@ -23,7 +23,13 @@ export async function POST(request) {
           throw new Error(error.message);
       }
 
-      return NextResponse.json({ success: true, item });
+      const { data: player } = await supabase
+          .from('players')
+          .select('hero_data')
+          .eq('clerk_user_id', userId)
+          .single();
+
+      return NextResponse.json({ success: true, item, updatedHero: player?.hero_data });
   } catch(err) {
       return NextResponse.json({ error: err.message }, { status: 500 });
   }

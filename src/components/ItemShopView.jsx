@@ -38,7 +38,7 @@ export default function ItemShopView({ hero, updateHero, onBack }) {
       const data = await res.json();
       
       if (res.ok) {
-        updateHero({ ...hero, gold: data.newGold, artifacts: [...(hero.artifacts || []), data.item] });
+        updateHero(data.updatedHero);
         setShopItems(prev => prev.filter(i => i.id !== item.id));
         setPurchaseMsg(`Purchased: ${data.item.name}`);
         setTimeout(() => setPurchaseMsg(null), 3000);

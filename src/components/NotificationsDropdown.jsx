@@ -32,7 +32,11 @@ export default function NotificationsDropdown({ onClose }) {
 
   const handleMarkRead = async () => {
        try {
-           await fetch('/api/social/notifications', { method: 'PATCH', body: JSON.stringify({}) });
+           await fetch('/api/social/notifications', {
+             method: 'PATCH',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({})
+           });
            fetchNotifications();
        } catch (err) { console.error(err); }
   };

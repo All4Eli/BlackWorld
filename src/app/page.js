@@ -1,6 +1,7 @@
 'use client';
 import { usePlayerData } from '@/hooks/usePlayerData';
 import { useUser, UserButton, SignOutButton } from '@clerk/nextjs';
+import { getDailyQuests } from '@/lib/gameData';
 import BootScreen from '@/components/BootScreen';
 import CharacterCreator from '@/components/CharacterCreator';
 import ExplorationEngine from '@/components/ExplorationEngine';
@@ -59,7 +60,10 @@ export default function GameStateDirector() {
         kills: 0,
         artifacts: [],
         equippedWeapon: null,
-        equippedArmor: null
+        equippedArmor: null,
+        essence: 100,
+        essence_last_regen: new Date().toISOString(),
+        daily_quests: getDailyQuests(selectedClassData.id)
       }
     });
   };
@@ -68,8 +72,8 @@ export default function GameStateDirector() {
     setSaveData(prev => ({ ...prev, heroData: newHeroData }));
   };
 
-  const handleEnterCombat = () => {
-    setSaveData({ ...saveData, stage: 'COMBAT' });
+  const handleEnterCombat = (combatConfig) => {
+    setSaveData({ ...saveData, stage: 'COMBAT', combatZone: combatConfig?.zone || null });
   };
 
   const handleVictory = (updatedHero) => {
@@ -126,7 +130,7 @@ export default function GameStateDirector() {
         {stage === 'BOOT' && <BootScreen onStart={handleStartBoot} />}
         {stage === 'CREATOR' && <CharacterCreator onSelectClass={handleSelectClass} />}
         {stage === 'EXPLORATION' && <ExplorationEngine hero={saveData.heroData} updateHero={updateHero} onFindCombat={handleEnterCombat} />}
-        {stage === 'COMBAT' && <CombatEngine heroDef={saveData.heroData} onVictory={handleVictory} onHeroDeath={handleDeath} />}
+        {stage === 'COMBAT' && <CombatEngine heroDef={saveData.heroData} zone={saveData.combatZone} onVictory={handleVictory} onHeroDeath={handleDeath} />}
         {stage === 'DEATH' && <DeathScreen onRestart={handleRestart} />}
       </div>
     </main>

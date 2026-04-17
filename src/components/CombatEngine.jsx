@@ -2,9 +2,10 @@
 import { useState, useRef, useEffect } from 'react';
 import DeathScreen from './DeathScreen';
 
-export default function CombatEngine({ heroDef, onVictory, onHeroDeath }) {
+export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) {
   // We use internal state for combat logic, but initialize strictly from the unified heroDef
   const [hero, setHero] = useState(heroDef);
+  const activeZone = zone || null;
   
   const [enemy, setEnemy] = useState({ name: 'Feral Ghoul', hp: 40, maxHp: 40, attackDamage: 8, isBoss: false });
   const [combatLog, setCombatLog] = useState(["[LORE]: You enter the Bloodied Cathedral."]);
@@ -20,40 +21,33 @@ export default function CombatEngine({ heroDef, onVictory, onHeroDeath }) {
   }
 
   const mountEnemy = () => {
-    // Algorithmic Enemy Scaling based on Hero Level
     const levelMulti = 1 + (hero.level * 0.3);
+    const isBossRoll = hero.kills > 0 && hero.kills % 3 === 0;
 
-    if (hero.kills > 0 && hero.kills % 3 === 0) {
-      // BOSS ENCOUNTER
-      const bosses = [
-        { name: 'The Nameless Sovereign', baseHp: 200, baseDmg: 20, isBoss: true },
-        { name: 'Warden of the Abyss', baseHp: 250, baseDmg: 15, isBoss: true }
-      ];
-      const boss = bosses[Math.floor(Math.random() * bosses.length)];
-      const scaledBoss = {
-        ...boss,
-        maxHp: Math.floor(boss.baseHp * levelMulti),
-        hp: Math.floor(boss.baseHp * levelMulti),
-        attackDamage: Math.floor(boss.baseDmg * levelMulti)
-      };
-      setEnemy(scaledBoss);
-      addLog(`[BOSS ENCOUNTER]: ${scaledBoss.name} blocks your path. Darkness descends.`);
+    // Pull from zone data if available, otherwise use fallback
+    const bossPool = activeZone?.bosses || [
+      { name: 'The Nameless Sovereign', baseHp: 200, baseDmg: 20, isBoss: true },
+      { name: 'Warden of the Abyss', baseHp: 250, baseDmg: 15, isBoss: true }
+    ];
+    const enemyPool = activeZone?.enemies || [
+      { name: 'Gargoyle', baseHp: 60, baseDmg: 10, isBoss: false },
+      { name: 'Wraith', baseHp: 45, baseDmg: 18, isBoss: false },
+      { name: 'Flesh Golem', baseHp: 110, baseDmg: 8, isBoss: false }
+    ];
+
+    const pool = isBossRoll ? bossPool : enemyPool;
+    const chosen = pool[Math.floor(Math.random() * pool.length)];
+    const scaled = {
+      ...chosen,
+      maxHp: Math.floor(chosen.baseHp * levelMulti),
+      hp: Math.floor(chosen.baseHp * levelMulti),
+      attackDamage: Math.floor(chosen.baseDmg * levelMulti)
+    };
+    setEnemy(scaled);
+    if (scaled.isBoss) {
+      addLog(`[BOSS]: ${scaled.name} blocks your path.`);
     } else {
-      // NORMAL ENCOUNTER
-      const enemies = [
-        { name: 'Gargoyle', baseHp: 60, baseDmg: 10, isBoss: false },
-        { name: 'Wraith', baseHp: 45, baseDmg: 18, isBoss: false },
-        { name: 'Flesh Golem', baseHp: 110, baseDmg: 8, isBoss: false }
-      ];
-      const nextEnemy = enemies[Math.floor(Math.random() * enemies.length)];
-      const scaledEnemy = {
-        ...nextEnemy,
-        maxHp: Math.floor(nextEnemy.baseHp * levelMulti),
-        hp: Math.floor(nextEnemy.baseHp * levelMulti),
-        attackDamage: Math.floor(nextEnemy.baseDmg * levelMulti)
-      };
-      setEnemy(scaledEnemy);
-      addLog(`[SHADOWS]: A Level ${hero.level} ${scaledEnemy.name} emerges from the fog.`);
+      addLog(`[ENCOUNTER]: A ${scaled.name} emerges from the shadows.`);
     }
   };
 

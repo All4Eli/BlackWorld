@@ -36,8 +36,8 @@ export default function CharacterCreator({ onSelectClass }) {
     <div className="animate-in fade-in duration-700 min-h-[80vh] flex flex-col items-center justify-center">
       
       <div className="text-center mb-16">
-        <h2 className="text-4xl text-red-600 font-serif font-black uppercase tracking-[0.2em] mb-4">Choose Your Torment</h2>
-        <p className="text-stone-500 font-mono text-sm tracking-widest uppercase">The path dictates your survival algorithm.</p>
+        <h2 className="text-4xl text-red-600 font-serif font-black uppercase tracking-[0.2em] mb-4">Choose Your Path</h2>
+        <p className="text-stone-500 font-mono text-sm tracking-widest uppercase">Your class determines how you survive the darkness.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl w-full">
@@ -67,10 +67,14 @@ export default function CharacterCreator({ onSelectClass }) {
                  <span>Base Strike:</span>
                  <span className="text-stone-300 font-bold">{c.dmg}</span>
                </div>
+               <div className="flex justify-between">
+                 <span>Blood Essence:</span>
+                 <span className="text-red-800 font-bold">100</span>
+               </div>
             </div>
 
             <div className="mt-4 border border-red-900 text-center py-2 text-red-500 opacity-0 group-hover:opacity-100 uppercase tracking-widest text-xs font-bold transition-opacity">
-              Select Protocol
+              Choose This Path
             </div>
           </div>
         ))}

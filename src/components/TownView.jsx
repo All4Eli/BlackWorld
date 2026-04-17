@@ -5,6 +5,7 @@ import BankView from './BankView';
 import CasinoView from './CasinoView';
 import ItemShopView from './ItemShopView';
 import CovenView from './CovenView';
+import AuctionView from './AuctionView';
 
 export default function TownView({ hero, updateHero }) {
   const [activeLocation, setActiveLocation] = useState(null);
@@ -13,6 +14,7 @@ export default function TownView({ hero, updateHero }) {
       title: 'Market District',
       locations: [
         { id: 'shop', name: 'The Merchant', description: 'Exchange gold for rare artifacts and gear.', status: null },
+        { id: 'auction', name: 'Auction House', description: 'Trade legendary artifacts with other players.', status: null },
         { id: 'bank', name: 'Blood Bank', description: 'Secure your gold before diving into the dark.', status: null },
       ]
     },
@@ -36,6 +38,7 @@ export default function TownView({ hero, updateHero }) {
   if (activeLocation === 'casino') return <CasinoView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
   if (activeLocation === 'shop') return <ItemShopView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
   if (activeLocation === 'covens') return <CovenView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'auction') return <AuctionView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col gap-8 animate-in slide-in-from-bottom-4 duration-700">

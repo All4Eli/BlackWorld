@@ -5,13 +5,22 @@ import { supabase } from '@/lib/supabaseClient';
 import { calcPlayerStats, rollDamage, calcMonsterStats, isHitDodged } from '@/lib/combat';
 import { validateAndConsume } from '@/lib/resources';
 import DungeonGrid from './DungeonGrid';
+import WorldMap from './WorldMap';
 
 export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
   const [log, setLog] = useState(["[ENTRY]: You descend into the dark. Choose your ground."]);
   const [activeZone, setActiveZone] = useState(hero?.activeZone || null);
+  const [activeBounties, setActiveBounties] = useState([]);
   const [merchantOpen, setMerchantOpen] = useState(false);
   const logEndRef = useRef(null);
   const combatLogEndRef = useRef(null);
+
+  useEffect(() => {
+    fetch('/api/bounties/active')
+      .then(res => res.json())
+      .then(data => data.activeBounties && setActiveBounties(data.activeBounties))
+      .catch(console.error);
+  }, []);
 
   // Combat State
   const [combatActive, setCombatActive] = useState(false);
@@ -310,37 +319,16 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
       <div className="flex flex-col gap-6">
         {/* Zone Selection */}
           {!activeZone && (
-            <div className="bg-[#020202] border border-neutral-800 p-6 animate-in fade-in">
-              <div className="text-xs text-stone-600 font-mono uppercase tracking-widest mb-5">Select Your Ground</div>
-              <div className="space-y-3">
-                {availableZones.map(zone => (
-                  <button key={zone.id} onClick={() => handleEnterZone(zone)} className="w-full flex items-center justify-between bg-black border border-neutral-800 hover:border-red-900/50 p-4 transition-all group text-left">
-                    <div className="flex items-center gap-4">
-                      <span className="text-2xl">{zone.icon}</span>
-                      <div>
-                        <div className="font-bold text-sm text-stone-200 uppercase tracking-widest group-hover:text-red-400 transition-colors">{zone.name}</div>
-                        <div className="text-xs text-stone-600 mt-0.5">Level {zone.levelReq}+</div>
-                      </div>
-                    </div>
-                    <div className="text-right font-mono text-xs text-stone-600">
-                      <div className="text-yellow-700">{zone.goldMultiplier}x Gold</div>
-                      <div>{zone.xpMultiplier}x XP</div>
-                    </div>
-                  </button>
-                ))}
-                {lockedZones.map(zone => (
-                  <div key={zone.id} className="w-full flex items-center justify-between bg-black/20 border border-neutral-900 p-4 opacity-40 cursor-not-allowed text-left">
-                    <div className="flex items-center gap-4">
-                      <span className="text-2xl grayscale">{zone.icon}</span>
-                      <div>
-                        <div className="font-bold text-sm text-stone-500 uppercase tracking-widest">{zone.name}</div>
-                        <div className="text-xs text-stone-700 mt-0.5">Requires Level {zone.levelReq}</div>
-                      </div>
-                    </div>
-                    <span className="text-xs text-stone-700 font-mono">🔒 Locked</span>
-                  </div>
-                ))}
+            <div className="bg-[#020202] border border-neutral-800 p-2 sm:p-6 animate-in fade-in">
+              <div className="text-xs text-stone-600 font-mono uppercase tracking-widest mb-5">
+                 Select Your Ground <span className="text-red-500 float-right">☠ Bounty Active</span>
               </div>
+              <WorldMap 
+                  availableZones={availableZones}
+                  lockedZones={lockedZones}
+                  activeBounties={activeBounties}
+                  onSelectZone={handleEnterZone}
+              />
             </div>
           )}
 

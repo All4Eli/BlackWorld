@@ -160,8 +160,23 @@ export async function POST(request) {
 
         if (combatEnded) {
             if (win) {
-                expGained = fetchedEnemy.tier === 'Boss' ? 50 : 15;
-                goldGained = Math.floor(Math.random() * 20) + 10;
+                // Bounty Sync Verification
+                const hourSeed = Math.floor(Date.now() / 3600000);
+                const possibleZones = ['bone_crypts', 'ashen_wastes', 'hollow_cathedral', 'abyssal_rift', 'throne_of_nothing'];
+                const idx1 = (hourSeed * 7) % possibleZones.length;
+                let idx2 = (hourSeed * 11) % possibleZones.length;
+                if (idx1 === idx2) idx2 = (idx2 + 1) % possibleZones.length;
+                const activeBounties = [possibleZones[idx1], possibleZones[idx2]];
+                
+                const isBountyHunt = activeBounties.includes(hero.activeZone?.id);
+
+                let baseExp = fetchedEnemy.tier === 'Boss' ? 50 : 15;
+                let baseGold = Math.floor(Math.random() * 20) + 10;
+                
+                expGained = isBountyHunt ? baseExp * 3 : baseExp;
+                goldGained = isBountyHunt ? baseGold * 5 : baseGold;
+                
+                if (isBountyHunt) initialLogs.push(`☠ [BOUNTY PAYOUT]: Massive rewards claimed in target zone!`);
                 hero.xp = (hero.xp || 0) + expGained;
                 hero.gold = (hero.gold || 0) + goldGained;
                 hero.kills = (hero.kills || 0) + 1;

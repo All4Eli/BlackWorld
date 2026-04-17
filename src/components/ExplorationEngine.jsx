@@ -128,8 +128,12 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
     setCombatLoading(false);
   };
 
-  const handleCombatAction = async (action) => {
+  const [combatTurn, setCombatTurn] = useState('PLAYER');
+
+  const handleCombatAction = async (action, isEnemyAction = false) => {
      if (combatEnded || !currentEnemy) return;
+     if (combatTurn !== 'PLAYER' && !isEnemyAction) return;
+
      setCombatLoading(true);
      try {
          const response = await fetch('/api/explore/combat', {
@@ -158,6 +162,7 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
                  setTimeout(() => {
                      setCombatActive(false);
                      updateHero(data.updatedHero);
+                     setCombatTurn('PLAYER');
                  }, 2000);
              } else if (data.updatedHero.hp <= 0) {
                  addCombatLog(`>> [DEFEAT] You were struck down...`);
@@ -165,16 +170,27 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
                      setCombatActive(false);
                      setActiveZone(null);
                      updateHero(data.updatedHero);
+                     setCombatTurn('PLAYER');
                  }, 3500);
              } else {
                  // Fled successfully
                  setTimeout(() => {
                      setCombatActive(false);
                      updateHero(data.updatedHero);
+                     setCombatTurn('PLAYER');
                  }, 1500);
              }
          } else {
              updateHero(data.updatedHero);
+             if (!isEnemyAction && action !== 'FLEE') {
+                 setCombatTurn('ENEMY');
+                 // Wait 1.5 seconds, then the enemy strikes back
+                 setTimeout(() => {
+                     handleCombatAction('ENEMY_TURN', true);
+                 }, 1500); 
+             } else {
+                 setCombatTurn('PLAYER');
+             }
          }
      } catch(err) {
          console.error(err);

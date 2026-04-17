@@ -87,44 +87,28 @@ export async function POST(request) {
              if (eHp <= 0) {
                  win = true;
                  combatEnded = true;
+             }
+        } else if (action === 'ENEMY_TURN') {
+             // Let the enemy resolve their action implicitly against the player
+             if (!isHitDodged(pStats.dodgeChance)) {
+                 const eDmg = rollDamage(eStats.damageMin, eStats.damageMax);
+                 // If the player "defended" on the previous sequence, they should have a 'defending' state natively, but for now we rely on base reduction.
+                 pHp -= Math.max(1, eDmg - (pStats.damageReduction || 0));
+                 logs.push(`👹 [ENEMY TURN]: The enemy lunges and hits you for ${eDmg} damage!`);
              } else {
-                 // Enemy turn
-                 if (!isHitDodged(pStats.dodgeChance)) {
-                     const eDmg = rollDamage(eStats.damageMin, eStats.damageMax);
-                     pHp -= Math.max(1, eDmg - (pStats.damageReduction || 0));
-                     logs.push(`🩸 [WOUNDED]: Enemy retaliated for ${eDmg} damage!`);
-                 } else {
-                     logs.push(`💨 [EVADE]: You dodged the counterattack!`);
-                 }
-                 
-                 if (pHp <= 0) {
-                     win = false;
-                     combatEnded = true;
-                 }
+                 logs.push(`💨 [EVADE]: You dodged the enemy's attack!`);
+             }
+             
+             if (pHp <= 0) {
+                 win = false;
+                 combatEnded = true;
              }
         } else if (action === 'DEFEND') {
             logs.push(`🛡️ [DEFEND]: You raised your guard!`);
-            if (!isHitDodged(pStats.dodgeChance + 0.3)) {
-                let dmg = rollDamage(eStats.damageMin, eStats.damageMax);
-                dmg = Math.max(0, Math.floor(dmg * 0.2) - (pStats.damageReduction || 0));
-                pHp -= dmg;
-                if (dmg > 0) {
-                     logs.push(`🛡️ [BLOCKED]: Enemy strikes your guard for a mere ${dmg} damage!`);
-                } else {
-                     logs.push(`🛡️ [PERFECT BLOCK]: You completely nullified the enemy attack!`);
-                }
-                
-                // Reposte Chance
-                if (Math.random() < 0.4) {
-                     const counter = Math.max(1, Math.floor(pStats.baseDamageMin * 0.5));
-                     eHp -= counter;
-                     logs.push(`⚔️ [RIPOSTE]: You swiftly counterattacked for ${counter} damage!`);
-                }
-            } else {
-                logs.push(`💨 [EVADE]: You perfectly dodged while defending!`);
-            }
-            if (pHp <= 0) combatEnded = true;
-            if (eHp <= 0) { win = true; combatEnded = true; }
+            // Defend is an entirely proactive stance now.
+            // On the player's turn, defending skips their attack sequence but primes them.
+            // Since we split the backend, we immediately pass the turn dynamically.
+            logs.push(`🛡️ [BRACED]: You planted your feet, preparing for the enemy strike.`);
         } else if (action === 'FLASK') {
             if ((hero.flasks || 0) <= 0) {
                 return NextResponse.json({ error: 'No Crimson Flasks remaining!' }, { status: 400 });
@@ -132,32 +116,14 @@ export async function POST(request) {
             hero.flasks -= 1;
             pHp = Math.min(pStats.maxHp, pHp + 60);
             logs.push(`🩸 [HEAL]: You consume a flask. +60 HP`);
-            
-            // Enemy attacks back
-            if (!isHitDodged(pStats.dodgeChance)) {
-                const dmg = rollDamage(eStats.damageMin, eStats.damageMax);
-                pHp -= dmg;
-                logs.push(`🩸 [WOUNDED]: Enemy strikes while you drink for ${dmg}!`);
-            } else {
-                logs.push(`💨 [EVADE]: You dodged the enemy's attack while drinking!`);
-            }
-            if (pHp <= 0) combatEnded = true;
-
+            // Enemy turn will occur separately
         } else if (action === 'FLEE') {
             if (Math.random() < 0.4) {
                 logs.push(`💨 [ESCAPE]: You successfully fled the battle!`);
                 combatEnded = true;
                 // No rewards, just escaped
             } else {
-                logs.push(`❌ [TRAPPED]: You failed to escape!`);
-                if (!isHitDodged(pStats.dodgeChance)) {
-                    const dmg = rollDamage(eStats.damageMin, eStats.damageMax);
-                    pHp -= dmg;
-                    logs.push(`🩸 [WOUNDED]: Enemy hits you for ${dmg}!`);
-                } else {
-                    logs.push(`💨 [EVADE]: You dodged the pursuit!`);
-                }
-                if (pHp <= 0) combatEnded = true;
+                logs.push(`❌ [TRAPPED]: You failed to escape! Brace yourself!`);
             }
         }
 

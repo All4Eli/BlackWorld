@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
 import { calcPlayerStats } from '@/lib/combat';
 import { validateAndConsume } from '@/lib/resources';
 
@@ -15,24 +14,37 @@ export default function ArenaHub({ hero, updateHero, onBack }) {
     const togglePvpFlag = async () => {
         const newFlag = !hero.pvp_flag;
         updateHero({ ...hero, pvp_flag: newFlag });
-        await supabase.from('pvp_stats').upsert({
-            player_id: hero.id, // Assuming hero has actual db id
-            pvp_flag: newFlag
-        });
+        try {
+            await fetch('/api/pvp/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ flag: newFlag })
+            });
+        } catch (err) {
+            console.error("Failed to toggle PVP flag:", err);
+            // Revert on error
+            updateHero({ ...hero, pvp_flag: !newFlag });
+        }
     };
 
     useEffect(() => {
         const fetchArenaData = async () => {
             setLoading(true);
-            const { data: stats } = await supabase.from('pvp_stats').select('*').eq('player_id', hero?.id).single();
-            if (stats) setPvpStats(stats);
-            
-            const { data: allPlayers } = await supabase.from('players').select('id, username, level, pvp_flag, pvp_stats(elo_rating, rank_tier)').neq('id', hero?.id).limit(20);
-            if (allPlayers) setPlayers(allPlayers);
-            setLoading(false);
+            try {
+                const res = await fetch('/api/pvp/stats');
+                if (res.ok) {
+                    const data = await res.json();
+                    setPvpStats(data.stats);
+                    setPlayers(data.players);
+                }
+            } catch (err) {
+                console.error("Failed to load Arena data:", err);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchArenaData();
-    }, [hero]);
+    }, [hero.pvp_flag]);
 
     return (
         <div className="w-full max-w-5xl mx-auto flex flex-col gap-6 animate-in slide-in-from-right-4 duration-500 pb-10">
@@ -74,14 +86,31 @@ export default function ArenaHub({ hero, updateHero, onBack }) {
                                             <div className="text-[9px] text-red-900 uppercase tracking-widest mt-2">{p.pvp_flag ? 'PVP Flagged' : 'Protected'}</div>
                                         </div>
                                         <button 
-                                            onClick={() => {
+                                            onClick={async () => {
                                                 const check = validateAndConsume(hero, hero?.player_resources, 5, 'resolve');
                                                 if (!check.success) return alert(`Not enough Resolve. Short ${check.deficit}.`);
-                                                updateHero({
-                                                    ...hero,
-                                                    player_resources: { ...hero.player_resources, resolve_current: check.new_current }
-                                                });
-                                                alert("Duel starting (simulated)...");
+                                                
+                                                try {
+                                                    const res = await fetch('/api/pvp/challenge', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ targetPlayerId: p.id })
+                                                    });
+                                                    const data = await res.json();
+                                                    if (!res.ok) throw new Error(data.error);
+
+                                                    updateHero({
+                                                        ...data.updatedHero,
+                                                        player_resources: { ...hero.player_resources, resolve_current: check.new_current }
+                                                    });
+                                                    
+                                                    const logStr = data.combatLogs.join('\n');
+                                                    alert(data.win 
+                                                        ? `VICTORY!\n\n${logStr}\n\nYou won ${data.goldGained}g and ${data.expGained} XP!`
+                                                        : `DEFEAT!\n\n${logStr}\n\nYou were struck down.`);
+                                                } catch(err) {
+                                                    alert(`[ERROR] ${err.message}`);
+                                                }
                                             }}
                                             className="bg-black hover:bg-red-950/40 text-red-500 border border-red-900/40 py-2 px-4 font-mono text-xs uppercase tracking-widest transition-colors">
                                             Duel

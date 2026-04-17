@@ -8,13 +8,17 @@ export default function WorldEventBanner() {
     useEffect(() => {
         // Fetch the most active world event
         const fetchEvent = async () => {
-            const { data } = await supabase.from('world_events')
-                .select('*')
-                .eq('is_active', true)
-                .order('starts_at', { ascending: false })
-                .limit(1)
-                .single();
-            if (data) setActiveEvent(data);
+            try {
+                const { data, error } = await supabase.from('world_events')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('starts_at', { ascending: false })
+                    .limit(1)
+                    .single();
+                if (!error && data) setActiveEvent(data);
+            } catch (err) {
+                console.warn('Silent failure on World Event check.');
+            }
         };
         fetchEvent();
 

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
 import { calcPlayerStats } from '@/lib/combat';
 import { validateAndConsume } from '@/lib/resources';
 

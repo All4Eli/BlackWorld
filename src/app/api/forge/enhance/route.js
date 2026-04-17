@@ -38,7 +38,7 @@ export async function POST(request) {
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const { targetLevel } = await request.json();
+        const { artifactId, targetLevel, protectionId } = await request.json();
 
         const { data: player, error: playerError } = await supabase
             .from('players')
@@ -49,6 +49,12 @@ export async function POST(request) {
         if (playerError || !player) throw new Error('Player not found.');
 
         let hero = player.hero_data || {};
+        if (!hero.artifacts) hero.artifacts = [];
+
+        const artifactIndex = hero.artifacts.findIndex(a => a.id === artifactId);
+        if (artifactIndex === -1) {
+             return NextResponse.json({ error: 'Artifact not found in inventory.' }, { status: 400 });
+        }
         
         const tableInfo = ENHANCEMENT_TABLE[targetLevel] || getScaledValues(targetLevel);
         
@@ -61,11 +67,41 @@ export async function POST(request) {
             return NextResponse.json({ error: `Not enough Essence. Short ${check.deficit}.` }, { status: 400 });
         }
 
-        // Deduct
+        // Deduct Price
         hero.gold -= tableInfo.gold;
         if (!hero.player_resources) hero.player_resources = {};
         hero.player_resources.essence_current = check.new_current;
         hero.player_resources.essence_last_update = check.new_last_update;
+
+        // SERVER AUTHORITATIVE STATISTICAL ROLLS
+        let outcome = 'FAIL';
+        let levelsLost = 0;
+        const roll = Math.random();
+
+        // Pity isn't technically tracked locally anymore for security, but we will roll bare success
+        if (roll <= tableInfo.success) {
+             outcome = 'SUCCESS';
+             hero.artifacts[artifactIndex].level = targetLevel;
+        } else {
+             let breakChance = tableInfo.break;
+             // Basic mock protection checks based on pass down ID
+             if (protectionId === 'prot-1') breakChance = Math.max(0, breakChance - 0.1);
+             else if (protectionId === 'prot-2') breakChance = 0; // 'full' protection
+             
+             const breakRoll = Math.random();
+             if (breakRoll <= breakChance) {
+                  if (protectionId === 'prot-3') { // downgrade
+                      levelsLost = Math.ceil(Math.random() * 3);
+                      hero.artifacts[artifactIndex].level = Math.max(0, hero.artifacts[artifactIndex].level - levelsLost);
+                      outcome = 'DOWNGRADE';
+                  } else if (protectionId === 'prot-2') {
+                      outcome = 'PROTECTED';
+                  } else {
+                      hero.artifacts.splice(artifactIndex, 1);
+                      outcome = 'DESTROYED';
+                  }
+             }
+        }
 
         const { error: updateError } = await supabase
             .from('players')
@@ -76,6 +112,8 @@ export async function POST(request) {
 
         return NextResponse.json({
             success: true,
+            outcome,
+            levelsLost,
             updatedHero: hero
         });
 

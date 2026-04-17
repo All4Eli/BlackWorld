@@ -35,10 +35,10 @@ const getScaledValues = (level) => ({
 export default function EnhancementForge({ hero, updateHero }) {
     const [selectedItem, setSelectedItem] = useState(null);
     const [protection, setProtection] = useState(null);
-    const [inventory, setInventory] = useState([
-        { id: 'item-1', name: 'Rusty Shortsword', level: 5, type: 'weapon', base_power: 15 },
-        { id: 'item-2', name: 'Leather Tunic', level: 8, type: 'armor', base_power: 30 }
-    ]);
+    
+    // Natively sync to player inventory
+    let inventory = hero?.artifacts || [];
+
     const [protections, setProtections] = useState([
         { id: 'prot-1', name: 'Minor Safeguard Scroll', type: 'chance_boost', value: 0.1 }
     ]);
@@ -65,7 +65,11 @@ export default function EnhancementForge({ hero, updateHero }) {
             const res = await fetch('/api/forge/enhance', {
                method: 'POST',
                headers: { 'Content-Type': 'application/json' },
-               body: JSON.stringify({ targetLevel: level + 1 })
+               body: JSON.stringify({ 
+                   artifactId: selectedItem.id, 
+                   targetLevel: level + 1,
+                   protectionId: protection?.id || null 
+               })
             });
             const data = await res.json();
             
@@ -74,37 +78,24 @@ export default function EnhancementForge({ hero, updateHero }) {
             }
             
             let newHero = data.updatedHero;
-            const roll = Math.random();
             
-            if (roll <= modifiedSuccess) {
+            if (data.outcome === 'SUCCESS') {
                 alert("Enhancement SUCCESS!");
-                updateHero(newHero);
-                setInventory(inventory.map(i => i.id === selectedItem.id ? { ...i, level: i.level + 1 } : i));
                 setSelectedItem({ ...selectedItem, level: selectedItem.level + 1 });
                 setPityCount(0);
+            } else if (data.outcome === 'DOWNGRADE') {
+                alert(`Enhancement FAILED! Item Downgraded by ${data.levelsLost} levels.`);
+                setSelectedItem({ ...selectedItem, level: Math.max(0, selectedItem.level - data.levelsLost) });
+            } else if (data.outcome === 'PROTECTED') {
+                alert("Enhancement FAILED! Protected from breaking.");
+            } else if (data.outcome === 'DESTROYED') {
+                alert("Enhancement FAILED! Item BROKEN (Destroyed).");
+                setSelectedItem(null);
             } else {
-                const breakChance = calculateBreakChance(tableInfo.break, protection);
-                const breakRoll = Math.random();
-                
-                if (breakRoll <= breakChance) {
-                    if (protection?.type === 'downgrade') {
-                        const levelsLost = Math.min(selectedItem.level - 1, Math.ceil(Math.random() * 3));
-                        alert(`Enhancement FAILED! Item Downgraded by ${levelsLost} levels.`);
-                        setInventory(inventory.map(i => i.id === selectedItem.id ? { ...i, level: Math.max(0, i.level - levelsLost) } : i));
-                        setSelectedItem({ ...selectedItem, level: Math.max(0, selectedItem.level - levelsLost) });
-                    } else if (protection?.type === 'full') {
-                        alert("Enhancement FAILED! Protected from breaking.");
-                    } else {
-                        alert("Enhancement FAILED! Item BROKEN (Destroyed).");
-                        setInventory(inventory.filter(i => i.id !== selectedItem.id));
-                        setSelectedItem(null);
-                    }
-                } else {
-                    alert("Enhancement FAILED! Materials lost, item safe.");
-                    setPityCount(c => c + 1);
-                }
-                updateHero(newHero);
+                alert("Enhancement FAILED! Materials lost, item safe.");
+                setPityCount(c => c + 1);
             }
+            updateHero(newHero);
 
             // Consume protection
             if (protection) {

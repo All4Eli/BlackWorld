@@ -16,11 +16,14 @@ export const calculateMaxResource = (resourceType, hero) => {
 
 export const calculateCurrentResource = (resourceRecord, resourceType, maxVal) => {
   if (!resourceRecord) return { current: 0, max: maxVal, next_tick: 0 };
+  // If field is truly undefined (fresh/legacy account), default to FULL.
+  const rawCurrent = resourceRecord[`${resourceType}_current`];
+  const current = rawCurrent !== undefined ? Number(rawCurrent) : maxVal;
   
-  const current = Number(resourceRecord[`${resourceType}_current`]) || 0;
   if (current >= maxVal) return { current: maxVal, max: maxVal, next_tick: 0 };
 
   const lastUpdateStr = resourceRecord[`${resourceType}_last_update`];
+  // If undefined, assume it just started depleting right now (safety fallback)
   const lastUpdate = lastUpdateStr ? new Date(lastUpdateStr).getTime() : new Date().getTime();
   const now = new Date().getTime();
   const elapsedSec = Math.floor((now - lastUpdate) / 1000);

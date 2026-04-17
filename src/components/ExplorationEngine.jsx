@@ -83,98 +83,44 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
     setCombatLoading(false);
   };
 
-  const handleEnterZone = (zone) => {
-    if (currentEssence < zone.essenceCost) {
-      addLog(`🩸 [EXHAUSTED]: Need ${zone.essenceCost} essence.`);
-      return;
-    }
-    setActiveZone(zone);
-    addLog(`⚠️ [ZONE]: You enter ${zone.name}.`);
-  };
-
-  const handleAction = (pathType) => {
-    if (!activeZone) return;
-    if (currentEssence < activeZone.essenceCost) {
-      addLog(`🩸 [EXHAUSTED]: Blood Essence depleted.`);
-      return;
-    }
-
-    const roll = Math.random();
-    let newHero = {
-      ...hero,
-      essence: currentEssence - activeZone.essenceCost,
-      essence_last_regen: new Date().toISOString()
-    };
-
-    if (pathType === 'DARK') {
-      if (roll > 0.35) {
-        addLog(`⚠️ [AMBUSH!]: A shadow tears through the dark.`);
-        updateHero(newHero);
-        setTimeout(() => initCombat(activeZone), 1000);
-      } else {
-        const goldAmount = Math.floor((Math.random() * 60 + 30) * activeZone.goldMultiplier);
-        addLog(`💰 [PLUNDER]: Found ${goldAmount} Gold.`);
-        newHero = { ...newHero, gold: newHero.gold + goldAmount };
-        updateHero(newHero);
-      }
-    } else {
-      if (roll > 0.75) {
-        addLog(`🩸 [ENCOUNTER]: Something stirs in the passage ahead.`);
-        updateHero(newHero);
-        setTimeout(() => initCombat(activeZone), 1000);
-      } else if (roll > 0.55) {
-        addLog(`🔥 [SANCTUARY]: HP fully restored.`);
-        newHero = { ...newHero, hp: calcPlayerStats(newHero).maxHp };
-        updateHero(newHero);
-      } else if (roll > 0.3) {
-        addLog(`⚖️ [MERCHANT]: The Void Broker materializes...`);
-        updateHero(newHero);
-        setMerchantOpen(true);
-      } else {
-        addLog(`👣 [EMPTY]: The corridor echoes with nothingness.`);
-        updateHero(newHero);
-      }
-    }
-  };
-
-  // COMBAT LOGIC
-  const handleAttack = () => {
+  const handleAttack = async () => {
      if (combatEnded || !currentEnemy) return;
+     const response = await fetch('/api/combat/resolve', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ enemyId: currentEnemy.id || 'void_stalker' })
+     });
+     const data = await response.json();
+     if (!response.ok) {
+        addCombatLog(`❌ [ERROR]: ${data.error}`);
+        return;
+     }
 
-     const pStats = calcPlayerStats(hero);
-     
-     // 1. Player Attack
-     let newEnemyHp = enemyHP;
-     if (isHitDodged(currentEnemy.dodgeChance)) {
-         addCombatLog(`💨 [MISS]: ${currentEnemy.name} dodged your strike!`);
+     if (data.win) {
+        addCombatLog(`>> [VICTORY] You defeated the enemy! Gained ${data.expGained} EXP and ${data.goldGained} Gold.`);
+        setEnemyHP(0);
+        handleVictoryServer(data);
      } else {
-         const pDamage = rollDamage(pStats.baseDamageMin, pStats.baseDamageMax);
-         newEnemyHp = Math.max(0, enemyHP - pDamage);
-         addCombatLog(`⚔️ [STRIKE]: You hit for ${pDamage} damage. (Enemy HP: ${newEnemyHp})`);
+        addCombatLog(`>> [DEFEAT] You were struck down...`);
+        setPlayerHP(0);
+        handleDefeatServer();
      }
+  };
 
-     setEnemyHP(newEnemyHp);
+  const handleVictoryServer = (data) => {
+      setCombatEnded(true);
+      setTimeout(() => {
+          setCombatActive(false);
+          updateHero(data.updatedHero);
+      }, 2000);
+  };
 
-     if (newEnemyHp <= 0) {
-         handleVictory();
-         return;
-     }
-
-     // 2. Enemy Attack
-     let newPlayerHp = playerHP;
-     if (isHitDodged(pStats.dodgeChance)) {
-         addCombatLog(`💨 [EVADE]: You dodged ${currentEnemy.name}'s attack!`);
-     } else {
-         const mDamage = rollDamage(currentEnemy.damageMin, currentEnemy.damageMax);
-         newPlayerHp = Math.max(0, playerHP - mDamage);
-         addCombatLog(`🩸 [WOUNDED]: ${currentEnemy.name} hits you for ${mDamage} damage!`);
-     }
-
-     setPlayerHP(newPlayerHp);
-
-     if (newPlayerHp <= 0) {
-         handleDefeat();
-     }
+  const handleDefeatServer = () => {
+      setCombatEnded(true);
+      setTimeout(() => {
+          setCombatActive(false);
+          updateHero({ ...hero, hp: 0 });
+      }, 2000);
   };
 
   const handleUseItem = () => {
@@ -190,7 +136,6 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
       updateHero({ ...hero, flasks: hero.flasks - 1, hp: newPlayerHp });
       addCombatLog(`🩸 [HEAL]: You consume a flask. +60 HP (Current: ${newPlayerHp})`);
       
-      // Enemy gets a free hit
       if (isHitDodged(pStats.dodgeChance)) {
           addCombatLog(`💨 [EVADE]: You dodged ${currentEnemy.name}'s counter-attack!`);
       } else {
@@ -198,7 +143,7 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
           const postHealDamageHp = Math.max(0, newPlayerHp - mDamage);
           setPlayerHP(postHealDamageHp);
           addCombatLog(`🩸 [WOUNDED]: ${currentEnemy.name} hits you while drinking for ${mDamage}!`);
-          if (postHealDamageHp <= 0) handleDefeat();
+          if (postHealDamageHp <= 0) handleDefeatServer();
       }
   };
 

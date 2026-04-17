@@ -54,3 +54,21 @@ export async function PATCH(request) {
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }
+
+export async function DELETE() {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    try {
+        const { error } = await supabase
+            .from('notifications')
+            .delete()
+            .eq('user_id', userId)
+            .eq('is_read', true);
+
+        if (error) throw error;
+        return NextResponse.json({ success: true, message: 'Cleared read notifications.' });
+    } catch (err) {
+        return NextResponse.json({ error: err.message }, { status: 500 });
+    }
+}

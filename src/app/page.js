@@ -237,9 +237,7 @@ export default function GameStateDirector() {
                  </button>
                  {showNotifications && (
                    <NotificationsDropdown 
-                     notifications={notifications} 
                      onClose={() => setShowNotifications(false)} 
-                     onMarkRead={markNotificationsRead}
                    />
                  )}
                </div>

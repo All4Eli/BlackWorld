@@ -9,28 +9,41 @@ export default function CasinoView({ hero, updateHero, onBack }) {
 
   const current = hero.gold || 0;
 
-  const handleFlip = () => {
+  const handleFlip = async () => {
     const val = parseInt(wager);
     if (isNaN(val) || val <= 0 || val > current) return;
 
     setIsRolling(true);
     setResult(null);
 
-    // Simulate dice roll delay
-    setTimeout(() => {
-      const isHeads = Math.random() > 0.5;
-      const roll = isHeads ? 'HEADS' : 'TAILS';
-      const won = roll === choice;
+    try {
+        const response = await fetch('/api/casino/bet', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ betAmount: val, gameType: 'coin_flip' }) // coin_flip relies on game side, player choice logic removed since RPC handles generic 50/50 win odds
+        });
+        const data = await response.json();
 
-      if (won) {
-        updateHero({ ...hero, gold: current + val });
-      } else {
-        updateHero({ ...hero, gold: current - val });
-      }
+        if (!response.ok) {
+             throw new Error(data.error);
+        }
 
-      setResult({ won, roll, amount: val });
-      setIsRolling(false);
-    }, 1500);
+        // Delay reveal for dramatic effect
+        setTimeout(() => {
+           updateHero({ ...hero, gold: data.new_balance });
+           
+           // Mock the client roll text string based on win/loss combined with user's initial guess
+           // Because true coin logic is standard 50/50 DB check:
+           const landingSide = data.win ? choice : (choice === 'HEADS' ? 'TAILS' : 'HEADS');
+           
+           setResult({ won: data.win, roll: landingSide, amount: Math.abs(data.net_change) });
+           setIsRolling(false);
+        }, 1500);
+
+    } catch (err) {
+        alert("Casino Error: " + err.message);
+        setIsRolling(false);
+    }
   };
 
   return (

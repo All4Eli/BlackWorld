@@ -8,6 +8,8 @@ import ArsenalView from './ArsenalView';
 import SkillTreePanel from './SkillTreePanel';
 import QuestLog from './QuestLog';
 import AchievementPanel from './AchievementPanel';
+import BattlePassHub from './BattlePassHub';
+import PremiumStore from './PremiumStore';
 import WorldEventBanner from './WorldEventBanner';
 
 export default function GameShell({ hero, updateHero, onFindCombat }) {
@@ -44,7 +46,9 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
     { id: 'DASHBOARD', label: 'Home', icon: '⌂' },
     { id: 'TOWN', label: 'City', icon: '♜' },
     { id: 'EXPLORE', label: 'Explore', icon: '⛫' },
-    { id: 'CONTRACTS', label: 'Quests', icon: '⚑', alert: unfinishedQuests }
+    { id: 'CONTRACTS', label: 'Quests', icon: '⚑', alert: unfinishedQuests },
+    { id: 'BATTLE_PASS', label: 'Battle Pass', icon: '✦', alert: true },
+    { id: 'STORE', label: 'Premium Store', icon: '✧' }
   ];
 
   const charTabs = [
@@ -142,6 +146,8 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
         {activeTab === 'SKILLS' && <SkillTreePanel hero={hero} updateHero={updateHero} inline={true} />}
         {activeTab === 'CONTRACTS' && <QuestLog quests={hero.daily_quests} inline={true} />}
         {activeTab === 'ACHIEVEMENTS' && <AchievementPanel hero={hero} updateHero={updateHero} />}
+        {activeTab === 'BATTLE_PASS' && <BattlePassHub hero={hero} updateHero={updateHero} />}
+        {activeTab === 'STORE' && <PremiumStore hero={hero} updateHero={updateHero} />}
       </main>
 
     </div>

@@ -1,6 +1,7 @@
 'use client';
 import { calculateSkillBonuses } from '@/lib/skillTree';
 import { calcCombatStats } from '@/lib/gameData';
+import DailyLoginCalendar from './DailyLoginCalendar';
 
 export default function DashboardView({ hero, updateHero }) {
   const sb = calculateSkillBonuses(hero?.skillPoints || {});

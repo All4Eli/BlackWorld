@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import EnhancementForge from './EnhancementForge';
 
 export default function CraftingStation({ hero, updateHero, onBack }) {
     const [recipes, setRecipes] = useState([]);
@@ -72,12 +73,8 @@ export default function CraftingStation({ hero, updateHero, onBack }) {
                      )}
 
                      {tab === 'ENHANCE' && (
-                          <div className="text-center py-10">
-                              <h3 className="font-serif text-orange-700 text-xl tracking-widest uppercase">Infinite Potential</h3>
-                              <p className="font-mono text-xs text-stone-500 mt-2">Push your gear beyond mortal limits. No level cap. No stat ceiling. Only risk.</p>
-                              <div className="mt-8 border border-neutral-800 animate-pulse bg-[#020202] py-10 w-1/2 mx-auto cursor-pointer hover:border-orange-900/50">
-                                  <span className="font-mono text-xs text-stone-600 tracking-widest uppercase">Select an item to enhance</span>
-                              </div>
+                          <div className="py-4">
+                              <EnhancementForge hero={hero} updateHero={updateHero} />
                           </div>
                      )}
                 </div>

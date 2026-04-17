@@ -1,6 +1,6 @@
 'use client';
 import { calculateSkillBonuses } from '@/lib/skillTree';
-import { calcCombatStats } from '@/lib/gameData';
+import { calcCombatStats, calculateXPRequirement } from '@/lib/gameData';
 import DailyLoginCalendar from './DailyLoginCalendar';
 
 export default function DashboardView({ hero, updateHero }) {
@@ -11,6 +11,7 @@ export default function DashboardView({ hero, updateHero }) {
   const maxHp = c.maxHp;
   const currentLevel = hero?.level ?? 1;
   const currentXp = hero?.xp ?? 0;
+  const requiredXp = calculateXPRequirement(currentLevel);
   
   const str = hero?.str ?? 5;
   const def = hero?.def ?? 5;
@@ -84,10 +85,10 @@ export default function DashboardView({ hero, updateHero }) {
         <div className="w-full space-y-4">
           <div>
              <div className="flex justify-between text-[10px] font-mono uppercase text-stone-500 mb-1">
-               <span>Prowess</span><span>{currentXp} / 100 XP</span>
+               <span>Prowess</span><span>{currentXp} / {requiredXp} XP</span>
              </div>
              <div className="h-1 bg-neutral-900 w-full">
-               <div className="h-full bg-stone-400" style={{ width: `${Math.min(100, currentXp)}%` }} />
+               <div className="h-full bg-stone-400" style={{ width: `${Math.min(100, (currentXp / requiredXp) * 100)}%` }} />
              </div>
           </div>
           <div>

@@ -199,15 +199,15 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
           <h1 className="text-4xl font-black text-red-700 uppercase tracking-[0.2em] font-serif drop-shadow-[0_0_10px_rgba(185,28,28,0.8)]">
             BlackWorld
           </h1>
-          <p className="text-sm text-stone-500 uppercase tracking-[0.3em] mt-2 font-mono">Endless Protocol</p>
+          <p className="text-sm text-stone-500 uppercase tracking-[0.3em] mt-2 font-mono">Dark Combat</p>
         </div>
         <div className="flex gap-8 text-right font-mono">
            <div>
-             <div className="text-xs text-stone-600 uppercase">Entities Slain</div>
+              <div className="text-xs text-stone-600 uppercase">Kills</div>
              <div className="text-xl text-neutral-300 font-bold tracking-widest">{hero.kills}</div>
            </div>
            <div>
-             <div className="text-xs text-stone-600 uppercase">Ascension</div>
+              <div className="text-xs text-stone-600 uppercase">Level</div>
              <div className="text-xl text-red-700 font-bold">Lvl. {hero.level}</div>
            </div>
         </div>
@@ -283,10 +283,10 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
           <div className="flex-1 bg-[#020202] border border-red-900/20 flex flex-col shadow-inner overflow-hidden relative">
             
             <div className="flex justify-between items-center px-6 py-4 border-b border-red-900/20 bg-[#050505] font-mono text-xs uppercase tracking-widest text-stone-600">
-              <span>The Tome of Records</span>
+              <span>Combat Log</span>
               <span className="flex items-center gap-2 text-red-900">
                 <div className={`w-2 h-2 ${isPlayerTurn ? 'bg-stone-500 animate-[pulse_2s_infinite]' : 'bg-red-700'}`}></div>
-                {isPlayerTurn ? 'Awaiting Judgment' : 'The Shadows Move'}
+                {isPlayerTurn ? 'Your Turn' : 'Enemy Turn'}
               </span>
             </div>
 
@@ -318,20 +318,20 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
             <div className={`bg-[#050505] border p-6 shadow-2xl relative overflow-hidden transition-all duration-300 ${enemy.isBoss ? "border-yellow-600/50 shadow-[0_0_30px_rgba(202,138,4,0.1)]" : "border-red-900/30"}`}>
               
               <h3 className={`text-xs font-bold tracking-widest uppercase mb-2 font-mono ${enemy.isBoss ? 'text-yellow-600 animate-pulse' : 'text-red-900'}`}>
-                {enemy.isBoss ? "CRITICAL THREAT" : "Current Prey"}
+                {enemy.isBoss ? "BOSS" : "Enemy"}
               </h3>
               <h2 className="text-3xl font-black text-stone-200 uppercase tracking-widest mb-6 font-serif">{enemy.name}</h2>
               
               <div className="font-mono">
                 <div className="flex justify-between text-xs font-bold uppercase tracking-widest mb-2 text-stone-500">
-                  <span>Integrity (HP)</span>
+                  <span>Health</span>
                   <span className="text-red-600">{enemy.hp} / {enemy.maxHp}</span>
                 </div>
                 {renderBar(enemy.hp, enemy.maxHp, "bg-red-800", "bg-black")}
               </div>
 
               <div className="mt-8 pt-6 font-mono border-t border-neutral-900">
-                <div className="text-xs text-stone-600 uppercase tracking-widest mb-2">Threat Assessment</div>
+                <div className="text-xs text-stone-600 uppercase tracking-widest mb-2">Damage</div>
                 <div className="flex items-center gap-3">
                   <span className="text-lg font-bold text-red-500">Max Dmg: {enemy.attackDamage + (enemy.isBoss ? 4 : 2)}</span>
                 </div>

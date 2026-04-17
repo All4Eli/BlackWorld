@@ -31,7 +31,7 @@ export async function POST(request) {
             };
         }
 
-        // Validate Zone Cost
+        // Validate Zone Cost conceptually, but do not block (infinite PvE exploration)
         let requiredCost = 1; // Default
         if (zoneId) {
              const { ZONES } = require('@/lib/gameData');
@@ -39,18 +39,9 @@ export async function POST(request) {
              if (matched && matched.essenceCost) requiredCost = matched.essenceCost;
         }
 
-        const { validateAndConsume } = require('@/lib/resources');
-        const check = validateAndConsume(hero, hero.player_resources, requiredCost, 'essence');
-        
-        if (!check.success) {
-            return NextResponse.json({ error: 'Not enough Essence to explore.' }, { status: 400 });
-        }
-
-        hero.player_resources.essence_current = check.new_current;
-        hero.player_resources.essence_last_update = check.new_last_update;
-
-        const energy = check.new_current;
-        
+        // Removed strict validation to allow infinite exploration; we still increment the quest
+        // theoretically if they explore, we update progression. 
+        // We will remove the quest if requested, but for now we'll just track explorations natively.
         incrementQuestProgress(hero, 'ESSENCE_SPENT', requiredCost);
 
         // Calculate encounter logic

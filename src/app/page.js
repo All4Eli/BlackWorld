@@ -183,8 +183,10 @@ export default function GameStateDirector() {
                 <span>
                   {saveData.heroData.coven_tag && <span className="text-red-700 mr-2 border border-red-900/30 bg-red-950/10 px-1 py-0.5">[{saveData.heroData.coven_tag}]</span>}
                   {saveData.heroData.name} 
-                  <span className="text-stone-400 font-bold ml-2">Lvl {saveData.heroData.level}</span>
+                <span className="text-stone-400 font-bold ml-2">Lvl {saveData.heroData.level}</span>
                 </span>
+                <span className="text-red-700 font-bold ml-2">♦ {(saveData.heroData.blood_stones || 0).toLocaleString()}</span>
+                <span className="text-blue-500 font-bold ml-2">⚡ {saveData.heroData.player_resources?.vitae_current ?? 100}/100</span>
                 <span className="text-yellow-600 font-bold ml-2">{(saveData.heroData.gold || 0).toLocaleString()}g</span>
                 <span className="text-red-500 font-bold ml-2">{saveData.heroData.hp}/{calcCombatStats(saveData.heroData, calculateSkillBonuses(saveData.heroData.skillPoints || {})).maxHp} HP</span>
               </div>

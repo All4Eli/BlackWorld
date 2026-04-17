@@ -56,8 +56,13 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
     }
   };
 
+  const [exploreCooldown, setExploreCooldown] = useState(false);
+
   const handleAction = async (actionType) => {
-    if (!activeZone) return;
+    if (!activeZone || exploreCooldown) return;
+    setExploreCooldown(true);
+    addLog(`>> Searching...`);
+    
     try {
       const response = await fetch('/api/explore', {
           method: 'POST',
@@ -68,36 +73,37 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
       
       if (!response.ok) {
          addLog(`❌ [ERROR] ${data.error}`);
+         setExploreCooldown(false);
          return;
       }
       
-      addLog(`>> ${data.narrative}`);
-      if (data.loot) {
-         addLog(`✨ [LOOT] Acquired ${data.loot.name}!`);
-      }
-      
-      updateHero(data.updatedHero);
-      
-      if (data.encounter === 'enemy') {
-         setTimeout(() => initCombat(activeZone), 1500);
-      }
+      setTimeout(() => {
+          addLog(`>> ${data.narrative}`);
+          if (data.loot) {
+             addLog(`✨ [LOOT] Acquired ${data.loot.name}!`);
+          }
+          
+          updateHero(data.updatedHero);
+          
+          if (data.encounter === 'enemy') {
+             setTimeout(() => {
+                 initCombat(activeZone);
+                 setExploreCooldown(false); // Unlock upon descending
+             }, 1000);
+          } else {
+             // Unlock after narrative drops
+             setExploreCooldown(false);
+          }
+      }, 1500); // Artificial exploration delay for ambiance and pacing constraint
       
     } catch(err) {
       addLog(`❌ [SYSTEM] Cannot connect to server.`);
+      setExploreCooldown(false);
     }
   };
 
 
   const initCombat = async (zone) => {
-    // Phase 14: Resource Check
-    const cost = 10; // Base cost for PvE
-    const limits = hero?.player_resources || {};
-    const check = validateAndConsume(hero, { ...hero, ...limits }, cost, 'vitae');
-    if (!check.success) {
-        setLog(prev => [...prev, `❌ [EXHAUSTED]: Your body fails you. You lack the Vitae (${cost}) to fight, forcing a desperate retreat.`]);
-        return;
-    }
-
     setCombatActive(true);
     setCombatEnded(false);
     setCombatLoading(true);

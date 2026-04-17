@@ -18,6 +18,28 @@ export default function DashboardView({ hero, updateHero }) {
   const vit = hero?.vit ?? 5;
   const unspentStats = hero?.unspentStatPoints ?? 0;
 
+  const getTierColor = (tier) => {
+    switch(tier) {
+      case 'COMMON': return 'text-stone-400';
+      case 'UNCOMMON': return 'text-green-500';
+      case 'RARE': return 'text-blue-500';
+      case 'EPIC': return 'text-purple-500';
+      case 'LEGENDARY': return 'text-yellow-500';
+      case 'CELESTIAL': return 'text-cyan-400';
+      default: return 'text-stone-400';
+    }
+  };
+
+  const getSlotDisplay = (slotKey) => {
+    const displayNames = {
+      head: 'Head', amulet: 'Amulet', body: 'Body', mainHand: 'Main Hand',
+      offHand: 'Off Hand', ring1: 'Ring 1', ring2: 'Ring 2', boots: 'Boots'
+    };
+    return displayNames[slotKey];
+  };
+
+  const slotOrder = ['head', 'amulet', 'body', 'mainHand', 'offHand', 'ring1', 'ring2', 'boots'];
+
   const handleAllocate = (statStr) => {
     if (unspentStats <= 0) return;
     updateHero({
@@ -160,29 +182,30 @@ export default function DashboardView({ hero, updateHero }) {
           <h3 className="font-serif text-xl tracking-[0.2em] uppercase text-stone-400 border-b border-neutral-800 pb-3 mb-6">Equipped Instruments</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="border border-neutral-800 bg-[#030303] p-4 flex items-center justify-between">
-              <div>
-                <div className="text-[10px] font-mono text-stone-600 uppercase tracking-widest">Main Hand</div>
-                {hero?.equippedWeapon ? (
-                  <div className="text-stone-300 font-bold tracking-widest uppercase text-sm mt-1">{hero.equippedWeapon.name}</div>
-                ) : (
-                  <div className="text-stone-700 italic text-sm mt-1">Empty Hands</div>
-                )}
-              </div>
-              {hero?.equippedWeapon && <div className="text-stone-500 font-mono text-xs">+{hero.equippedWeapon.stat} DMG</div>}
-            </div>
-
-            <div className="border border-neutral-800 bg-[#030303] p-4 flex items-center justify-between">
-              <div>
-                <div className="text-[10px] font-mono text-stone-600 uppercase tracking-widest">Body</div>
-                {hero?.equippedArmor ? (
-                  <div className="text-stone-300 font-bold tracking-widest uppercase text-sm mt-1">{hero.equippedArmor.name}</div>
-                ) : (
-                  <div className="text-stone-700 italic text-sm mt-1">Rags</div>
-                )}
-              </div>
-              {hero?.equippedArmor && <div className="text-stone-500 font-mono text-xs">+{hero.equippedArmor.stat} HP</div>}
-            </div>
+            {slotOrder.map(slot => {
+              const item = hero?.equipped?.[slot];
+              return (
+                <div key={slot} className={`border p-4 flex items-center justify-between transition-colors ${item ? `bg-[#050505] border-neutral-800` : 'bg-black/50 border-neutral-900 border-dashed'}`}>
+                  <div>
+                    <div className="text-[10px] font-mono text-stone-600 uppercase tracking-widest">{getSlotDisplay(slot)}</div>
+                    {item ? (
+                      <div className={`font-bold tracking-widest uppercase text-sm mt-1 ${getTierColor(item.rarity)}`}>
+                        {item.name}
+                      </div>
+                    ) : (
+                      <div className="text-stone-700 italic text-[10px] uppercase mt-2">Empty</div>
+                    )}
+                  </div>
+                  {item && (
+                    <div className="flex gap-2">
+                       {item.stats?.dmg && <span className="text-[10px] text-red-500 font-mono">+{item.stats.dmg} DMG</span>}
+                       {item.stats?.def && <span className="text-[10px] text-stone-400 font-mono">+{item.stats.def} DEF</span>}
+                       {item.stats?.hp && <span className="text-[10px] text-stone-300 font-mono">+{item.stats.hp} HP</span>}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 

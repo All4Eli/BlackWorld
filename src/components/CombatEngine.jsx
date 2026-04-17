@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { calculateSkillBonuses, rollForTomeDrop } from '@/lib/skillTree';
 import { calcCombatStats } from '@/lib/gameData';
+import { generateLoot } from '@/lib/items';
 import DeathScreen from './DeathScreen';
 
 export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) {
@@ -112,24 +113,18 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
       let droppedFlask = false;
       if (flaskDropProbability > 0.6) droppedFlask = true;
 
-      // Bosses drop physical Weapon Artifacts
+      // Bosses always drop an Artifact
       let droppedArtifact = null;
       if (enemy.isBoss) {
-        const artifacts = [
-          { name: "Executioner's Greatsword", type: 'WEAPON', stat: 15 },
-          { name: "Abyssal Dagger", type: 'WEAPON', stat: 8 },
-          { name: "Blood-Soaked Battleaxe", type: 'WEAPON', stat: 22 },
-          { name: "Sovereign's Crown (Armor)", type: 'ARMOR', stat: 50 }
-        ];
-        // Unique ID generation for inventory assignment
-        const generated = artifacts[Math.floor(Math.random() * artifacts.length)];
-        droppedArtifact = { ...generated, id: Math.random().toString(36).substr(2, 9) };
+        // Drop tier scales with hero level (1 tier per 5 levels roughly)
+        const tier = Math.max(1, Math.ceil(hero.level / 5));
+        droppedArtifact = generateLoot(tier);
       }
 
       addLog(`🏆 [SLAIN]: The ${enemy.name} has fallen.`);
       addLog(`+ ${xpDrop} EXP | + ${goldDrop} Gold`);
       if (droppedFlask) addLog(`🩸 Found 1x Crimson Flask.`);
-      if (droppedArtifact) addLog(`🔮 [ARTIFACT!]: ${droppedArtifact.name} (+${droppedArtifact.stat})`);
+      if (droppedArtifact) addLog(`🔮 [ARTIFACT!]: ${droppedArtifact.name} [${droppedArtifact.rarity}]`);
 
       // Roll for tome drop on boss kill
       let droppedTome = null;

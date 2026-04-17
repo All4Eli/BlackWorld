@@ -8,6 +8,7 @@ import ArsenalView from './ArsenalView';
 import SkillTreePanel from './SkillTreePanel';
 import QuestLog from './QuestLog';
 import AchievementPanel from './AchievementPanel';
+import WorldEventBanner from './WorldEventBanner';
 
 export default function GameShell({ hero, updateHero, onFindCombat }) {
   const [activeTab, setActiveTab] = useState('DASHBOARD');
@@ -78,6 +79,8 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
   };
 
   return (
+    <>
+    <WorldEventBanner />
     <div className="flex flex-col md:flex-row w-full h-full min-h-[85vh] max-w-7xl mx-auto px-4 py-6 animate-in fade-in duration-700">
       
       {/* MOBILE NAV (Top bar with Hamburger Menu, hidden on md+) */}
@@ -142,5 +145,6 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
       </main>
 
     </div>
+    </>
   );
 }

@@ -6,26 +6,74 @@ export default function AchievementPanel({ hero, updateHero }) {
     const [achievements, setAchievements] = useState([]);
     const [tab, setTab] = useState('achievements');
     const [loading, setLoading] = useState(true);
+    const [justUnlocked, setJustUnlocked] = useState([]);
 
     useEffect(() => {
-        const fetchAchvs = async () => {
+        const syncAchvs = async () => {
             setLoading(true);
-            const { data } = await supabase.from('achievements').select('*');
-            if (data) setAchievements(data);
-            setLoading(false);
+            try {
+                // Trigger backend evaluation logic
+                const res = await fetch('/api/achievements/sync', { method: 'POST' });
+                const json = await res.json();
+                
+                if (res.ok) {
+                    if (json.newlyUnlocked && json.newlyUnlocked.length > 0) {
+                        setJustUnlocked(json.newlyUnlocked);
+                        if (json.updatedHero) updateHero(json.updatedHero);
+                    }
+                }
+                
+                // Fetch dictionary and player's specific unlocks
+                const [{ data: dict }, { data: pAchvs }] = await Promise.all([
+                    supabase.from('achievements').select('*'),
+                    supabase.from('player_achievements').select('achievement_id, unlocked_at')
+                ]);
+
+                if (dict && pAchvs) {
+                    const unlockedIds = pAchvs.map(p => p.achievement_id);
+                    // Add hardcoded logical dictionary for our custom backend triggers if they aren't in DB yet
+                    const fullDict = [
+                        ...dict,
+                        { id: 'lvl_5', name: 'Apprentice', description: 'Reach Level 5.', points: 10 },
+                        { id: 'lvl_10', name: 'Adept', description: 'Reach Level 10.', points: 20 },
+                        { id: 'lvl_25', name: 'Master', description: 'Reach Level 25.', points: 50 },
+                        { id: 'gold_1k', name: 'Hoarder', description: 'Accumulate 1,000 Gold in the vault.', points: 10 },
+                        { id: 'gold_10k', name: 'Baron', description: 'Accumulate 10,000 Gold in the vault.', points: 50 },
+                        { id: 'kills_10', name: 'First Blood', description: 'Slay 10 enemies.', points: 10 },
+                        { id: 'kills_100', name: 'Slayer', description: 'Slay 100 enemies.', points: 50 }
+                    ];
+
+                    // Merge uniqueness
+                    const uniqueDict = Array.from(new Map(fullDict.map(item => [item.id, item])).values());
+                    
+                    const processed = uniqueDict.map(a => ({
+                        ...a,
+                        isUnlocked: unlockedIds.includes(a.id),
+                        unlockedAt: pAchvs.find(p => p.achievement_id === a.id)?.unlocked_at
+                    }));
+                    setAchievements(processed);
+                }
+            } catch (err) {
+                console.error("Failed to sync achievements", err);
+            } finally {
+                setLoading(false);
+            }
         };
-        fetchAchvs();
+        syncAchvs();
     }, []);
 
-    // Placeholder data since we might not have seeded all perfectly in the mega script
-    const sampleAchievements = [
-        { id: 1, name: "First Blood", description: "Slay your first monstrosity.", is_repeatable: false },
-        { id: 2, name: "Gold Hoarder", description: "Collect mountains of gold.", is_repeatable: true, times_completed: 4 },
-        { id: 3, name: "Enhancement Master", description: "Push an item past its normal limits.", is_repeatable: true, times_completed: 1 }
-    ];
+    const totalPts = hero.achievement_points || 0;
+    const progressCount = achievements.filter(a => a.isUnlocked).length;
 
     return (
         <div className="w-full max-w-5xl mx-auto flex flex-col gap-6 animate-in slide-in-from-right-4 duration-500 pb-10">
+            {justUnlocked.length > 0 && (
+                <div className="bg-yellow-950/40 border border-yellow-900 shadow-[0_0_20px_rgba(202,138,4,0.2)] p-4 text-center font-mono animate-pulse">
+                    <span className="text-yellow-500 font-bold uppercase tracking-widest text-sm">Monument Established</span>
+                    <div className="text-xs text-stone-400 mt-1">You have unlocked {justUnlocked.length} new achievements.</div>
+                </div>
+            )}
+            
             <div className="border border-stone-800 bg-[#050505] shadow-[0_0_50px_rgba(255,255,255,0.02)]">
                 <div className="flex border-b border-stone-800 font-mono text-xs text-stone-500 tracking-widest uppercase">
                     <button onClick={() => setTab('achievements')} className={`flex-1 py-4 ${tab === 'achievements' ? 'bg-stone-900 border-b-2 border-stone-400 text-stone-200' : 'bg-black hover:bg-neutral-900'}`}>Achievements</button>
@@ -33,41 +81,46 @@ export default function AchievementPanel({ hero, updateHero }) {
                 </div>
 
                 <div className="p-8 min-h-[400px]">
-                    {tab === 'achievements' && (
+                    {loading ? (
+                        <div className="text-center font-mono text-stone-600 py-20 uppercase tracking-widest text-xs animate-pulse">Reading the stones...</div>
+                    ) : tab === 'achievements' ? (
                         <div className="flex flex-col gap-8">
                             <div className="flex justify-between items-end border-b border-neutral-900 pb-4">
                                 <div>
                                      <div className="text-stone-500 font-mono text-xs uppercase tracking-widest mb-1">Total Score</div>
-                                     <div className="text-4xl font-black font-serif text-stone-300">{hero.achievement_points || 0}</div>
+                                     <div className="text-4xl font-black font-serif text-yellow-600">{totalPts} <span className="text-sm font-mono text-stone-600">PTS</span></div>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-stone-500 text-xs font-mono uppercase">Infinite Progression Enabled</div>
-                                    <div className="text-[10px] text-stone-600 font-mono mt-1 w-64">Certain achievements can be repeated infinitely with escalating requirements.</div>
+                                    <div className="text-stone-500 text-xs font-mono uppercase">Completion</div>
+                                    <div className="text-[10px] text-stone-600 font-mono mt-1">{progressCount} / {achievements.length} Unlocked</div>
                                 </div>
                             </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {sampleAchievements.map(a => (
-                                    <div key={a.id} className="border border-neutral-800 p-4 bg-black flex flex-col justify-between">
+                                {achievements.map(a => (
+                                    <div key={a.id} className={`border p-4 flex flex-col justify-between transition-colors ${a.isUnlocked ? 'border-yellow-900/30 bg-yellow-950/10 shadow-[0_0_15px_rgba(202,138,4,0.02)]' : 'border-neutral-900 bg-black opacity-60 grayscale'}`}>
                                         <div>
                                             <div className="flex justify-between items-start">
-                                                <h3 className="font-bold font-serif uppercase tracking-widest text-stone-300">{a.name}</h3>
-                                                {a.is_repeatable && <span className="text-[9px] font-mono text-purple-500 border border-purple-900/50 px-2 uppercase shadow-[0_0_10px_purple]">Repeatable</span>}
+                                                <h3 className={`font-bold font-serif uppercase tracking-widest ${a.isUnlocked ? 'text-yellow-500' : 'text-stone-500'}`}>{a.name}</h3>
+                                                <span className={`text-[9px] font-mono px-2 uppercase ${a.isUnlocked ? 'text-yellow-400 border border-yellow-900/50' : 'text-stone-600 border border-stone-800'}`}>{a.points} PTS</span>
                                             </div>
-                                            <p className="text-stone-500 text-sm mt-2">{a.description}</p>
+                                            <p className="text-stone-500 text-xs mt-2 font-mono h-8">{a.description}</p>
                                         </div>
-                                        {a.is_repeatable && a.times_completed > 0 && (
-                                            <div className="text-xs font-mono text-purple-400 mt-4 border-t border-neutral-900 pt-2 text-right">
-                                                ★ Completed {a.times_completed}x
+                                        {a.isUnlocked && (
+                                            <div className="text-[9px] font-mono text-stone-400 mt-4 border-t border-neutral-800/50 pt-2 text-right uppercase tracking-widest">
+                                                Unlocked: {new Date(a.unlockedAt).toLocaleDateString()}
+                                            </div>
+                                        )}
+                                        {!a.isUnlocked && (
+                                            <div className="text-[9px] font-mono text-stone-600 mt-4 border-t border-neutral-900 pt-2 text-right uppercase tracking-widest">
+                                                Locked
                                             </div>
                                         )}
                                     </div>
                                 ))}
                             </div>
                         </div>
-                    )}
-
-                    {tab === 'titles' && (
+                    ) : (
                         <div className="text-center py-10">
                             <h3 className="font-serif text-stone-300 text-xl tracking-widest uppercase">Eminent Domain</h3>
                             <p className="font-mono text-xs text-stone-500 mt-2">Titles earned through glory, suffering, and repetition.</p>

@@ -54,6 +54,7 @@ export default function GameStateDirector() {
         dmg: 12,
         baseDmg: 12,
         gold: 0,
+        bankedGold: 0,
         level: 1,
         xp: 0,
         flasks: 3,

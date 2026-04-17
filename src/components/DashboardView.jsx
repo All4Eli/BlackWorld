@@ -42,6 +42,38 @@ export default function DashboardView({ hero, updateHero }) {
 
   const slotOrder = ['head', 'amulet', 'body', 'mainHand', 'offHand', 'ring1', 'ring2', 'boots'];
 
+  const [modalSlot, setModalSlot] = useState(null);
+
+  const isCorrectSlotType = (artifact, slotId) => {
+       // Convert generalized types to specific slot IDs
+       const typeMap = {
+           'WEAPON': ['mainHand', 'offHand'],
+           'ARMOR': ['body', 'head', 'boots'],
+           'ACCESSORY': ['amulet', 'ring1', 'ring2']
+       };
+       const targetTypes = typeMap[artifact?.type] || [];
+       return targetTypes.includes(slotId);
+  };
+
+  const handleEquip = async (artifactId) => {
+      try {
+          const res = await fetch('/api/equipment/equip', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ artifactId, slotId: modalSlot })
+          });
+          const data = await res.json();
+          if (res.ok) {
+              updateHero(data.updatedHero);
+              setModalSlot(null);
+          } else {
+              alert(data.error);
+          }
+      } catch(err) {
+          console.error(err);
+      }
+  };
+
   const handleAllocate = async (statStr) => {
     if (unspentStats <= 0) return;
     try {
@@ -197,31 +229,65 @@ export default function DashboardView({ hero, updateHero }) {
 
         {/* EQUIPPED INSTRUMENTS */}
         <div className="border border-neutral-900 bg-black/40 p-6 flex-1">
-          <h3 className="font-serif text-xl tracking-[0.2em] uppercase text-stone-400 border-b border-neutral-800 pb-3 mb-6">Equipped Instruments</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {slotOrder.map(slot => {
-              const item = hero?.equipped?.[slot];
-              return (
-                <div key={slot} className={`border p-4 flex items-center justify-between transition-colors ${item ? `bg-[#050505] border-neutral-800` : 'bg-black/50 border-neutral-900 border-dashed'}`}>
-                  <div>
-                    <div className="text-[10px] font-mono text-stone-600 uppercase tracking-widest">{getSlotDisplay(slot)}</div>
-                    {item ? (
-                      <div className={`font-bold tracking-widest uppercase text-sm mt-1 ${getTierColor(item.rarity)}`}>
-                        {item.name}
-                      </div>
+           <h3 className="font-serif text-center text-sm tracking-widest text-stone-500 uppercase mb-4 border-b border-neutral-900 pb-2">Equipment</h3>
+           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+             {slotOrder.map(slot => {
+                const item = hero?.equipment?.[slot];
+                return (
+                  <button key={slot} onClick={() => setModalSlot(slot)} className="w-full aspect-square border border-neutral-900 bg-neutral-950 flex flex-col items-center justify-center p-2 group hover:border-[#cf2a2a] transition-all">
+                      <div className="text-[10px] font-mono text-stone-600 uppercase tracking-widest mb-1 group-hover:text-[#cf2a2a]">{getSlotDisplay(slot)}</div>
+                      {item ? (
+                         <div className="text-center">
+                            <div className={`font-serif text-xs ${getTierColor(item.tier)}`}>+{item.level || 0}</div>
+                            <div className={`font-serif text-xs truncate w-full ${getTierColor(item.tier)}`}>{item.name.slice(0, 10)}..</div>
+                         </div>
+                      ) : (
+                         <div className="text-stone-800 text-2xl font-serif">†</div>
+                      )}
+                  </button>
+                )
+             })}
+           </div>
+        </div>
+      </section>
+
+      {/* Equipment Modal UI Override */}
+      {modalSlot && (
+         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#050505] border border-red-900/50 p-6 w-full max-w-xl max-h-[80vh] overflow-y-auto relative animate-in zoom-in-95 duration-200 shadow-[0_0_50px_rgba(255,0,0,0.1)] text-center">
+                <button onClick={() => setModalSlot(null)} className="absolute top-4 right-4 text-stone-500 hover:text-white uppercase font-mono text-xs">X Close</button>
+                
+                <h3 className="text-2xl font-serif text-[#cf2a2a] mb-2 uppercase tracking-widest">{getSlotDisplay(modalSlot)} Armory</h3>
+                <p className="text-xs font-mono text-stone-500 uppercase tracking-widest mb-6">Select an artifact to imbue your power.</p>
+
+                {hero?.equipment?.[modalSlot] && (
+                   <button 
+                     onClick={() => handleEquip(null)}
+                     className="w-full border border-stone-800 bg-stone-950 p-4 hover:border-red-500 text-stone-400 hover:text-red-500 font-mono text-xs uppercase tracking-widest mb-4 transition-colors"
+                   >
+                       Unequip Current Item
+                   </button>
+                )}
+
+                <div className="space-y-2">
+                    {hero?.artifacts?.filter(a => isCorrectSlotType(a, modalSlot)).length === 0 ? (
+                        <div className="text-stone-700 font-mono text-xs uppercase py-8">No compatible artifacts found in inventory.</div>
                     ) : (
-                      <div className="text-stone-700 italic text-[10px] uppercase mt-2">Empty</div>
+                        hero?.artifacts?.filter(a => isCorrectSlotType(a, modalSlot)).map(artifact => (
+                            <div key={artifact.id} className="flex justify-between items-center border border-neutral-900 bg-black p-4 group hover:border-[#cf2a2a]/50">
+                                <div className="text-left">
+                                   <div className={`font-serif text-sm tracking-widest ${getTierColor(artifact.tier)}`}>+{artifact.level || 0} {artifact.name}</div>
+                                   <div className="text-[10px] text-stone-500 font-mono uppercase mt-1">Base Power: {artifact.stat || 0}</div>
+                                </div>
+                                <button 
+                                   onClick={() => handleEquip(artifact.id)}
+                                   className="px-6 py-2 border border-[#cf2a2a]/50 bg-red-950/20 text-[#cf2a2a] font-mono text-xs uppercase hover:bg-[#cf2a2a] hover:text-white transition-colors"
+                                >
+                                   Equip
+                                </button>
+                            </div>
+                        ))
                     )}
-                  </div>
-                  {item && (
-                    <div className="flex gap-2">
-                       {item.stats?.dmg && <span className="text-[10px] text-red-500 font-mono">+{item.stats.dmg} DMG</span>}
-                       {item.stats?.def && <span className="text-[10px] text-stone-400 font-mono">+{item.stats.def} DEF</span>}
-                       {item.stats?.hp && <span className="text-[10px] text-stone-300 font-mono">+{item.stats.hp} HP</span>}
-                    </div>
-                  )}
-                </div>
               );
             })}
           </div>

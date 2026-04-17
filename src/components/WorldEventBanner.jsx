@@ -9,9 +9,13 @@ export default function WorldEventBanner() {
         // Fetch the most active world event
         const fetchEvent = async () => {
             try {
+                const now = new Date().toISOString();
                 const { data, error } = await supabase.from('world_events')
                     .select('*')
                     .eq('is_active', true)
+                    .not('starts_at', 'is', null)
+                    .lte('starts_at', now)
+                    .gte('ends_at', now)
                     .order('starts_at', { ascending: false })
                     .limit(1)
                     .single();
@@ -25,7 +29,14 @@ export default function WorldEventBanner() {
         // Real-time listener for events triggering across the frontend
         const sub = supabase.channel('public:world_events')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'world_events' }, payload => {
-                if (payload.new?.is_active) {
+                const nowMs = Date.now();
+                const isValidEvent = payload.new?.is_active && 
+                                     payload.new?.starts_at && 
+                                     payload.new?.ends_at && 
+                                     new Date(payload.new.starts_at).getTime() <= nowMs &&
+                                     new Date(payload.new.ends_at).getTime() >= nowMs;
+
+                if (isValidEvent) {
                     setActiveEvent(payload.new);
                 } else {
                     // If the event was deactivated, clear it only if it's the one we're showing

@@ -1,13 +1,36 @@
 'use client';
+import { useState } from 'react';
 import { calcCombatStats } from '@/lib/gameData';
 import { calculateSkillBonuses } from '@/lib/skillTree';
 
 export default function HealerView({ hero, updateHero, onBack }) {
-  const c = calcCombatStats(hero, calculateSkillBonuses(hero?.skillPoints || {}));
+  const [healing, setHealing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const handleHeal = () => {
-    if (hero.gold >= 20 && hero.hp < c.maxHp) {
-      updateHero({ ...hero, gold: hero.gold - 20, hp: c.maxHp });
+  const c = calcCombatStats(hero, calculateSkillBonuses(hero?.skillPoints || {}));
+  const dynamicCost = Math.floor((hero?.level || 1) * 10 * 0.1) + 10;
+
+  const handleHeal = async () => {
+    if (hero.gold >= dynamicCost && hero.hp <= 0) {
+       setHealing(true);
+       try {
+           const res = await fetch('/api/healer/revive', { method: 'POST' });
+           const data = await res.json();
+           if (res.ok) {
+               updateHero(data.updatedHero);
+           } else {
+               setErrorMsg(data.error);
+           }
+       } catch (err) {
+           setErrorMsg(err.message);
+       } finally {
+           setHealing(false);
+       }
+    } else if (hero.hp > 0) {
+       // Support normal local healing for minor wounds if not dead
+       if (hero.gold >= 20 && hero.hp < c.maxHp) {
+           updateHero({ ...hero, gold: hero.gold - 20, hp: c.maxHp });
+       }
     }
   };
 

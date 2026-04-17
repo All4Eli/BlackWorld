@@ -79,100 +79,43 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
     return currentHero;
   }
 
-  const handleAttack = () => {
+  const handleAttack = async () => {
     if (hero.hp <= 0 || enemy.hp <= 0 || !isPlayerTurn) return;
     setIsPlayerTurn(false);
 
-    // Calculate player damage via unified stats
-    const isCrit = Math.random() * 100 < c.critChance;
-    const baseDamage = c.attackDamage + Math.floor(c.magicPower / 2); // Magic adds half to raw swings
-    
-    // Add raw variance (+/- 15%)
-    let rawDmg = isCrit ? Math.floor(baseDamage * 1.5) : baseDamage;
-    const variance = rawDmg * 0.15;
-    const finalDmg = Math.floor(rawDmg - variance + (Math.random() * variance * 2));
-    
-    const newEnemyHp = Math.max(0, enemy.hp - finalDmg);
-    setEnemy(prev => ({ ...prev, hp: newEnemyHp }));
-    
-    const lifestealHeal = c.lifesteal;
-    
-    if (isCrit) addLog(`💥 [CRITICAL HIT!]: Your weapon devastates ${enemy.name} for ${finalDmg} damage!`);
-    else addLog(`⚔️ [STRIKE]: Your weapon cuts ${enemy.name} for ${finalDmg} damage.`);
+    try {
+        const response = await fetch('/api/combat/resolve', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ enemyId: enemy.id || 'void_stalker' })
+        });
+        const data = await response.json();
 
-    if (lifestealHeal > 0) {
-      addLog(`🩸 (Leached ${lifestealHeal} HP)`);
-      setHero(prev => ({ ...prev, hp: Math.min(c.maxHp, prev.hp + lifestealHeal) }));
-    }
-
-    if (newEnemyHp === 0) {
-      const xpDrop = enemy.isBoss ? 100 : 40;
-      const goldDrop = enemy.isBoss ? (Math.floor(Math.random() * 200) + 100) : (Math.floor(Math.random() * 20) + 10);
-      
-      const flaskDropProbability = Math.random();
-      let droppedFlask = false;
-      if (flaskDropProbability > 0.6) droppedFlask = true;
-
-      // Bosses always drop an Artifact
-      let droppedArtifact = null;
-      if (enemy.isBoss) {
-        // Drop tier scales with hero level (1 tier per 5 levels roughly)
-        const tier = Math.max(1, Math.ceil(hero.level / 5));
-        droppedArtifact = generateLoot(tier);
-      }
-
-      addLog(`🏆 [SLAIN]: The ${enemy.name} has fallen.`);
-      addLog(`+ ${xpDrop} EXP | + ${goldDrop} Gold`);
-      if (droppedFlask) addLog(`🩸 Found 1x Crimson Flask.`);
-      if (droppedArtifact) addLog(`🔮 [ARTIFACT!]: ${droppedArtifact.name} [${droppedArtifact.rarity}]`);
-
-      // Roll for tome drop on boss kill
-      let droppedTome = null;
-      if (enemy.isBoss) {
-        droppedTome = rollForTomeDrop(hero.learnedTomes || []);
-        if (droppedTome) {
-          addLog(`📜 [ANCIENT TOME DISCOVERED!]: ${droppedTome.name} — ${droppedTome.description}`);
+        if (!response.ok) {
+            addLog(`❌ [ERROR]: ${data.error}`);
+            setIsPlayerTurn(true);
+            return;
         }
-      }
-      
-      const newKills = hero.kills + 1;
-      
-      setHero(prev => {
-        let updated = { 
-          ...prev, 
-          kills: newKills, 
-          xp: prev.xp + xpDrop,
-          gold: prev.gold + goldDrop,
-          flasks: droppedFlask ? prev.flasks + 1 : prev.flasks,
-          artifacts: droppedArtifact ? [...prev.artifacts, droppedArtifact] : prev.artifacts,
-          learnedTomes: droppedTome ? [...(prev.learnedTomes || []), droppedTome.id] : (prev.learnedTomes || [])
-        };
-        const levelUpHero = handleLevelUp(updated);
-        
-        // Signal victory to parent to exit combat loop after delay
-        setTimeout(() => {
-          onVictory(levelUpHero);
-        }, 3000);
-        
-        return levelUpHero;
-      });
-      
-      return;
-    }
 
-    // ENEMY PHASE
-    setTimeout(() => {
-      const rawEnemyDmg = Math.floor(Math.random() * (enemy.isBoss ? 10 : 5)) + enemy.attackDamage;
-      const reducedDmg = Math.max(1, rawEnemyDmg - c.damageReduction);
-      setHero(prev => ({ ...prev, hp: Math.max(0, prev.hp - reducedDmg) }));
-      addLog(`⚠️ ${enemy.name} strikes for ${reducedDmg} damage!${c.damageReduction > 0 ? ` (${c.damageReduction} blocked)` : ''}`);
+        if (data.win) {
+            addLog(`💥 [STRIKE]: You devastate ${enemy.name}!`);
+            setEnemy(prev => ({ ...prev, hp: 0 }));
+            addLog(`🏆 [SLAIN]: The ${enemy.name} has fallen.`);
+            addLog(`+ ${data.expGained} EXP | + ${data.goldGained} Gold`);
+            
+            setTimeout(() => {
+                onVictory(data.updatedHero);
+            }, 3000);
+        } else {
+            addLog(`⚠️ ${enemy.name} overpowered you!`);
+            addLog("🛑 [PERISHED]: The dark consumes you...");
+            setHero(prev => ({ ...prev, hp: 0 }));
+        }
 
-      if (hero.hp - reducedDmg <= 0) {
-        addLog("🛑 [PERISHED]: The dark consumes you...");
-      } else {
+    } catch (err) {
+        addLog(`❌ [SYSTEM ERROR]: ${err.message}`);
         setIsPlayerTurn(true);
-      }
-    }, 1200);
+    }
   };
 
   const handleFlask = () => {

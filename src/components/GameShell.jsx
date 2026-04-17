@@ -11,10 +11,8 @@ import QuestLog from './QuestLog';
 import AchievementPanel from './AchievementPanel';
 import BattlePassHub from './BattlePassHub';
 import PremiumStore from './PremiumStore';
-import ResourceBars from './ResourceBars';
-import ResourceRefillModal from './ResourceRefillModal';
 import WorldEventBanner from './WorldEventBanner';
-import MobileResourceStrip from './MobileResourceStrip';
+import TornSidebar from './TornSidebar';
 
 export default function GameShell({ hero, updateHero, onFindCombat }) {
   const [activeTab, setActiveTab] = useState('DASHBOARD');
@@ -176,6 +174,16 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
              </div>
          </div>
       </aside>
+
+      {/* Torn-Style Left Stat Panel */}
+      <div className="hidden xl:block mr-8 flex-shrink-0 relative">
+         <div className="sticky top-6">
+            <TornSidebar hero={hero} onNavigate={(tab) => {
+               setActiveTab(tab);
+               if (window.scrollTo) window.scrollTo({ top: 0, behavior: 'smooth' });
+            }} />
+         </div>
+      </div>
 
       {/* View Rendering Container */}
       <main className="flex-1 overflow-x-hidden min-w-0">

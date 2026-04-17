@@ -317,7 +317,7 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
                       <span className="text-2xl">{zone.icon}</span>
                       <div>
                         <div className="font-bold text-sm text-stone-200 uppercase tracking-widest group-hover:text-red-400 transition-colors">{zone.name}</div>
-                        <div className="text-xs text-stone-600 mt-0.5">Level {zone.levelReq}+ · Costs {zone.essenceCost} Essence</div>
+                        <div className="text-xs text-stone-600 mt-0.5">Level {zone.levelReq}+</div>
                       </div>
                     </div>
                     <div className="text-right font-mono text-xs text-stone-600">
@@ -373,19 +373,17 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
               <div className="grid grid-cols-2 gap-3 p-4 border-t border-neutral-900 bg-[#050505]">
                 <button
                   onClick={() => handleAction('SAFE')}
-                  disabled={currentEssence < activeZone.essenceCost}
+                  disabled={exploreCooldown}
                   className="bg-neutral-900/50 hover:bg-neutral-800 border border-neutral-800 py-4 text-xs tracking-widest uppercase text-stone-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all font-mono"
                 >
                   Tread Carefully
-                  <span className="block text-[10px] text-stone-600 mt-1">{activeZone.essenceCost} Essence</span>
                 </button>
                 <button
                   onClick={() => handleAction('DARK')}
-                  disabled={currentEssence < activeZone.essenceCost}
+                  disabled={exploreCooldown}
                   className="bg-red-950/10 hover:bg-red-900/25 border border-red-900/30 py-4 text-xs tracking-widest uppercase text-red-500 font-bold disabled:opacity-30 disabled:cursor-not-allowed transition-all font-mono"
                 >
                   Plunge into Darkness
-                  <span className="block text-[10px] text-red-900 mt-1">{activeZone.essenceCost} Essence</span>
                 </button>
               </div>
             )}

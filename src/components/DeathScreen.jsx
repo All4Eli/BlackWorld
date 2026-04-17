@@ -9,15 +9,18 @@ export default function DeathScreen({ onRestart }) {
         <h2 className="text-6xl md:text-8xl font-black text-red-700 uppercase tracking-[0.2em] mb-8 font-serif drop-shadow-[0_0_10px_rgba(153,27,27,0.8)]">
           You Died
         </h2>
-        <p className="text-stone-500 font-mono tracking-widest uppercase mb-12">
-          Your algorithm was insufficient. The memory is wiped.
+        <p className="text-stone-500 font-mono tracking-widest uppercase mb-4">
+          The shadows drag you back to Sanctuary.
+        </p>
+        <p className="text-yellow-600 font-mono tracking-widest uppercase text-xs mb-12">
+          Penalty: 50% of your Gold was lost.
         </p>
 
         <button 
           onClick={onRestart}
           className="border border-red-900/50 bg-red-950/20 hover:bg-red-900/40 text-red-500 font-bold px-10 py-4 font-mono uppercase tracking-[0.2em] transition-all text-sm w-full md:w-auto"
         >
-          Reboot Simulation
+          Rise Again
         </button>
       </div>
     </div>

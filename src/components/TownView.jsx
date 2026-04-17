@@ -1,11 +1,17 @@
 'use client';
+import { useState } from 'react';
+import HealerView from './HealerView';
+import BankView from './BankView';
+import CasinoView from './CasinoView';
+import ItemShopView from './ItemShopView';
 
-export default function TownView({ hero }) {
+export default function TownView({ hero, updateHero }) {
+  const [activeLocation, setActiveLocation] = useState(null);
   const categories = [
     {
       title: 'Market District',
       locations: [
-        { id: 'auction', name: 'The Auction House', description: 'Exchange rare artifacts with other players.', status: 'Beta' },
+        { id: 'shop', name: 'The Merchant', description: 'Exchange gold for rare artifacts and gear.', status: null },
         { id: 'bank', name: 'Blood Bank', description: 'Secure your gold before diving into the dark.', status: null },
       ]
     },
@@ -23,6 +29,11 @@ export default function TownView({ hero }) {
       ]
     }
   ];
+
+  if (activeLocation === 'healer') return <HealerView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'bank') return <BankView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'casino') return <CasinoView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'shop') return <ItemShopView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col gap-8 animate-in slide-in-from-bottom-4 duration-700">
@@ -47,10 +58,17 @@ export default function TownView({ hero }) {
                {cat.title}
              </h2>
              <div className="flex flex-col border border-neutral-900 bg-black/40">
-               {cat.locations.map((loc, idx) => (
+                {cat.locations.map((loc, idx) => (
                  <button 
                    key={loc.id}
-                   className={`flex justify-between items-center text-left p-5 hover:bg-neutral-900/50 transition-colors ${idx !== cat.locations.length - 1 ? 'border-b border-neutral-800' : ''}`}
+                   onClick={() => {
+                     // Set active location unless it's covens (not built yet)
+                     if (loc.id !== 'covens') setActiveLocation(loc.id);
+                   }}
+                   disabled={loc.id === 'covens'}
+                   className={`w-full flex justify-between items-center text-left p-5 transition-colors group ${
+                     loc.id === 'covens' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-neutral-900/50 cursor-pointer'
+                   } ${idx !== cat.locations.length - 1 ? 'border-b border-neutral-800' : ''}`}
                  >
                    <div>
                      <div className="flex items-center gap-3">

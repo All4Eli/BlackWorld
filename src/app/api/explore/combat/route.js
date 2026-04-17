@@ -135,6 +135,45 @@ export async function POST(request) {
             }
             if (pHp <= 0) combatEnded = true;
 
+        } else if (action === 'SKILL') {
+            const { skillId } = await request.json();
+            
+            // Standard Spells Library Array
+            const ARCANA = {
+                'blood_surge': { name: 'Blood Surge', type: 'DAMAGE', cost: 10, multiplier: 3.5, msg: 'A torrent of boiling blood erupts from your palm!' },
+                'shadow_step': { name: 'Shadow Step', type: 'EVADE', cost: 15, msg: 'You melt into the darkness, completely evading the attack.' },
+                'holy_cross': { name: 'Holy Cross', type: 'DAMAGE', cost: 20, multiplier: 5.0, msg: 'Blinding white light scorches the enemy!' }
+            };
+
+            const spell = ARCANA[skillId];
+            if (!spell) {
+                 return NextResponse.json({ error: 'Unknown Incantation!' }, { status: 400 });
+            }
+            if ((hero.energy || 0) < spell.cost) {
+                 return NextResponse.json({ error: 'Not enough Arcane Energy!' }, { status: 400 });
+            }
+
+            hero.energy -= spell.cost;
+            initialLogs.push(`✧ [CAST]: ${spell.name} — ${spell.msg}`);
+
+            if (spell.type === 'DAMAGE') {
+                const magicalDmg = Math.floor(pStats.baseDamageMax * spell.multiplier);
+                eHp -= magicalDmg;
+                initialLogs.push(`✧ [ARCANA]: You devastated the enemy for ${magicalDmg} magical damage!`);
+                
+                if (eHp > 0) {
+                     const dmg = rollDamage(eStats.damageMin, eStats.damageMax);
+                     pHp -= Math.max(1, dmg - (pStats.damageReduction || 0));
+                     delayedLogs.push(`♦ [WOUNDED]: Enemy retaliates for ${dmg}!`);
+                }
+            } else if (spell.type === 'EVADE') {
+                // Enemy misses entirely
+                delayedLogs.push(`≈ [SHADOW]: The enemy strikes empty air!`);
+            }
+
+            if (pHp <= 0) combatEnded = true;
+            if (eHp <= 0) { win = true; combatEnded = true; }
+
         } else if (action === 'FLEE') {
             if (Math.random() < 0.4) {
                 initialLogs.push(`≈ [ESCAPE]: You successfully fled the battle!`);
@@ -183,6 +222,19 @@ export async function POST(request) {
                 hero.level = hero.level || 1;
                 hero.unspentStatPoints = hero.unspentStatPoints || 0;
                 hero.skillPointsUnspent = hero.skillPointsUnspent || 0;
+                
+                // --- BATTLEPASS XP HOOK ---
+                if (!hero.battlepass) {
+                    hero.battlepass = { current_tier: 1, current_xp: 0, xp_per_tier: 1000, is_premium: false, claimed_free: [], claimed_premium: [] };
+                }
+                const bpXpGained = fetchedEnemy.tier === 'Boss' ? 250 : 25;
+                hero.battlepass.current_xp += bpXpGained;
+                if (hero.battlepass.current_xp >= hero.battlepass.xp_per_tier) {
+                     hero.battlepass.current_xp -= hero.battlepass.xp_per_tier;
+                     hero.battlepass.current_tier += 1;
+                     initialLogs.push(`✧ [BATTLE PASS]: You reached Tier ${hero.battlepass.current_tier}!`);
+                }
+                // ---------------------------
 
                 const { calculateXPRequirement } = require('@/lib/gameData');
                 let requiredXp = calculateXPRequirement(hero.level);

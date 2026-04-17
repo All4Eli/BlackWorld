@@ -292,21 +292,38 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
 
              {/* Action Bar */}
              {!combatEnded && !combatLoading && (
-                <div className="grid grid-cols-4 gap-1 border-t border-neutral-900 bg-black p-2 font-mono text-xs uppercase tracking-widest font-bold">
-                   <button onClick={handleAttack} className="bg-[#020202] hover:bg-neutral-900 border border-neutral-800 py-6 text-stone-300 hover:text-white transition-colors border-r-0">
-                      [Attack]
-                   </button>
-                   <button onClick={() => processCombatTurn('DEFEND')} className="bg-[#020202] hover:bg-neutral-900 border border-neutral-800 py-6 text-stone-400 hover:text-stone-200 transition-colors border-r-0">
-                      [Defend]
-                   </button>
-                   <button onClick={handleUseItem} className="bg-[#020202] hover:bg-neutral-900 border border-neutral-800 py-6 text-emerald-600 hover:text-emerald-400 transition-colors border-r-0 flex flex-col items-center gap-1">
-                      [Use Item]
-                      <span className="text-[9px] text-stone-600 font-normal">Flasks: {hero.flasks || 0}</span>
-                   </button>
-                   <button onClick={handleFlee} className="bg-[#020202] hover:bg-neutral-900 border border-neutral-800 py-6 text-stone-500 hover:text-stone-300 transition-colors">
-                      [Flee]
-                   </button>
-                </div>
+              <div className="p-8 pb-10 mt-auto">
+                 <div className="grid grid-cols-3 gap-4 mb-4">
+                     <button onClick={handleAttack} disabled={combatLoading} className="bg-red-950/20 hover:bg-red-950/40 border border-red-900/50 py-4 font-mono uppercase tracking-widest text-sm text-red-500 disabled:opacity-30 disabled:cursor-not-allowed">
+                        Attack (Melee)
+                     </button>
+                     <button onClick={handleUseItem} disabled={combatLoading || (hero.flasks || 0) <= 0} className="bg-stone-900/40 hover:bg-stone-800 border border-stone-800 py-4 font-mono uppercase tracking-widest text-sm text-stone-400 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        <span>Flask</span>
+                        <span className="text-red-800 text-xs">x{hero.flasks || 0}</span>
+                     </button>
+                     <button onClick={handleFlee} disabled={combatLoading} className="bg-stone-950 hover:bg-stone-900 border border-neutral-900 py-4 font-mono uppercase tracking-widest text-sm text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed">
+                        Flee
+                     </button>
+                 </div>
+                 
+                 {/* The Combat Grimoire (Arcana Hotbar) */}
+                 <div className="border border-purple-900/30 bg-[#050505] p-4 flex items-center gap-4">
+                     <div className="text-xs font-mono uppercase tracking-widest text-purple-600 pr-4 border-r border-purple-900/30">
+                        Arcana <br/><span className="text-cyan-600">{hero.energy || 100} MP</span>
+                     </div>
+                     <div className="flex gap-3">
+                         <button onClick={() => handleCombatAction('SKILL', { skillId: 'blood_surge' })} disabled={combatLoading || (hero.energy||100) < 10} className="w-12 h-12 border-2 border-red-900 bg-red-950/20 hover:bg-red-900/50 text-red-500 font-bold disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xl shadow-[0_0_10px_rgba(255,0,0,0.2)]">
+                            🩸
+                         </button>
+                         <button onClick={() => handleCombatAction('SKILL', { skillId: 'shadow_step' })} disabled={combatLoading || (hero.energy||100) < 15} className="w-12 h-12 border-2 border-stone-800 bg-stone-950 text-stone-500 hover:bg-stone-800 hover:text-stone-300 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xl">
+                            🕸
+                         </button>
+                         <button onClick={() => handleCombatAction('SKILL', { skillId: 'holy_cross' })} disabled={combatLoading || (hero.energy||100) < 20} className="w-12 h-12 border-2 border-yellow-700 bg-yellow-950/30 hover:bg-yellow-700/50 text-white font-bold disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xl shadow-[0_0_15px_rgba(255,200,0,0.3)]">
+                            ✟
+                         </button>
+                     </div>
+                 </div>
+              </div>
              )}
           </div>
         </div>

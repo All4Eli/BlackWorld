@@ -24,6 +24,24 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Sanitize backwards-compatibility issues natively (Stale Emojis + Deprecated Quests)
+  const legacyAsciiMap = { '⚔️': '⚔', '🩸': '♦', '🛡️': '⛨', '🦴': '✟', '🌋': '◬', '⛪': '⛫', '🌀': '❂', '💀': '☠', '💰': '¤', '💎': '✦', '✨': '▲', '☠️': '☠', '💨': '≈', '✉️': '✉', '🔔': '⚠', '❌': '✖', '💪': '♅', '🧠': '☤', '🏃': '≈', '🔮': '❂', '🎭': '♆', '⚡': 'ϟ' };
+  
+  if (data?.hero_data) {
+     const h = data.hero_data;
+     if (h.daily_quests) {
+         h.daily_quests = h.daily_quests.filter(q => q.type !== 'ESSENCE_SPENT');
+         h.daily_quests.forEach(q => { if (q.icon && legacyAsciiMap[q.icon]) q.icon = legacyAsciiMap[q.icon]; });
+     }
+     if (h.accepted_quests) {
+         h.accepted_quests = h.accepted_quests.filter(q => q.type !== 'ESSENCE_SPENT');
+         h.accepted_quests.forEach(q => { if (q.icon && legacyAsciiMap[q.icon]) q.icon = legacyAsciiMap[q.icon]; });
+     }
+     if (h.artifacts) {
+         h.artifacts.forEach(a => { if (a.icon && legacyAsciiMap[a.icon]) a.icon = legacyAsciiMap[a.icon]; });
+     }
+  }
+
   // Inject trustworthy coven metadata into client payload
   const payload = {
      ...data,

@@ -22,11 +22,16 @@ export async function POST(request) {
 
         let hero = player.hero_data || {};
         
+        const pStats = calcPlayerStats(hero);
+
+        // Algorithmic healing fix for players trapped by the NaN procedural generation bug.
+        if (hero.hp == null || isNaN(hero.hp)) {
+             hero.hp = pStats.maxHp;
+        }
+
         if (hero.hp <= 0) {
             return NextResponse.json({ error: 'You are dead.' }, { status: 400 });
         }
-
-        const pStats = calcPlayerStats(hero);
 
         const { generateEnemy } = require('@/lib/gameData');
         let fetchedEnemy = generateEnemy(1); // Default logic fallback

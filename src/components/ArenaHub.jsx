@@ -13,17 +13,18 @@ export default function ArenaHub({ hero, updateHero, onBack }) {
 
     const togglePvpFlag = async () => {
         const newFlag = !hero.pvp_flag;
-        updateHero({ ...hero, pvp_flag: newFlag });
         try {
-            await fetch('/api/pvp/toggle', {
+            const res = await fetch('/api/pvp/toggle', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ flag: newFlag })
             });
+            const data = await res.json();
+            if (res.ok) {
+                updateHero(data.updatedHero);
+            }
         } catch (err) {
             console.error("Failed to toggle PVP flag:", err);
-            // Revert on error
-            updateHero({ ...hero, pvp_flag: !newFlag });
         }
     };
 
@@ -99,10 +100,7 @@ export default function ArenaHub({ hero, updateHero, onBack }) {
                                                     const data = await res.json();
                                                     if (!res.ok) throw new Error(data.error);
 
-                                                    updateHero({
-                                                        ...data.updatedHero,
-                                                        player_resources: { ...hero.player_resources, resolve_current: check.new_current }
-                                                    });
+                                                    updateHero(data.updatedHero);
                                                     
                                                     const logStr = data.combatLogs.join('\n');
                                                     alert(data.win 

@@ -26,6 +26,15 @@ export async function POST(request) {
         let attackerHero = attackerRecord.hero_data || {};
         if (attackerHero.hp <= 0) return NextResponse.json({ error: 'You are dead.' }, { status: 400 });
 
+        if (!attackerHero.player_resources) attackerHero.player_resources = {};
+        const currentResolve = attackerHero.player_resources.resolve_current ?? 50;
+        
+        if (currentResolve < 5) {
+            return NextResponse.json({ error: 'Not enough Resolve.' }, { status: 400 });
+        }
+        
+        attackerHero.player_resources.resolve_current = currentResolve - 5;
+
         // Fetch defender
         const { data: defenderRecord, error: dError } = await supabase
             .from('players')

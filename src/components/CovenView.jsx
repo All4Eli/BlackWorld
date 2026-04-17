@@ -54,14 +54,7 @@ export default function CovenView({ hero, updateHero, onBack }) {
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'Failed to found coven');
           
-          updateHero({
-             ...hero,
-             gold: currentGold - 1000,
-             coven_id: data.coven.id,
-             coven_name: data.coven.name,
-             coven_tag: data.coven.tag,
-             coven_role: 'Leader'
-          });
+          updateHero(data.updatedHero);
           setFoundingMode(false);
       } catch(err) {
           setFoundingError(err.message);
@@ -81,13 +74,7 @@ export default function CovenView({ hero, updateHero, onBack }) {
           const data = await res.json();
           if (!res.ok) throw new Error(data.error);
 
-          updateHero({
-             ...hero,
-             coven_id: data.coven.id,
-             coven_name: data.coven.name,
-             coven_tag: data.coven.tag,
-             coven_role: 'Member'
-          });
+          updateHero(data.updatedHero);
       } catch(err) {
           console.error(err);
       } finally {
@@ -99,14 +86,11 @@ export default function CovenView({ hero, updateHero, onBack }) {
      if(!confirm("Are you sure you want to abandon your coven?")) return;
      setLoading(true);
      try {
-         await fetch('/api/covens/leave', { method: 'POST' });
-         updateHero({
-             ...hero,
-             coven_id: null,
-             coven_name: null,
-             coven_tag: null,
-             coven_role: 'Unpledged'
-         });
+         const res = await fetch('/api/covens/leave', { method: 'POST' });
+         const data = await res.json();
+         if (!res.ok) throw new Error(data.error);
+
+         updateHero(data.updatedHero);
          setCovenDetails(null);
      } catch(err) {
          console.error(err);

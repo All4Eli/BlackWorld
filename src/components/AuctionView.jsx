@@ -49,11 +49,7 @@ export default function AuctionView({ hero, updateHero, onBack }) {
        if (!res.ok) throw new Error(data.error);
 
        // Success! Deduct gold and add item
-       updateHero({
-          ...hero,
-          gold: currentGold - auction.buyout_price,
-          artifacts: [...(hero.artifacts || []), data.item]
-       });
+       updateHero(data.updatedHero);
        
        showMessage(`Purchased: ${data.item.name}`);
        fetchListings(); // refresh
@@ -87,12 +83,7 @@ export default function AuctionView({ hero, updateHero, onBack }) {
          if (!res.ok) throw new Error(data.error);
 
          // Remove item from inventory and deduct fee
-         const newArtifacts = (hero.artifacts || []).filter(a => a.id !== selectedItem.id);
-         updateHero({
-             ...hero,
-             gold: currentGold - fee,
-             artifacts: newArtifacts
-         });
+         updateHero(data.updatedHero);
 
          setSelectedItem(null);
          setSellPrice('');

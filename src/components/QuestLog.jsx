@@ -31,12 +31,23 @@ export default function QuestLog({ hero, updateHero, onBack }) {
         loadQuests();
     }, [tab, hero?.daily_quests]);
 
-    const handleAcceptQuest = (quest) => {
+    const handleAcceptQuest = async (quest) => {
         if (acceptedQuests.find(q => q.id === quest.id)) return; // Already accepted
         
-        const newAccepted = [...acceptedQuests, { ...quest, accepted_at: new Date().toISOString() }];
-        setAcceptedQuests(newAccepted);
-        updateHero({ ...hero, accepted_quests: newAccepted });
+        try {
+            const res = await fetch('/api/quests/accept', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ quest })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setAcceptedQuests(data.updatedHero.accepted_quests || []);
+                updateHero(data.updatedHero);
+            }
+        } catch(err) {
+            console.error('Failed to accept quest', err);
+        }
     };
 
     const isAccepted = (questId) => acceptedQuests.some(q => q.id === questId);
@@ -102,21 +113,22 @@ export default function QuestLog({ hero, updateHero, onBack }) {
                                         <div className="flex flex-col justify-center ml-4">
                                             {completed ? (
                                                 <button 
-                                                    onClick={() => {
-                                                        // Claim rewards
-                                                        const reward = q.reward || {};
-                                                        
-                                                        // Filter out claimed quest
-                                                        const remainingQuests = acceptedQuests.filter(quest => quest.id !== q.id);
-                                                        setAcceptedQuests(remainingQuests);
+                                                    onClick={async () => {
+                                                        try {
+                                                            const res = await fetch('/api/quests/claim', {
+                                                                method: 'POST',
+                                                                headers: { 'Content-Type': 'application/json' },
+                                                                body: JSON.stringify({ questId: q.id })
+                                                            });
+                                                            const data = await res.json();
+                                                            if (!res.ok) throw new Error(data.error);
 
-                                                        updateHero({
-                                                            ...hero,
-                                                            accepted_quests: remainingQuests,
-                                                            gold: (hero.gold || 0) + (reward.gold || 0),
-                                                            xp: (hero.xp || 0) + (reward.xp || 0),
-                                                            flasks: Math.min(5, (hero.flasks || 0) + (reward.flasks || 0)),
-                                                        });
+                                                            // Overwrite UI with verified backend representation
+                                                            setAcceptedQuests(data.updatedHero.accepted_quests || []);
+                                                            updateHero(data.updatedHero);
+                                                        } catch(err) {
+                                                            alert(`Claim Failed: ${err.message}`);
+                                                        }
                                                     }}
                                                     className="px-6 py-2 border border-green-800 hover:border-green-500 text-green-500 font-mono text-xs uppercase tracking-widest transition-all hover:bg-green-950/30"
                                                 >

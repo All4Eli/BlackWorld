@@ -5,23 +5,33 @@ export default function PremiumStore({ hero, updateHero }) {
     const [tab, setTab] = useState('BLOOD_STONES');
     const bloodStones = hero?.blood_stones || 0;
 
-    const buyBloodStones = (amount, costStr) => {
+    const buyBloodStones = async (amount, costStr) => {
         // Simulating Stripe Flow
         const confirmed = confirm(`Simulating checkout for ${costStr}. Proceed?`);
         if (confirmed) {
-            updateHero({ ...hero, blood_stones: bloodStones + amount });
-            alert(`Purchase Successful! +${amount} Blood Stones added to your character.`);
+            try {
+                const res = await fetch('/api/premium/buy', { method: 'POST', body: JSON.stringify({ action: 'BUY_CURRENCY', amount }) });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+                updateHero(data.updatedHero);
+                alert(`Purchase Successful! +${amount} Blood Stones added to your character.`);
+            } catch(err) { alert(`Purchase failed: ${err.message}`); }
         }
     };
 
-    const buyItem = (itemName, cost) => {
+    const buyItem = async (itemName, cost) => {
         if (bloodStones < cost) {
             return alert(`Not enough Blood Stones for ${itemName}.`);
         }
         const confirmed = confirm(`Purchase ${itemName} for ${cost} Blood Stones?`);
         if (confirmed) {
-            updateHero({ ...hero, blood_stones: bloodStones - cost });
-            alert(`${itemName} purchased successfully.`);
+            try {
+                const res = await fetch('/api/premium/buy', { method: 'POST', body: JSON.stringify({ action: 'BUY_ITEM', itemName, cost }) });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+                updateHero(data.updatedHero);
+                alert(`${itemName} purchased successfully.`);
+            } catch(err) { alert(`Purchase failed: ${err.message}`); }
         }
     };
 

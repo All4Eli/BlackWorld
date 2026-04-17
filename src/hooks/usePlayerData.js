@@ -62,9 +62,8 @@ export function usePlayerData() {
     setSaveData(prev => {
       const newData = typeof newDataOrFn === 'function' ? newDataOrFn(prev) : newDataOrFn;
 
-      // Debounce the cloud save so we don't fire on every rapid state change
-      if (saveTimeout.current) clearTimeout(saveTimeout.current);
-      saveTimeout.current = setTimeout(() => saveToCloud(newData), 500);
+      // AUTOMATIC CLOUD SAVES HAVE BEEN DISABLED FOR SECURITY.
+      // ALL LOGIC MUST BE AUTHORED VIA SECURE BACKEND ENDPOINTS.
 
       return newData;
     });

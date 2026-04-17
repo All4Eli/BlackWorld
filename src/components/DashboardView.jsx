@@ -41,13 +41,23 @@ export default function DashboardView({ hero, updateHero }) {
 
   const slotOrder = ['head', 'amulet', 'body', 'mainHand', 'offHand', 'ring1', 'ring2', 'boots'];
 
-  const handleAllocate = (statStr) => {
+  const handleAllocate = async (statStr) => {
     if (unspentStats <= 0) return;
-    updateHero({
-      ...hero,
-      [statStr]: (hero[statStr] ?? 5) + 1,
-      unspentStatPoints: unspentStats - 1
-    });
+    try {
+        const res = await fetch('/api/player/allocate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ statStr })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            updateHero(data.updatedHero);
+        } else {
+            console.error('Allocation failed:', data.error);
+        }
+    } catch(err) {
+        console.error(err);
+    }
   };
   
   return (

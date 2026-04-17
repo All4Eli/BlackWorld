@@ -36,10 +36,24 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
   const availableZones = ZONES.filter(z => hero.level >= z.levelReq);
   const lockedZones = ZONES.filter(z => hero.level < z.levelReq);
 
-  const handleEnterZone = (zone) => {
-    setActiveZone(zone);
-    setLog([`[ENTRY]: You cross into the ${zone.name}.`]);
-    updateHero({ ...hero, activeZone: zone });
+  const handleEnterZone = async (zone) => {
+    try {
+        const res = await fetch('/api/explore/zone', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ zoneId: zone.id })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            setActiveZone(zone);
+            setLog([`[ENTRY]: You cross into the ${zone.name}.`]);
+            updateHero(data.updatedHero);
+        } else {
+            addLog(`❌ [ERROR] ${data.error}`);
+        }
+    } catch(err) {
+        addLog(`❌ [SYSTEM] Cannot connect to server.`);
+    }
   };
 
   const handleAction = async (actionType) => {
@@ -62,18 +76,7 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
          addLog(`✨ [LOOT] Acquired ${data.loot.name}!`);
       }
       
-      const updatedHero = { ...hero };
-      if (updatedHero.player_resources) {
-          updatedHero.player_resources.essence_current = data.energyRemaining;
-      } else {
-          updatedHero.essence = data.energyRemaining;
-      }
-      
-      if (data.loot) {
-          if (!updatedHero.artifacts) updatedHero.artifacts = [];
-          updatedHero.artifacts.push(data.loot);
-      }
-      updateHero(updatedHero);
+      updateHero(data.updatedHero);
       
       if (data.encounter === 'enemy') {
          setTimeout(() => initCombat(activeZone), 1500);
@@ -92,15 +95,6 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
     if (!check.success) {
         return alert(`Insufficient Vitae. You lack ${check.deficit}.`);
     }
-    
-    // Process payment immediately
-    updateHero({
-        ...hero,
-        player_resources: {
-            ...hero.player_resources,
-            vitae_current: check.new_current
-        }
-    });
 
     setCombatActive(true);
     setCombatEnded(false);
@@ -132,137 +126,62 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
     setCombatLoading(false);
   };
 
-  const handleAttack = async () => {
+  const handleCombatAction = async (action) => {
      if (combatEnded || !currentEnemy) return;
-     const response = await fetch('/api/combat/resolve', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ enemyId: currentEnemy.id || 'void_stalker' })
-     });
-     const data = await response.json();
-     if (!response.ok) {
-        addCombatLog(`❌ [ERROR]: ${data.error}`);
-        return;
+     setCombatLoading(true);
+     try {
+         const response = await fetch('/api/explore/combat', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ enemyId: currentEnemy.id || 'void_stalker', action, enemyState: { hp: enemyHP } })
+         });
+         const data = await response.json();
+         if (!response.ok) {
+            addCombatLog(`❌ [ERROR]: ${data.error}`);
+            setCombatLoading(false);
+            return;
+         }
+
+         data.logs?.forEach(msg => addCombatLog(msg));
+         setPlayerHP(data.newPlayerHp);
+         setEnemyHP(data.newEnemyHp);
+
+         if (data.combatEnded) {
+             setCombatEnded(true);
+             if (data.win) {
+                 addCombatLog(`>> [VICTORY] You defeated the enemy! Gained ${data.expGained} EXP and ${data.goldGained} Gold.`);
+                 setTimeout(() => {
+                     setCombatActive(false);
+                     updateHero(data.updatedHero);
+                 }, 2000);
+             } else if (data.updatedHero.hp <= 0) {
+                 addCombatLog(`>> [DEFEAT] You were struck down...`);
+                 setTimeout(() => {
+                     setCombatActive(false);
+                     setActiveZone(null);
+                     updateHero(data.updatedHero);
+                 }, 3500);
+             } else {
+                 // Fled successfully
+                 setTimeout(() => {
+                     setCombatActive(false);
+                     updateHero(data.updatedHero);
+                 }, 1500);
+             }
+         } else {
+             updateHero(data.updatedHero);
+         }
+     } catch(err) {
+         console.error(err);
+         addCombatLog(`❌ [SYSTEM ERROR]: Failed to contact server.`);
+     } finally {
+         setCombatLoading(false);
      }
-
-     if (data.win) {
-        addCombatLog(`>> [VICTORY] You defeated the enemy! Gained ${data.expGained} EXP and ${data.goldGained} Gold.`);
-        setEnemyHP(0);
-        handleVictoryServer(data);
-     } else {
-        addCombatLog(`>> [DEFEAT] You were struck down...`);
-        setPlayerHP(0);
-        handleDefeatServer();
-     }
   };
 
-  const handleVictoryServer = (data) => {
-      setCombatEnded(true);
-      setTimeout(() => {
-          setCombatActive(false);
-          updateHero(data.updatedHero);
-      }, 2000);
-  };
-
-  const handleDefeatServer = () => {
-      setCombatEnded(true);
-      setTimeout(() => {
-          setCombatActive(false);
-          updateHero({ ...hero, hp: 0 });
-      }, 2000);
-  };
-
-  const handleUseItem = () => {
-      if (combatEnded || !currentEnemy) return;
-      if (!hero.flasks || hero.flasks <= 0) {
-          addCombatLog(`❌ [EMPTY]: No Crimson Flasks remaining!`);
-          return;
-      }
-      
-      const pStats = calcPlayerStats(hero);
-      const newPlayerHp = Math.min(pStats.maxHp, playerHP + 60);
-      setPlayerHP(newPlayerHp);
-      updateHero({ ...hero, flasks: hero.flasks - 1, hp: newPlayerHp });
-      addCombatLog(`🩸 [HEAL]: You consume a flask. +60 HP (Current: ${newPlayerHp})`);
-      
-      if (isHitDodged(pStats.dodgeChance)) {
-          addCombatLog(`💨 [EVADE]: You dodged ${currentEnemy.name}'s counter-attack!`);
-      } else {
-          const mDamage = rollDamage(currentEnemy.damageMin, currentEnemy.damageMax);
-          const postHealDamageHp = Math.max(0, newPlayerHp - mDamage);
-          setPlayerHP(postHealDamageHp);
-          addCombatLog(`🩸 [WOUNDED]: ${currentEnemy.name} hits you while drinking for ${mDamage}!`);
-          if (postHealDamageHp <= 0) handleDefeatServer();
-      }
-  };
-
-  const handleFlee = () => {
-      if (combatEnded || !currentEnemy) return;
-      const success = Math.random() < 0.4;
-      
-      if (success) {
-          addCombatLog(`💨 [ESCAPE]: You successfully fled the battle!`);
-          updateHero({ ...hero, hp: playerHP });
-          setCombatEnded(true);
-      } else {
-          addCombatLog(`❌ [TRAPPED]: You failed to escape! ${currentEnemy.name} strikes!`);
-          const pStats = calcPlayerStats(hero);
-          if (isHitDodged(pStats.dodgeChance)) {
-              addCombatLog(`💨 [EVADE]: You dodged the pursuit!`);
-          } else {
-              const mDamage = rollDamage(currentEnemy.damageMin, currentEnemy.damageMax);
-              const postFleeHp = Math.max(0, playerHP - mDamage);
-              setPlayerHP(postFleeHp);
-              addCombatLog(`🩸 [WOUNDED]: Hit for ${mDamage} damage!`);
-              if (postFleeHp <= 0) handleDefeatServer();
-          }
-      }
-  };
-
-  const handleVictory = () => {
-     setCombatEnded(true);
-     addCombatLog(`💀 [VICTORY]: ${currentEnemy.name} has been destroyed.`);
-     
-     const xpGained = currentEnemy.baseXp || Math.floor((Math.random() * 20) + 10);
-     addCombatLog(`✨ [REWARD]: Gained ${xpGained} XP.`);
-     
-     // Resolve Loot
-     let lootedGold = 0;
-     if (currentEnemy.loot_table) {
-        const table = currentEnemy.loot_table;
-        if (table.gold_min && table.gold_max) {
-           lootedGold = rollDamage(table.gold_min, table.gold_max);
-           addCombatLog(`💰 [LOOT]: Found ${lootedGold} gold!`);
-        }
-     }
-
-     updateHero({
-        ...hero,
-        hp: playerHP,
-        xp: (hero.xp || 0) + xpGained,
-        gold: (hero.gold || 0) + lootedGold
-     });
-  };
-
-  const handleDefeat = () => {
-     setCombatEnded(true);
-     addCombatLog(`☠️ [DEATH]: You have fallen to ${currentEnemy.name}.`);
-     const goldLoss = Math.floor((hero.gold || 0) * 0.1);
-     
-     addCombatLog(`🔻 Lost ${goldLoss} gold. Banished to Sanctuary.`);
-     
-     updateHero({
-        ...hero,
-        hp: 1,
-        gold: Math.max(0, (hero.gold || 0) - goldLoss)
-     });
-
-     setTimeout(() => {
-        // We can either redirect to Hub or just end combat
-        setCombatActive(false);
-        setActiveZone(null); // Boot them to directory
-     }, 3500);
-  };
+  const handleAttack = () => handleCombatAction('ATTACK');
+  const handleUseItem = () => handleCombatAction('FLASK');
+  const handleFlee = () => handleCombatAction('FLEE');
 
   const getTierColor = (tier) => {
     switch(tier) {

@@ -34,9 +34,19 @@ export default function HealerView({ hero, updateHero, onBack }) {
     }
   };
 
-  const handleBuyFlask = () => {
+  const handleBuyFlask = async () => {
     if (hero.gold >= 50 && hero.flasks < 5) {
-      updateHero({ ...hero, gold: hero.gold - 50, flasks: hero.flasks + 1 });
+      try {
+        const res = await fetch('/api/healer/flask', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+            updateHero(data.updatedHero);
+        } else {
+            setErrorMsg(data.error);
+        }
+      } catch (err) {
+        setErrorMsg(`Failed to buy flask: ${err.message}`);
+      }
     }
   };
 

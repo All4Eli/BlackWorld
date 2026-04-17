@@ -49,10 +49,11 @@ export async function POST(request) {
 
             if (updateError) throw updateError;
 
+            hero.bankedGold = bankedGold + val;
+
             return NextResponse.json({
                 success: true,
-                gold: hero.gold,
-                bankedGold: bankedGold + val
+                updatedHero: hero
             });
         } else {
             // withdraw
@@ -71,10 +72,11 @@ export async function POST(request) {
 
             if (updateError) throw updateError;
 
+            hero.bankedGold = bankedGold - val;
+
             return NextResponse.json({
                 success: true,
-                gold: hero.gold,
-                bankedGold: bankedGold - val
+                updatedHero: hero
             });
         }
     } catch (err) {

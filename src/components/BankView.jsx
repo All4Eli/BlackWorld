@@ -28,7 +28,7 @@ export default function BankView({ hero, updateHero, onBack }) {
         return;
       }
       
-      updateHero({ ...hero, gold: data.gold, bankedGold: data.bankedGold });
+      updateHero(data.updatedHero);
       setAmount('');
     } catch (err) {
       setError('Connection failed.');

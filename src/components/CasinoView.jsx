@@ -30,7 +30,7 @@ export default function CasinoView({ hero, updateHero, onBack }) {
 
         // Delay reveal for dramatic effect
         setTimeout(() => {
-           updateHero({ ...hero, gold: data.new_balance });
+           updateHero(data.updatedHero);
            
            // Mock the client roll text string based on win/loss combined with user's initial guess
            // Because true coin logic is standard 50/50 DB check:

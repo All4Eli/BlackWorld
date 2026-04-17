@@ -77,8 +77,10 @@ export default function QuestLog({ hero, updateHero, onBack }) {
                     ) : (
                         <div className="grid grid-cols-1 gap-4">
                             {quests.map(q => {
-                                const accepted = isAccepted(q.id);
-                                const completed = q.progress >= q.target;
+                                const trackedQuest = acceptedQuests.find(aq => aq.id === q.id);
+                                const accepted = !!trackedQuest;
+                                const progress = trackedQuest ? (trackedQuest.progress || 0) : (q.progress || 0);
+                                const completed = trackedQuest ? (progress >= trackedQuest.target) : false;
                                 return (
                                     <div key={q.id} className={`border bg-black p-5 transition-colors flex justify-between ${completed ? 'border-green-900/50' : accepted ? 'border-yellow-900/50' : 'border-neutral-800 hover:border-neutral-700'}`}>
                                         <div className="flex-1">
@@ -95,10 +97,10 @@ export default function QuestLog({ hero, updateHero, onBack }) {
                                                 <div className="mb-3">
                                                     <div className="flex justify-between text-[10px] font-mono text-stone-600 mb-1">
                                                         <span>Progress</span>
-                                                        <span>{q.progress || 0} / {q.target}</span>
+                                                        <span>{progress} / {q.target}</span>
                                                     </div>
                                                     <div className="h-1 bg-neutral-900 w-full">
-                                                        <div className={`h-full transition-all duration-500 ${completed ? 'bg-green-600' : 'bg-yellow-700'}`} style={{ width: `${Math.min(100, ((q.progress || 0) / q.target) * 100)}%` }} />
+                                                        <div className={`h-full transition-all duration-500 ${completed ? 'bg-green-600' : 'bg-yellow-700'}`} style={{ width: `${Math.min(100, (progress / q.target) * 100)}%` }} />
                                                     </div>
                                                 </div>
                                             )}

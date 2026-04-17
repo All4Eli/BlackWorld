@@ -133,7 +133,7 @@ export function getDailyQuests() {
     {
       id: `q2_${today}`,
       title: 'Essence Expenditure',
-      description: 'Spend 40 Blood Essence exploring.',
+      description: 'Spend 40 Essence exploring.',
       type: 'ESSENCE_SPENT',
       target: 40,
       progress: 0,

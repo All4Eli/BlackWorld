@@ -177,20 +177,6 @@ export default function GameStateDirector() {
         <nav className="w-full bg-black/80 backdrop-blur-md border-b-2 border-red-900/30 px-6 py-4 flex justify-between items-center relative z-30 font-mono shadow-[0_4px_20px_rgba(0,0,0,0.8)]">
           <div className="flex items-center gap-8">
             <span className="text-red-700 font-serif font-black text-xl uppercase tracking-[0.2em] shadow-red-900 drop-shadow-md">BlackWorld</span>
-            
-            {saveData.heroData && (
-              <div className="hidden lg:flex gap-6 text-xs uppercase tracking-widest text-stone-500 bg-[#050505] border border-neutral-800 px-4 py-2">
-                <span>
-                  {saveData.heroData.coven_tag && <span className="text-red-700 mr-2 border border-red-900/30 bg-red-950/10 px-1 py-0.5">[{saveData.heroData.coven_tag}]</span>}
-                  {saveData.heroData.name} 
-                <span className="text-stone-400 font-bold ml-2">Lvl {saveData.heroData.level}</span>
-                </span>
-                <span className="text-red-700 font-bold ml-2">♦ {(saveData.heroData.blood_stones || 0).toLocaleString()}</span>
-                <span className="text-blue-500 font-bold ml-2">⚡ {saveData.heroData.player_resources?.vitae_current ?? 100}/100</span>
-                <span className="text-yellow-600 font-bold ml-2">{(saveData.heroData.gold || 0).toLocaleString()}g</span>
-                <span className="text-red-500 font-bold ml-2">{saveData.heroData.hp}/{calcCombatStats(saveData.heroData, calculateSkillBonuses(saveData.heroData.skillPoints || {})).maxHp} HP</span>
-              </div>
-            )}
           </div>
           
           <div className="flex items-center gap-6">

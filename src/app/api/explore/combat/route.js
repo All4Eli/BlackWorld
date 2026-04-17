@@ -58,19 +58,6 @@ export async function POST(request) {
              if (eHp <= 0) { win = true; combatEnded = true; }
         }
 
-        // If this is the FIRST action against this enemy, validate and consume Vitae.
-        // We use a simple heuristic: if eHp == eStats.hp, it's the start.
-        if (eHp === eStats.hp && action === 'ATTACK') {
-             const limits = hero.player_resources || {};
-             const check = validateAndConsume(hero, { ...hero, ...limits }, 10, 'vitae');
-             if (!check.success) {
-                  return NextResponse.json({ error: 'Insufficient Vitae to initiate combat.' }, { status: 400 });
-             }
-             if (!hero.player_resources) hero.player_resources = {};
-             hero.player_resources.vitae_current = check.new_current;
-             hero.player_resources.vitae_last_update = check.new_last_update;
-        }
-
         let initialLogs = [];
         let delayedLogs = [];
 

@@ -422,7 +422,7 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
                 else if (entry.includes('EXHAUSTED')) color = 'text-red-800 font-bold';
                 else if (entry.includes('ZONE')) color = 'text-stone-300 italic';
                 return (
-                  <p key={i} className={`${color} opacity-0 animate-[fadeIn_0.4s_forwards]`} style={{ animationDelay: '0.05s' }}>
+                  <p key={i} className={`${color}`}>
                     {entry}
                   </p>
                 );

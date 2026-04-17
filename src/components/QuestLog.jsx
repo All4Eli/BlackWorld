@@ -1,23 +1,45 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
 
 export default function QuestLog({ hero, updateHero, onBack }) {
+    const [tab, setTab] = useState('DAILY');
     const [quests, setQuests] = useState([]);
-    const [tab, setTab] = useState('ALL');
     const [loading, setLoading] = useState(true);
+    const [acceptedQuests, setAcceptedQuests] = useState(hero?.accepted_quests || []);
 
+    // Load quests — use hero.daily_quests for DAILY tab, fetch from DB for others
     useEffect(() => {
-        const fetchQuests = async () => {
+        const loadQuests = async () => {
             setLoading(true);
-            const { data } = await supabase.from('quests').select('*').limit(30);
-            if (data) setQuests(data);
-            setLoading(false);
+            if (tab === 'DAILY') {
+                // Use daily quests from hero data
+                setQuests(hero?.daily_quests || []);
+                setLoading(false);
+            } else {
+                // Fetch from the quests API
+                try {
+                    const res = await fetch(`/api/social/search?q=quests&type=${tab.toLowerCase()}`);
+                    // Fallback: show empty for non-daily tabs until DB quests exist
+                    setQuests([]);
+                } catch (err) {
+                    setQuests([]);
+                } finally {
+                    setLoading(false);
+                }
+            }
         };
-        fetchQuests();
-    }, []);
+        loadQuests();
+    }, [tab, hero?.daily_quests]);
 
-    const filteredQuests = tab === 'ALL' ? quests : quests.filter(q => q.quest_type.toUpperCase() === tab);
+    const handleAcceptQuest = (quest) => {
+        if (acceptedQuests.find(q => q.id === quest.id)) return; // Already accepted
+        
+        const newAccepted = [...acceptedQuests, { ...quest, accepted_at: new Date().toISOString() }];
+        setAcceptedQuests(newAccepted);
+        updateHero({ ...hero, accepted_quests: newAccepted });
+    };
+
+    const isAccepted = (questId) => acceptedQuests.some(q => q.id === questId);
 
     return (
         <div className="w-full max-w-5xl mx-auto flex flex-col gap-6 animate-in slide-in-from-right-4 duration-500 pb-10">
@@ -29,8 +51,8 @@ export default function QuestLog({ hero, updateHero, onBack }) {
 
             <div className="border border-stone-800 bg-[#050505] shadow-[0_0_50px_rgba(255,255,255,0.02)]">
                 <div className="flex border-b border-stone-800 font-mono text-xs text-stone-500 tracking-widest uppercase">
-                    {['ALL', 'MAIN', 'SIDE', 'DAILY', 'LEGENDARY'].map(t => (
-                        <button key={t} onClick={() => setTab(t)} className={`flex-1 py-3 ${tab === t ? 'bg-stone-900 text-stone-200 border-b-2 border-stone-500' : 'bg-black hover:bg-neutral-900'}`}>
+                    {['DAILY', 'ALL'].map(t => (
+                        <button key={t} onClick={() => setTab(t)} className={`flex-1 py-3 transition-colors ${tab === t ? 'bg-stone-900 text-stone-200 border-b-2 border-stone-500' : 'bg-black hover:bg-neutral-900'}`}>
                             {t}
                         </button>
                     ))}
@@ -38,32 +60,78 @@ export default function QuestLog({ hero, updateHero, onBack }) {
 
                 <div className="p-8 min-h-[400px]">
                     {loading ? (
-                        <div className="text-stone-600 font-mono text-xs uppercase text-center py-10">Reading Tomes...</div>
-                    ) : filteredQuests.length === 0 ? (
+                        <div className="text-stone-600 font-mono text-xs uppercase text-center py-10">Loading contracts...</div>
+                    ) : quests.length === 0 ? (
                          <div className="text-stone-600 font-mono text-xs uppercase text-center py-10">No contracts available in this category.</div>
                     ) : (
                         <div className="grid grid-cols-1 gap-4">
-                            {filteredQuests.map(q => (
-                                <div key={q.id} className="border border-neutral-800 bg-black p-5 hover:border-neutral-700 transition-colors flex justify-between">
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <h3 className="font-bold font-serif uppercase tracking-widest text-stone-300">{q.name}</h3>
-                                            <span className={`text-[9px] px-2 py-[1px] font-mono tracking-widest uppercase border ${q.quest_type === 'legendary' ? 'border-yellow-600 text-yellow-500' : 'border-stone-800 text-stone-500'}`}>{q.quest_type}</span>
+                            {quests.map(q => {
+                                const accepted = isAccepted(q.id);
+                                const completed = q.progress >= q.target;
+                                return (
+                                    <div key={q.id} className={`border bg-black p-5 transition-colors flex justify-between ${completed ? 'border-green-900/50' : accepted ? 'border-yellow-900/50' : 'border-neutral-800 hover:border-neutral-700'}`}>
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="text-lg">{q.icon || '⚔️'}</span>
+                                                <h3 className="font-bold font-serif uppercase tracking-widest text-stone-300">{q.title || q.name}</h3>
+                                                {completed && <span className="text-[9px] px-2 py-[1px] font-mono tracking-widest uppercase border border-green-800 text-green-500 bg-green-950/20">Complete</span>}
+                                                {accepted && !completed && <span className="text-[9px] px-2 py-[1px] font-mono tracking-widest uppercase border border-yellow-800 text-yellow-500">Active</span>}
+                                            </div>
+                                            <p className="font-serif text-sm text-stone-500 mb-4">{q.description}</p>
+                                            
+                                            {/* Progress bar */}
+                                            {accepted && (
+                                                <div className="mb-3">
+                                                    <div className="flex justify-between text-[10px] font-mono text-stone-600 mb-1">
+                                                        <span>Progress</span>
+                                                        <span>{q.progress || 0} / {q.target}</span>
+                                                    </div>
+                                                    <div className="h-1 bg-neutral-900 w-full">
+                                                        <div className={`h-full transition-all duration-500 ${completed ? 'bg-green-600' : 'bg-yellow-700'}`} style={{ width: `${Math.min(100, ((q.progress || 0) / q.target) * 100)}%` }} />
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            <div className="font-mono text-[10px] text-stone-600 uppercase tracking-widest flex items-center gap-4 border-t border-neutral-900 pt-3">
+                                                <span>Rewards:</span>
+                                                {q.reward?.xp && <span className="text-blue-500">+{q.reward.xp} XP</span>}
+                                                {q.reward?.gold && <span className="text-yellow-600">+{q.reward.gold} Gold</span>}
+                                                {q.reward?.flasks && <span className="text-red-500">+{q.reward.flasks} Flasks</span>}
+                                            </div>
                                         </div>
-                                        <p className="font-serif text-sm text-stone-500 mb-4">{q.description}</p>
-                                        <div className="font-mono text-[10px] text-stone-600 uppercase tracking-widest flex items-center gap-4 border-t border-neutral-900 pt-3">
-                                            <span>Rewards:</span>
-                                            {q.rewards?.xp && <span className="text-blue-500">+{q.rewards.xp} XP</span>}
-                                            {q.rewards?.gold && <span className="text-yellow-600">+{q.rewards.gold} Gold</span>}
+                                        <div className="flex flex-col justify-center ml-4">
+                                            {completed ? (
+                                                <button 
+                                                    onClick={() => {
+                                                        // Claim rewards
+                                                        const reward = q.reward || {};
+                                                        updateHero({
+                                                            ...hero,
+                                                            gold: (hero.gold || 0) + (reward.gold || 0),
+                                                            xp: (hero.xp || 0) + (reward.xp || 0),
+                                                            flasks: Math.min(5, (hero.flasks || 0) + (reward.flasks || 0)),
+                                                        });
+                                                    }}
+                                                    className="px-6 py-2 border border-green-800 hover:border-green-500 text-green-500 font-mono text-xs uppercase tracking-widest transition-all hover:bg-green-950/30"
+                                                >
+                                                    Claim
+                                                </button>
+                                            ) : accepted ? (
+                                                <div className="px-6 py-2 border border-neutral-800 text-stone-600 font-mono text-xs uppercase tracking-widest">
+                                                    Tracking
+                                                </div>
+                                            ) : (
+                                                <button 
+                                                    onClick={() => handleAcceptQuest(q)}
+                                                    className="px-6 py-2 border border-stone-800 hover:border-stone-500 text-stone-400 font-mono text-xs uppercase tracking-widest transition-all hover:bg-stone-900"
+                                                >
+                                                    Accept
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
-                                    <div className="flex flex-col justify-center">
-                                        <button className="px-6 py-2 border border-stone-800 hover:border-stone-500 text-stone-400 font-mono text-xs uppercase tracking-widest transition-all hover:bg-stone-900">
-                                            Accept
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>

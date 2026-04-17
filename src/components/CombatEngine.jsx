@@ -279,7 +279,7 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
                  else if (log.includes('BOSS')) colorClass = "text-yellow-600 font-black text-xl italic uppercase font-serif drop-shadow-[0_0_5px_rgba(202,138,4,0.4)]";
                  
                  return (
-                   <p key={index} className={`${colorClass} opacity-0 animate-[fadeIn_0.5s_forwards] border-l-2 border-transparent pl-4 hover:border-red-900/30 transition-all`} style={{ animationDelay: '0.1s' }}>
+                   <p key={index} className={`${colorClass} border-l-2 border-transparent pl-4 hover:border-red-900/30 transition-all`}>
                      {log}
                    </p>
                  );

@@ -16,6 +16,24 @@ body {
   font-family: var(--font-sans), sans-serif;
 }
 
+/* Global interactive cursor — fixes every button/link in the app */
+button, a, [role="button"], input[type="submit"], select, summary {
+  cursor: pointer;
+}
+
+input, textarea {
+  cursor: text;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {
     display: none;
@@ -25,3 +43,4 @@ body {
     scrollbar-width: none;
   }
 }
+

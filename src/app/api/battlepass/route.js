@@ -21,7 +21,9 @@ export async function POST(request) {
         
         if (!hero.battlepass) {
             hero.battlepass = {
-                current_tier: 12, // Default mock progress
+                current_tier: 1, 
+                current_xp: 0,
+                xp_per_tier: 1000,
                 is_premium: false,
                 claimed_free: [],
                 claimed_premium: []
@@ -33,7 +35,7 @@ export async function POST(request) {
                 return NextResponse.json({ error: 'Premium already unlocked.' }, { status: 400 });
             }
             if ((hero.blood_stones || 0) < 1000) {
-                return NextResponse.json({ error: 'Insufficient Blood Stones (1000 required).' }, { status: 400 });
+                return NextResponse.json({ error: 'Insufficient Blood Stones (1,000 required).' }, { status: 400 });
             }
             
             hero.blood_stones -= 1000;
@@ -51,9 +53,18 @@ export async function POST(request) {
                 return NextResponse.json({ error: 'Reward already claimed.' }, { status: 400 });
             }
 
-            // Mock granting reward (In production this would map to a PREVIEW_REWARDS logic)
-            if (tier === 20) hero.gold = (hero.gold || 0) + 5000;
-            // Record claim
+            // Standardized Payout Logic mapped onto PREVIEW_REWARDS
+            if (type === 'FREE') {
+                 if (tier === 10) hero.blood_stones = (hero.blood_stones || 0) + 10;
+                 if (tier === 20) hero.gold = (hero.gold || 0) + 5000;
+                 if (tier === 40) hero.blood_stones = (hero.blood_stones || 0) + 50;
+            } else if (type === 'PREMIUM') {
+                 if (tier === 40) {
+                      hero.artifacts = hero.artifacts || [];
+                      hero.artifacts.push({ id: `art_${Date.now()}`, name: "Blood Crystal: Absolute", type: "ACCESSORY", stat: 250, tier: "CELESTIAL" });
+                 }
+            }
+
             if (!hero.battlepass[arrName]) hero.battlepass[arrName] = [];
             hero.battlepass[arrName].push(tier);
 

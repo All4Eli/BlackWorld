@@ -33,7 +33,8 @@ async function run() {
             position: 1, effects_per_rank: { damage: 100 }, scaling_stat: 'strength'
         });
     }
-    await supabase.from('skills').upsert(skills, { onConflict: 'name' });
+    const { error: err1 } = await supabase.from('skills').upsert(skills, { onConflict: 'name' });
+    if (err1) { console.error('SKILLS_ERR', JSON.stringify(err1, null, 2)); throw new Error('Abort'); }
     console.log("Skills: " + skills.length);
 
     // 2. NPCs
@@ -51,7 +52,8 @@ async function run() {
       { name: 'Whisper', title: 'Information Dealer', zone_id: getZone('Sanctuary'), is_vendor: false, dialogue: { greeting: "I know all." }},
       { name: 'Elder Grimm', title: 'Coven Registrar', zone_id: getZone('Sanctuary'), is_vendor: false, dialogue: { greeting: "Sign here." }}
     ];
-    await supabase.from('npcs').upsert(npcs.filter(n => n.zone_id), { onConflict: 'name' });
+    const { error: err2 } = await supabase.from('npcs').upsert(npcs.filter(n => n.zone_id), { onConflict: 'name' });
+    if (err2) { console.error('NPCS_ERR', JSON.stringify(err2, null, 2)); throw new Error('Abort'); }
     console.log("NPCs seeded.");
 
     // 3. Quests
@@ -60,7 +62,8 @@ async function run() {
         let type = i<=5 ? 'main' : i<=20 ? 'side' : i<=25 ? 'daily' : i<=30 ? 'weekly' : 'legendary';
         quests.push({ name: `Quest ${i}`, description: `Desc ${i}`, quest_type: type, rewards: { xp: i*100 }, scaling_enabled: i%2===0 });
     }
-    await supabase.from('quests').upsert(quests, { onConflict: 'name' });
+    const { error: err3 } = await supabase.from('quests').upsert(quests, { onConflict: 'name' });
+    if (err3) { console.error('QUESTS_ERR', JSON.stringify(err3, null, 2)); throw new Error('Abort'); }
     console.log("Quests: 40");
 
     // 4. Achievements
@@ -72,7 +75,8 @@ async function run() {
             rewards: { gold: i*10 }, is_hidden: false, is_repeatable: i%5===0, repeat_multiplier: 1.5
         });
     }
-    await supabase.from('achievements').upsert(achievements, { onConflict: 'name' });
+    const { error: err4 } = await supabase.from('achievements').upsert(achievements, { onConflict: 'name' });
+    if (err4) { console.error('ACH_ERR', JSON.stringify(err4, null, 2)); throw new Error('Abort'); }
     console.log("Achievements: 100");
 
     // 5. Titles
@@ -81,7 +85,8 @@ async function run() {
     for(let i=1; i<=30; i++) {
         titles.push({ name: `Title ${i}`, color_hex: '#FF0000', rarity: rar[i%rar.length], source: 'achievement', glow_effect: 'pulse' });
     }
-    await supabase.from('titles').upsert(titles, { onConflict: 'name' });
+    const { error: err5 } = await supabase.from('titles').upsert(titles, { onConflict: 'name' });
+    if (err5) { console.error('TITLES_ERR', JSON.stringify(err5, null, 2)); throw new Error('Abort'); }
     console.log("Titles: 30");
 
     // 6. Recipes
@@ -93,7 +98,8 @@ async function run() {
             skill_xp_reward: 10, gold_cost: 50, success_chance: 1.0, is_discoverable: true
         });
     }
-    await supabase.from('recipes').upsert(recipes, { onConflict: 'name' });
+    const { error: err6 } = await supabase.from('recipes').upsert(recipes, { onConflict: 'name' });
+    if (err6) { console.error('RECIPES_ERR', JSON.stringify(err6, null, 2)); throw new Error('Abort'); }
     console.log("Recipes: 65");
 
     // 7. Gathering Nodes
@@ -106,7 +112,8 @@ async function run() {
             respawn_seconds: 300, gather_time_seconds: 5, loot_table: { iron: 10 }, min_skill_level: 1, sprite_url: 'url'
         });
     }
-    await supabase.from('gathering_nodes').upsert(nodes, { onConflict: 'name' });
+    const { error: err7 } = await supabase.from('gathering_nodes').upsert(nodes, { onConflict: 'name' });
+    if (err7) { console.error('NODES_ERR', JSON.stringify(err7, null, 2)); throw new Error('Abort'); }
     console.log("Nodes: 50");
 
     // 8. Bosses
@@ -124,7 +131,8 @@ async function run() {
       { name: 'Void Titan', zone_id: getZone('Celestial Spire'), tier: 'Celestial', base_hp: 20000, base_damage_min: 500, base_damage_max: 800, dodge_chance: 0.15, loot_table: {} },
       { name: 'Celestial Warden', zone_id: getZone('Celestial Spire'), tier: 'Celestial', base_hp: 25000, base_damage_min: 600, base_damage_max: 900, dodge_chance: 0.25, loot_table: {} }
     ];
-    await supabase.from('boss_monsters').upsert(bosses.filter(b => b.zone_id), { onConflict: 'name' });
+    const { error: err8 } = await supabase.from('boss_monsters').upsert(bosses.filter(b => b.zone_id), { onConflict: 'name' });
+    if (err8) { console.error('BOSS_ERR', JSON.stringify(err8, null, 2)); throw new Error('Abort'); }
     console.log("Bosses: " + bosses.length);
 
     // 9. World Events
@@ -138,7 +146,8 @@ async function run() {
       { name: 'Contested War', description: 'desc', event_type: 'contested_war', modifiers: {xp: 2}, schedule_cron: '0 19 * * 1', duration_minutes: 180, min_participants: 1, max_participants: 100, scaling_enabled: true, rewards: {g:10}, is_active: true },
       { name: 'Monthly Tournament', description: 'desc', event_type: 'pvp_tournament', modifiers: {xp: 2}, schedule_cron: '0 18 1 * *', duration_minutes: 240, min_participants: 1, max_participants: 100, scaling_enabled: true, rewards: {g:10}, is_active: true }
     ];
-    await supabase.from('world_events').upsert(events, { onConflict: 'name' });
+    const { error: err9 } = await supabase.from('world_events').upsert(events, { onConflict: 'name' });
+    if (err9) { console.error('EVENTS_ERR', JSON.stringify(err9, null, 2)); throw new Error('Abort'); }
     console.log("Events: " + events.length);
 
     console.log("✅ Seed script finished successfully.");

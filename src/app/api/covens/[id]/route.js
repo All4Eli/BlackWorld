@@ -2,7 +2,8 @@ import { supabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
 export async function GET(request, { params }) {
-  const { id } = params;
+  const resolvedParams = await params;
+  const { id } = resolvedParams;
 
   if (!id) return NextResponse.json({ error: 'Missing coven ID' }, { status: 400 });
 

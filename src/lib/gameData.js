@@ -130,16 +130,7 @@ export function getDailyQuests() {
       reward: { gold: 200, xp: 80 },
       icon: '⚔️',
     },
-    {
-      id: `q2_${today}`,
-      title: 'Essence Expenditure',
-      description: 'Spend 40 Essence exploring.',
-      type: 'ESSENCE_SPENT',
-      target: 40,
-      progress: 0,
-      reward: { flasks: 2, xp: 50 },
-      icon: '🩸',
-    },
+
     {
       id: `q3_${today}`,
       title: 'Dark Tithe',

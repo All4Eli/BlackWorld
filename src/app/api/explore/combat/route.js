@@ -164,6 +164,7 @@ export async function POST(request) {
                 goldGained = Math.floor(Math.random() * 20) + 10;
                 hero.xp = (hero.xp || 0) + expGained;
                 hero.gold = (hero.gold || 0) + goldGained;
+                hero.kills = (hero.kills || 0) + 1;
                 hero.level = hero.level || 1;
                 hero.unspentStatPoints = hero.unspentStatPoints || 0;
                 hero.skillPointsUnspent = hero.skillPointsUnspent || 0;
@@ -189,6 +190,7 @@ export async function POST(request) {
                 }
 
                 incrementQuestProgress(hero, 'SLAY_MONSTERS', 1);
+                incrementQuestProgress(hero, 'KILLS', 1); // Support for legacy quest string mapping
                 if (goldGained > 0) incrementQuestProgress(hero, 'GOLD_LOOTED', goldGained);
             } else if (hero.hp <= 0) {
                // Death penalty

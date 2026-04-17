@@ -106,7 +106,7 @@ export default function GameStateDirector() {
         essence_last_regen: new Date().toISOString(),
         daily_quests: getDailyQuests(),
         skillPoints: {},
-        unspentSkillPoints: 0,
+        skillPointsUnspent: 0,
         learnedTomes: [],
       }
     });

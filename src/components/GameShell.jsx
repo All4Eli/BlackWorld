@@ -71,7 +71,7 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
       window.history.pushState({}, '', newUrl);
   };
 
-  const unspentPoints = hero?.unspentSkillPoints ?? 0;
+  const unspentPoints = hero?.skillPointsUnspent ?? 0;
   const claimableQuests = hero?.daily_quests?.some(q => q.progress >= q.target && !q.claimed) ?? false;
 
   const mainTabs = [

@@ -121,7 +121,8 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
 
     // Fallback if no matching zone id found
     if (!fetchedBoss) {
-       fetchedBoss = { name: "Void Stalker", tier: "Uncommon", base_hp: 80, base_damage_min: 8, base_damage_max: 18, dodge_chance: 0.1 };
+       const { generateEnemy } = require('@/lib/gameData');
+       fetchedBoss = generateEnemy(zone.levelReq || 1);
     }
 
     const pStats = calcPlayerStats(hero);

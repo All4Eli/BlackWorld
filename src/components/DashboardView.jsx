@@ -60,8 +60,14 @@ export default function DashboardView({ hero, updateHero }) {
         </div>
         
         <h2 className="text-3xl font-black uppercase tracking-widest text-stone-200 mb-2 font-serif">{hero?.name}</h2>
-        <div className="text-red-700 font-mono text-xs uppercase tracking-widest bg-red-950/30 px-4 py-1 border border-red-900/30 mb-8">
-          Level {currentLevel}
+        <div className="w-full space-y-2 mb-8">
+            <div className="flex justify-between items-center bg-purple-950/20 border border-purple-900/40 p-2">
+                 <span className="font-mono text-[10px] text-purple-400 uppercase tracking-widest">Power Score</span>
+                 <span className="font-serif text-lg font-bold text-stone-200">{(currentLevel * 10) + str + def + dex + int + vit + (currentHp/2)}</span>
+            </div>
+            <div className="text-red-700 font-mono text-xs uppercase tracking-widest bg-red-950/30 px-4 py-1 border border-red-900/30 text-center">
+              Level {currentLevel} <span className="text-[9px] text-red-900 ml-2">(Infinite Cap)</span>
+            </div>
         </div>
         
         <div className="w-full space-y-4">

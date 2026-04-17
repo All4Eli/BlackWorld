@@ -87,10 +87,12 @@ export default function ArsenalView({ hero, updateHero }) {
 
                        {equipped ? (
                          <div className="text-[10px] font-mono uppercase tracking-widest text-emerald-600 font-bold bg-emerald-950/20 py-2 text-center border border-emerald-900/30">Equipped</div>
-                       ) : (
+                       ) : ['WEAPON', 'ARMOR', 'MAIN_HAND', 'OFF_HAND', 'BODY', 'HEAD', 'BOOTS', 'AMULET', 'RING'].includes(art.type) ? (
                          <button onClick={() => equipArtifact(art)} className={`text-[10px] font-mono uppercase tracking-widest bg-black border border-current hover:text-white w-full py-2 transition-all`}>
                            Equip
                          </button>
+                       ) : (
+                         <div className="text-[10px] font-mono uppercase tracking-widest text-stone-600 bg-neutral-900/30 py-2 text-center border border-neutral-900">Material</div>
                        )}
                      </div>
                    );

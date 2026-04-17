@@ -61,6 +61,16 @@ export default function ResourceBars({ hero, onRefillClick }) {
                     </div>
                 );
             })}
+            
+            <div className={`border bg-[#050505] border-red-900 shadow-lg relative overflow-hidden group`}>
+                <div className="px-3 py-[6px] relative z-10 flex justify-between items-center text-[10px] font-mono tracking-widest uppercase mb-[2px]">
+                    <span className="text-red-500 font-bold pointer-events-none drop-shadow-md">Blood Stones</span>
+                    <div className="flex items-center gap-1 font-bold text-stone-300">
+                        <span className="text-[#cf2a2a] text-[9px] mb-px">✧</span>
+                        {hero?.blood_stones?.toLocaleString() || 0}
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

@@ -6,17 +6,24 @@ export default function PremiumStore({ hero, updateHero }) {
     const bloodStones = hero?.blood_stones || 0;
 
     const buyBloodStones = async (amount, costStr) => {
-        // Simulating Stripe Flow
-        const confirmed = confirm(`Simulating checkout for ${costStr}. Proceed?`);
-        if (confirmed) {
-            try {
-                const res = await fetch('/api/premium/buy', { method: 'POST', body: JSON.stringify({ action: 'BUY_CURRENCY', amount }) });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error);
-                updateHero(data.updatedHero);
-                alert(`Purchase Successful! +${amount} Blood Stones added to your character.`);
-            } catch(err) { alert(`Purchase failed: ${err.message}`); }
-        }
+        try {
+            const res = await fetch('/api/premium/checkout', { 
+                method: 'POST', 
+                body: JSON.stringify({ action: 'BUY_CURRENCY', amount, costStr }) 
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            if (data.mock) {
+                // Instantly grant if testing locally without Stripe
+                const mockRes = await fetch('/api/premium/buy', { method: 'POST', body: JSON.stringify({ action: 'BUY_CURRENCY', amount }) });
+                const mockData = await mockRes.json();
+                updateHero(mockData.updatedHero);
+                alert(`Mock Purchase Successful! +${amount} Blood Stones added.`);
+            } else {
+                window.location.href = data.redirectUrl;
+            }
+        } catch(err) { alert(`Checkout failed: ${err.message}`); }
     };
 
     const buyItem = async (itemName, cost) => {

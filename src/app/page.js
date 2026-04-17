@@ -1,17 +1,29 @@
 'use client';
+import { useState } from 'react';
 import { usePlayerData } from '@/hooks/usePlayerData';
 import { useUser, UserButton, SignOutButton } from '@clerk/nextjs';
 import { getDailyQuests, calcCombatStats } from '@/lib/gameData';
 import { calculateSkillBonuses } from '@/lib/skillTree';
+import { useSocial } from '@/hooks/useSocial';
 import BootScreen from '@/components/BootScreen';
 import CharacterCreator from '@/components/CharacterCreator';
 import GameShell from '@/components/GameShell';
 import CombatEngine from '@/components/CombatEngine';
 import DeathScreen from '@/components/DeathScreen';
+import MailboxModal from '@/components/MailboxModal';
+import NotificationsDropdown from '@/components/NotificationsDropdown';
 
 export default function GameStateDirector() {
   const { isLoaded, isSignedIn, user } = useUser();
   const { saveData, setSaveData, isLoading } = usePlayerData();
+  const { notifications, messages, unreadNotificationsCount, unreadMessagesCount, fetchMessages, markNotificationsRead } = useSocial();
+  
+  // UI State Mode
+  const [showMailbox, setShowMailbox] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
 
   const stage = saveData?.stage || 'BOOT';
 
@@ -32,6 +44,26 @@ export default function GameStateDirector() {
     setSaveData({ stage: 'BOOT', heroData: null });
     return null;
   }
+
+  const handleSearch = async (query) => {
+    setSearchQuery(query);
+    if (query.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    setSearching(true);
+    try {
+      const res = await fetch(`/api/social/search?q=${encodeURIComponent(query)}`);
+      if (res.ok) {
+        const { results } = await res.json();
+        setSearchResults(results);
+      }
+    } catch(err) {
+      console.error(err);
+    } finally {
+      setSearching(false);
+    }
+  };
 
   const handleStartBoot = () => {
     if (saveData.heroData) {
@@ -160,19 +192,53 @@ export default function GameStateDirector() {
               <input 
                 type="text" 
                 placeholder="Lookup Player/Coven" 
+                value={searchQuery}
+                onChange={e => handleSearch(e.target.value)}
                 className="bg-black border border-neutral-800 focus:border-red-900 focus:outline-none text-stone-300 px-4 py-2 text-xs uppercase tracking-widest w-64 transition-all"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 group-focus-within:text-red-700">⌕</span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 group-focus-within:text-red-700">
+                {searching ? '...' : '⌕'}
+              </span>
+              
+              {/* Search Dropdown */}
+              {(searchResults.length > 0 || searchQuery.length >= 2) && (
+                <div className="absolute top-full mt-2 w-full bg-[#050505] border border-neutral-800 shadow-xl z-50 animate-in slide-in-from-top-2">
+                   {searchResults.length > 0 ? (
+                     searchResults.map(res => (
+                        <div key={res.clerk_user_id} className="p-3 border-b border-neutral-900 flex justify-between items-center hover:bg-neutral-900 transition-colors cursor-default">
+                          <div>
+                            <div className="text-stone-300 font-bold uppercase tracking-wider">{res.username}</div>
+                            <div className="text-[9px] text-stone-600 uppercase tracking-widest">ID: {res.clerk_user_id.split('_')[1]}</div>
+                          </div>
+                          <span className="text-xs text-red-700 font-bold bg-red-950/20 px-2 py-0.5 border border-red-900/30">Lv {res.level}</span>
+                        </div>
+                     ))
+                   ) : !searching ? (
+                     <div className="p-4 text-center text-stone-600 text-xs italic">No players found.</div>
+                   ) : null}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-4 text-xl">
-               <button className="text-stone-500 hover:text-stone-200 transition-colors relative">
+               <button onClick={() => setShowMailbox(true)} className="text-stone-500 hover:text-stone-200 transition-colors relative">
                  💬
+                 {unreadMessagesCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)]"></span>}
                </button>
-               <button className="text-stone-500 hover:text-stone-200 transition-colors relative">
-                 🔔
-                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)]"></span>
-               </button>
+               
+               <div className="relative">
+                 <button onClick={() => setShowNotifications(true)} className="text-stone-500 hover:text-stone-200 transition-colors relative">
+                   🔔
+                   {unreadNotificationsCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)]"></span>}
+                 </button>
+                 {showNotifications && (
+                   <NotificationsDropdown 
+                     notifications={notifications} 
+                     onClose={() => setShowNotifications(false)} 
+                     onMarkRead={markNotificationsRead}
+                   />
+                 )}
+               </div>
             </div>
             
             <div className="pl-4 border-l border-neutral-800">
@@ -194,6 +260,9 @@ export default function GameStateDirector() {
         {stage === 'EXPLORATION' && <GameShell hero={saveData.heroData} updateHero={updateHero} onFindCombat={handleEnterCombat} />}
         {stage === 'COMBAT' && <CombatEngine heroDef={saveData.heroData} zone={saveData.combatZone} onVictory={handleVictory} onHeroDeath={handleDeath} />}
         {stage === 'DEATH' && <DeathScreen onRestart={handleRestart} />}
+        
+        {/* Modals placed outside main flow layout but within the page */}
+        {showMailbox && <MailboxModal onClose={() => setShowMailbox(false)} messages={messages} onRefresh={fetchMessages} />}
       </div>
     </main>
   );

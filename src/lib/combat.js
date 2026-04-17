@@ -3,39 +3,22 @@ const getEquipBonus = (artifacts = [], property) => {
     return artifacts.reduce((sum, item) => sum + (item?.stats?.[property] || 0), 0);
 };
 
+import { calcCombatStats } from '@/lib/gameData';
+import { calculateSkillBonuses } from '@/lib/skillTree';
+
 export const calcPlayerStats = (heroData) => {
-    // Use the same stat model as gameData.js: hero.str, hero.def, hero.dex, hero.vit
-    const str = heroData?.str ?? 5;
-    const def = heroData?.def ?? 5;
-    const dex = heroData?.dex ?? 5;
-    const vit = heroData?.vit ?? 5;
-    const level = heroData?.level || 1;
-    const artifacts = heroData?.artifacts || [];
+    // Pipe calculations into the unified modern global solver
+    const sb = calculateSkillBonuses(heroData?.skillPoints || {});
+    const unifiedStats = calcCombatStats(heroData, sb);
 
-    const hpBonus = getEquipBonus(artifacts, 'hp');
-    const dmgBonus = getEquipBonus(artifacts, 'dmg');
-    const dodgeBonus = getEquipBonus(artifacts, 'dodge') / 100;
-
-    // Match gameData.js HP formula: 100 + (vit * 5) + gear HP
-    const maxHp = 100 + (vit * 5) + (level * 5) + hpBonus;
-
-    // Equipped gear damage
-    let equipDmg = 0;
-    if (heroData?.equipped) {
-        Object.values(heroData.equipped).forEach(item => {
-            if (item?.stats?.dmg) equipDmg += item.stats.dmg;
-        });
-    }
-
-    const baseDamageMin = 1 + (str * 1) + equipDmg + dmgBonus;
-    const baseDamageMax = 3 + (str * 2) + equipDmg + dmgBonus;
-
+    // Map unified variables to legacy combat loop format expected by Explore Engine
+    // (We extrapolate damage constraints linearly for the math sequence)
     return {
-        maxHp,
-        baseDamageMin,
-        baseDamageMax,
-        damageReduction: Math.floor(def * 0.5),
-        dodgeChance: Math.min(0.5, (dex * 0.015) + dodgeBonus)
+        maxHp: unifiedStats.maxHp,
+        baseDamageMin: Math.floor(unifiedStats.attackDamage * 0.8), // e.g. 20 base dmg -> 16 min
+        baseDamageMax: Math.floor(unifiedStats.attackDamage * 1.2), // e.g. 20 base dmg -> 24 max
+        damageReduction: unifiedStats.damageReduction,
+        dodgeChance: Math.min(0.5, unifiedStats.critChance * 0.01) // Maps roughly identically
     };
 };
 

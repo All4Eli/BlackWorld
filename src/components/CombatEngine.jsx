@@ -1,8 +1,7 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { calculateSkillBonuses, rollForTomeDrop } from '@/lib/skillTree';
+import { calculateSkillBonuses } from '@/lib/skillTree';
 import { calcCombatStats } from '@/lib/gameData';
-import { generateLoot } from '@/lib/items';
 import DeathScreen from './DeathScreen';
 
 export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) {
@@ -61,23 +60,6 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
   const sb = calculateSkillBonuses(hero.skillPoints || {});
   const c = calcCombatStats(hero, sb);
 
-  const handleLevelUp = (currentHero) => {
-    if (currentHero.xp >= 100) {
-      addLog(`⬆️ [LEVEL UP]: You reached Level ${currentHero.level + 1}! +1 Skill Point, +3 Stat Points.`);
-      const newHero = {
-        ...currentHero,
-        level: currentHero.level + 1,
-        xp: currentHero.xp - 100,
-        flasks: currentHero.flasks + 1,
-        unspentSkillPoints: (currentHero.unspentSkillPoints ?? 0) + 1,
-        unspentStatPoints: (currentHero.unspentStatPoints ?? 0) + 3
-      };
-      const newC = calcCombatStats(newHero, sb);
-      newHero.hp = newC.maxHp; // Heal to full
-      return newHero;
-    }
-    return currentHero;
-  }
 
   const handleAttack = async () => {
     if (hero.hp <= 0 || enemy.hp <= 0 || !isPlayerTurn) return;
@@ -209,17 +191,17 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
               <div>
                 <div className="flex justify-between text-xs font-bold uppercase tracking-widest mb-2 text-stone-500">
                   <span>Vitality</span>
-                  <span className="text-red-500">{hero.hp} / {hero.maxHp}</span>
+                  <span className="text-red-500">{hero.hp} / {c.maxHp}</span>
                 </div>
-                {renderBar(hero.hp, hero.maxHp, "bg-red-700", "bg-black")}
+                {renderBar(hero.hp, c.maxHp, "bg-red-700", "bg-black")}
               </div>
 
               <div>
                 <div className="flex justify-between text-xs font-bold uppercase tracking-widest mb-2 text-stone-500">
                   <span>Blood Magic</span>
-                  <span className="text-purple-900">{hero.mana} / {hero.maxMana}</span>
+                  <span className="text-purple-900">{hero.mana} / {c.maxMana}</span>
                 </div>
-                {renderBar(hero.mana, hero.maxMana, "bg-purple-900", "bg-black")}
+                {renderBar(hero.mana, c.maxMana, "bg-purple-900", "bg-black")}
               </div>
 
               <div>

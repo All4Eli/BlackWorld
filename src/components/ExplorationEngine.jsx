@@ -7,7 +7,7 @@ import { validateAndConsume } from '@/lib/resources';
 
 export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
   const [log, setLog] = useState(["[ENTRY]: You descend into the dark. Choose your ground."]);
-  const [activeZone, setActiveZone] = useState(null);
+  const [activeZone, setActiveZone] = useState(hero?.activeZone || null);
   const [merchantOpen, setMerchantOpen] = useState(false);
   const logEndRef = useRef(null);
   const combatLogEndRef = useRef(null);
@@ -39,6 +39,7 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
   const handleEnterZone = (zone) => {
     setActiveZone(zone);
     setLog([`[ENTRY]: You cross into the ${zone.name}.`]);
+    updateHero({ ...hero, activeZone: zone });
   };
 
   const handleAction = async (actionType) => {

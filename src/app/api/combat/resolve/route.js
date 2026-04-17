@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { calcPlayerStats, rollDamage, calcMonsterStats, isHitDodged } from '@/lib/combat';
+import { incrementQuestProgress } from '@/lib/quests';
 
 export async function POST(request) {
     const { userId } = await auth();
@@ -81,6 +82,9 @@ export async function POST(request) {
                 if (!hero.artifacts) hero.artifacts = [];
                 hero.artifacts.push({ type: 'item', name: 'Demon Fang', acquired_at: new Date().toISOString() });
             }
+
+            incrementQuestProgress(hero, 'SLAY_MONSTERS', 1);
+            if (goldGained > 0) incrementQuestProgress(hero, 'GOLD_LOOTED', goldGained);
         } else {
             hero.hp = 0; // Death penalty
         }

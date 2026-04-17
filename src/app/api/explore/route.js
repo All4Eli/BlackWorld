@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import { incrementQuestProgress } from '@/lib/quests';
 
 const getRandomLoot = () => {
     const roll = Math.random();
@@ -49,6 +50,8 @@ export async function POST(request) {
         } else {
             hero.essence = energy - 1;
         }
+        
+        incrementQuestProgress(hero, 'ESSENCE_SPENT', 1);
 
         // Calculate encounter logic
         const roll = Math.random();

@@ -16,7 +16,7 @@ import NotificationsDropdown from '@/components/NotificationsDropdown';
 export default function GameStateDirector() {
   const { isLoaded, isSignedIn, user } = useUser();
   const { saveData, setSaveData, isLoading } = usePlayerData();
-  const { notifications, messages, unreadNotificationsCount, unreadMessagesCount, fetchMessages, markNotificationsRead } = useSocial();
+  const { notifications, messages, unreadNotificationsCount, unreadMessagesCount, fetchMessages, markNotificationsRead, fetchNotifications } = useSocial();
   
   // UI State Mode
   const [showMailbox, setShowMailbox] = useState(false);
@@ -237,6 +237,9 @@ export default function GameStateDirector() {
                  </button>
                  {showNotifications && (
                    <NotificationsDropdown 
+                     notifications={notifications}
+                     onMarkRead={markNotificationsRead}
+                     onFlushRead={fetchNotifications}
                      onClose={() => setShowNotifications(false)} 
                    />
                  )}

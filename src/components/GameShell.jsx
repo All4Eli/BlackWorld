@@ -154,7 +154,14 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
       </div>
 
       {/* DESKTOP NAV (Left Sidebar, visible on md+) */}
-      <aside className="hidden md:flex flex-col w-56 pr-6 border-r border-red-900/20 mr-8 flex-shrink-0">
+      <aside className="hidden xl:flex flex-col w-[260px] pr-6 border-r border-neutral-900/50 mr-8 flex-shrink-0">
+         <div className="mb-6">
+            <BlackWorldSidebar hero={hero} onNavigate={(tab) => {
+               setActiveTab(tab);
+               if (window.scrollTo) window.scrollTo({ top: 0, behavior: 'smooth' });
+            }} />
+         </div>
+
          <div className="mb-8">
             <h3 className="text-[10px] text-stone-600 font-mono uppercase tracking-widest mb-3 px-4">Main</h3>
             <div className="flex flex-col gap-1">
@@ -175,15 +182,6 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
          </div>
       </aside>
 
-      {/* Torn-Style Left Stat Panel */}
-      <div className="hidden xl:block mr-8 flex-shrink-0 relative">
-         <div className="sticky top-6">
-            <BlackWorldSidebar hero={hero} onNavigate={(tab) => {
-               setActiveTab(tab);
-               if (window.scrollTo) window.scrollTo({ top: 0, behavior: 'smooth' });
-            }} />
-         </div>
-      </div>
 
       {/* View Rendering Container */}
       <main className="flex-1 overflow-x-hidden min-w-0">

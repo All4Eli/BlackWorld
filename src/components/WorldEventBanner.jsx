@@ -23,14 +23,15 @@ export default function WorldEventBanner() {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'world_events' }, payload => {
                 if (payload.new?.is_active) {
                     setActiveEvent(payload.new);
-                } else if (!payload.new?.is_active && payload.old?.id === activeEvent?.id) {
-                    setActiveEvent(null);
+                } else {
+                    // If the event was deactivated, clear it only if it's the one we're showing
+                    setActiveEvent(prev => prev?.id === payload.old?.id ? null : prev);
                 }
             })
             .subscribe();
 
         return () => supabase.removeChannel(sub);
-    }, [activeEvent?.id]);
+    }, []); // Run once on mount — no dependency on activeEvent
 
     if (!activeEvent) return null;
 

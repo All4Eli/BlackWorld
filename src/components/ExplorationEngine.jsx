@@ -336,7 +336,7 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
                    if (entry.includes('HEAL')) color = 'text-emerald-500';
                    
                    return (
-                     <div key={i} className={`${color} opacity-0 animate-[fadeIn_0.3s_forwards]`}>{entry}</div>
+                     <div key={i} className={`${color}`}>{entry}</div>
                    );
                 })}
                 <div ref={combatLogEndRef} />

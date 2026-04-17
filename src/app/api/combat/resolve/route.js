@@ -72,7 +72,7 @@ export async function POST(request) {
         if (win) {
             expGained = fetchedEnemy.tier === 'Boss' ? 50 : 15;
             goldGained = Math.floor(Math.random() * 20) + 10;
-            hero.exp = (hero.exp || 0) + expGained;
+            hero.xp = (hero.xp || 0) + expGained;
             hero.gold = (hero.gold || 0) + goldGained;
             hero.hp = pHp;
 

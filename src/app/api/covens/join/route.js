@@ -35,11 +35,8 @@ export async function POST(request) {
 
       if (updateError) throw updateError;
 
-      // 3. Increment Coven Member Count
-      await supabase
-        .from('covens')
-        .update({ member_count: coven.member_count + 1 })
-        .eq('id', coven.id);
+      // 3. Atomically increment Coven Member Count
+      await supabase.rpc('increment_member_count', { coven_uuid: coven.id });
 
       return NextResponse.json({ success: true, coven });
   } catch(err) {

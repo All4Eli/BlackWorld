@@ -1,43 +1,56 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { generateLoot } from '@/lib/items';
 
 export default function ItemShopView({ hero, updateHero, onBack }) {
   const currentGold = hero?.gold || 0;
   const [purchaseMsg, setPurchaseMsg] = useState(null);
   const [shopItems, setShopItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [buying, setBuying] = useState(null);
 
-  // Generate 8 random items on shop load
+  // Fetch shop items from server
   useEffect(() => {
-    const items = [];
-    // Ensure varied tiers (mix of common to epic)
-    for(let i=0; i<8; i++) {
-       const itemLevel = hero?.level || 1;
-       const item = generateLoot(itemLevel);
-       
-       // Calculate cost based on rarity and level
-       const rarityCostMult = {
-         'COMMON': 1, 'UNCOMMON': 2.5, 'RARE': 5, 'EPIC': 12, 'LEGENDARY': 30, 'CELESTIAL': 100
-       }[item.rarity];
-       item.cost = Math.floor(Math.random() * 50 * item.level * rarityCostMult) + (50 * item.level * rarityCostMult);
-       items.push(item);
-    }
-    setShopItems(items);
+    const fetchShop = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/shop?level=${hero?.level || 1}`);
+        const data = await res.json();
+        if (data.items) setShopItems(data.items);
+      } catch (err) {
+        console.error('Failed to load shop:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchShop();
   }, [hero?.level]);
 
-  const handleBuy = (item) => {
-    if (currentGold >= item.cost) {
-      updateHero({
-        ...hero,
-        gold: currentGold - item.cost,
-        artifacts: [...(hero.artifacts || []), item]
+  const handleBuy = async (item) => {
+    if (currentGold < item.cost || buying) return;
+    
+    setBuying(item.id);
+    try {
+      const res = await fetch('/api/shop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId: item.id, itemCost: item.cost })
       });
-
-      // Remove from shop
-      setShopItems(prev => prev.filter(i => i.id !== item.id));
-
-      setPurchaseMsg(`Purchased: ${item.name}`);
+      const data = await res.json();
+      
+      if (res.ok) {
+        updateHero({ ...hero, gold: data.newGold, artifacts: [...(hero.artifacts || []), data.item] });
+        setShopItems(prev => prev.filter(i => i.id !== item.id));
+        setPurchaseMsg(`Purchased: ${data.item.name}`);
+        setTimeout(() => setPurchaseMsg(null), 3000);
+      } else {
+        setPurchaseMsg(`Error: ${data.error}`);
+        setTimeout(() => setPurchaseMsg(null), 3000);
+      }
+    } catch (err) {
+      setPurchaseMsg('Purchase failed.');
       setTimeout(() => setPurchaseMsg(null), 3000);
+    } finally {
+      setBuying(null);
     }
   };
 
@@ -79,7 +92,9 @@ export default function ItemShopView({ hero, updateHero, onBack }) {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {shopItems.length === 0 ? (
+          {loading ? (
+             <div className="text-stone-600 font-mono italic p-4 border border-neutral-900 animate-pulse">The merchant is arranging wares...</div>
+          ) : shopItems.length === 0 ? (
              <div className="text-stone-600 font-mono italic p-4 border border-neutral-900">The merchant's stock is empty. Return later.</div>
           ) : shopItems.map((item, idx) => (
             <div key={item.id} className="flex flex-col xl:flex-row justify-between bg-[#020202] border border-neutral-800 p-4 font-mono group hover:border-neutral-700 transition-colors">
@@ -107,10 +122,10 @@ export default function ItemShopView({ hero, updateHero, onBack }) {
                 <div className="text-lg font-bold text-yellow-600 mb-4">{item.cost.toLocaleString()}g</div>
                 <button 
                   onClick={() => handleBuy(item)}
-                  disabled={currentGold < item.cost}
+                  disabled={currentGold < item.cost || buying === item.id}
                   className="w-full py-2 bg-black border border-neutral-700 text-stone-300 hover:bg-neutral-800 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed uppercase tracking-widest text-xs"
                 >
-                  Buy
+                  {buying === item.id ? '...' : 'Buy'}
                 </button>
               </div>
             </div>

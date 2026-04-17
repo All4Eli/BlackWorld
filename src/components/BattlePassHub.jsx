@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
 
 export default function BattlePassHub({ hero, updateHero }) {
     const [tab, setTab] = useState('TRACK');
@@ -94,8 +93,11 @@ export default function BattlePassHub({ hero, updateHero }) {
                                                         <div className="text-[10px] text-stone-500 uppercase font-mono tracking-widest mb-2">Free</div>
                                                         <div className={`font-serif tracking-widest uppercase ${unlocked ? 'text-stone-300' : 'text-stone-600'}`}>{r.free}</div>
                                                     </div>
-                                                    {unlocked && (
-                                                        <button className="text-[10px] border border-neutral-700 px-3 py-1 text-stone-400 uppercase tracking-widest hover:border-stone-500">Claim</button>
+                                                    {unlocked && !playerBP.claimed_free.includes(r.tier) && (
+                                                        <button onClick={() => { setPlayerBP({...playerBP, claimed_free: [...playerBP.claimed_free, r.tier]}); alert(`Claimed free reward: ${r.free}`); }} className="text-[10px] border border-neutral-700 px-3 py-1 text-stone-400 uppercase tracking-widest hover:border-stone-500">Claim</button>
+                                                    )}
+                                                    {unlocked && playerBP.claimed_free.includes(r.tier) && (
+                                                        <span className="text-[10px] text-green-600 uppercase tracking-widest">✓</span>
                                                     )}
                                                 </div>
                                                 {/* Premium Track */}
@@ -107,8 +109,11 @@ export default function BattlePassHub({ hero, updateHero }) {
                                                         </div>
                                                         <div className={`font-serif tracking-widest uppercase ${unlocked && playerBP.is_premium ? 'text-orange-400' : 'text-stone-600'}`}>{r.premium}</div>
                                                     </div>
-                                                    {unlocked && playerBP.is_premium && (
-                                                        <button className="text-[10px] bg-orange-900/20 text-orange-500 border border-orange-800/50 px-3 py-1 uppercase tracking-widest hover:bg-orange-800 hover:text-white">Claim</button>
+                                                    {unlocked && playerBP.is_premium && !playerBP.claimed_premium.includes(r.tier) && (
+                                                        <button onClick={() => { setPlayerBP({...playerBP, claimed_premium: [...playerBP.claimed_premium, r.tier]}); alert(`Claimed premium reward: ${r.premium}`); }} className="text-[10px] bg-orange-900/20 text-orange-500 border border-orange-800/50 px-3 py-1 uppercase tracking-widest hover:bg-orange-800 hover:text-white">Claim</button>
+                                                    )}
+                                                    {unlocked && playerBP.is_premium && playerBP.claimed_premium.includes(r.tier) && (
+                                                        <span className="text-[10px] text-green-600 uppercase tracking-widest">✓</span>
                                                     )}
                                                 </div>
                                             </div>

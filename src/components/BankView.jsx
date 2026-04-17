@@ -3,23 +3,37 @@ import { useState } from 'react';
 
 export default function BankView({ hero, updateHero, onBack }) {
   const [amount, setAmount] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const banked = hero.bankedGold || 0;
   const current = hero.gold || 0;
 
-  const handleDeposit = () => {
+  const handleTransaction = async (action) => {
     const val = parseInt(amount);
-    if (!isNaN(val) && val > 0 && current >= val) {
-      updateHero({ ...hero, gold: current - val, bankedGold: banked + val });
+    if (!val || val <= 0) return;
+    
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/bank', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: val, action })
+      });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        setError(data.error);
+        return;
+      }
+      
+      updateHero({ ...hero, gold: data.gold, bankedGold: data.bankedGold });
       setAmount('');
-    }
-  };
-
-  const handleWithdraw = () => {
-    const val = parseInt(amount);
-    if (!isNaN(val) && val > 0 && banked >= val) {
-      updateHero({ ...hero, gold: current + val, bankedGold: banked - val });
-      setAmount('');
+    } catch (err) {
+      setError('Connection failed.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -54,21 +68,23 @@ export default function BankView({ hero, updateHero, onBack }) {
             placeholder="Amount..."
             min="1"
             className="w-full bg-[#020202] border border-neutral-800 text-stone-300 px-4 py-4 focus:outline-none focus:border-red-900/50 text-center text-lg"
+            disabled={loading}
           />
+          {error && <div className="text-red-500 text-xs text-center border border-red-900/50 bg-red-950/20 p-2">{error}</div>}
           <div className="flex gap-4">
             <button 
-              onClick={handleDeposit}
-              disabled={!amount || parseInt(amount) > current || parseInt(amount) <= 0}
+              onClick={() => handleTransaction('deposit')}
+              disabled={loading || !amount || parseInt(amount) > current || parseInt(amount) <= 0}
               className="flex-1 py-3 border border-neutral-800 bg-black text-stone-400 hover:bg-neutral-900 hover:text-stone-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-widest"
             >
-              Deposit
+              {loading ? '...' : 'Deposit'}
             </button>
             <button 
-              onClick={handleWithdraw}
-              disabled={!amount || parseInt(amount) > banked || parseInt(amount) <= 0}
+              onClick={() => handleTransaction('withdraw')}
+              disabled={loading || !amount || parseInt(amount) > banked || parseInt(amount) <= 0}
               className="flex-1 py-3 border border-neutral-800 bg-black text-stone-400 hover:bg-neutral-900 hover:text-stone-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-widest"
             >
-              Withdraw
+              {loading ? '...' : 'Withdraw'}
             </button>
           </div>
           

@@ -4,30 +4,38 @@ const getEquipBonus = (artifacts = [], property) => {
 };
 
 export const calcPlayerStats = (heroData) => {
-    const strength = heroData?.attributes?.strength || 1;
-    const cunning = heroData?.attributes?.cunning || 1;
-    const agility = heroData?.attributes?.agility || 1;
+    // Use the same stat model as gameData.js: hero.str, hero.def, hero.dex, hero.vit
+    const str = heroData?.str ?? 5;
+    const def = heroData?.def ?? 5;
+    const dex = heroData?.dex ?? 5;
+    const vit = heroData?.vit ?? 5;
     const level = heroData?.level || 1;
     const artifacts = heroData?.artifacts || [];
 
     const hpBonus = getEquipBonus(artifacts, 'hp');
     const dmgBonus = getEquipBonus(artifacts, 'dmg');
-    const dodgeBonus = getEquipBonus(artifacts, 'dodge') / 100; // if dodge is stored as integer %
+    const dodgeBonus = getEquipBonus(artifacts, 'dodge') / 100;
 
-    const maxHp = 50 + (strength * 10) + (level * 5) + hpBonus;
-    
-    // We assume base unarmed damage is 1-3 if no weapons exist, but equations asked for: 
-    // Player Damage Roll = rand(base_min, base_max) + (Cunning × 2) + Σ(equipment.damage_bonus)
-    // We'll treat the min-max broadly.
-    const baseDamageMin = 1;
-    const baseDamageMax = 3;
+    // Match gameData.js HP formula: 100 + (vit * 5) + gear HP
+    const maxHp = 100 + (vit * 5) + (level * 5) + hpBonus;
+
+    // Equipped gear damage
+    let equipDmg = 0;
+    if (heroData?.equipped) {
+        Object.values(heroData.equipped).forEach(item => {
+            if (item?.stats?.dmg) equipDmg += item.stats.dmg;
+        });
+    }
+
+    const baseDamageMin = 1 + (str * 1) + equipDmg + dmgBonus;
+    const baseDamageMax = 3 + (str * 2) + equipDmg + dmgBonus;
 
     return {
         maxHp,
-        baseDamageMin: baseDamageMin + (cunning * 2) + dmgBonus,
-        baseDamageMax: baseDamageMax + (cunning * 2) + dmgBonus,
-        cunning,
-        dodgeChance: Math.min(0.5, (agility * 0.02) + dodgeBonus)
+        baseDamageMin,
+        baseDamageMax,
+        damageReduction: Math.floor(def * 0.5),
+        dodgeChance: Math.min(0.5, (dex * 0.015) + dodgeBonus)
     };
 };
 

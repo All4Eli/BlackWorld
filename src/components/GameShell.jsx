@@ -119,7 +119,6 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
   return (
     <>
     <WorldEventBanner />
-    <MobileResourceStrip hero={hero} onRefillClick={(t) => setRefillModal({ type: t })} />
     <div className="flex flex-col md:flex-row w-full h-full min-h-[85vh] max-w-7xl mx-auto px-4 py-6 animate-in fade-in duration-700">
       
       {/* MOBILE NAV (Top bar with Hamburger Menu, hidden on md+) */}
@@ -190,11 +189,6 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
         {activeTab === 'BATTLE_PASS' && <BattlePassHub hero={hero} updateHero={updateHero} />}
         {activeTab === 'STORE' && <PremiumStore hero={hero} updateHero={updateHero} />}
       </main>
-
-      {/* Persistent Resource Bars on Desktop */}
-      <div className="hidden lg:block fixed bottom-8 right-8 w-64 z-30">
-          <ResourceBars hero={hero} onRefillClick={(t) => setRefillModal({ type: t })} />
-      </div>
 
       {refillModal && (
         <ResourceRefillModal 

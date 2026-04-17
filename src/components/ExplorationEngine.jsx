@@ -1,42 +1,16 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { ZONES, getDailyQuests, calculateEssence } from '@/lib/gameData';
-import QuestLog from './QuestLog';
-import SkillTreePanel from './SkillTreePanel';
 
 export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
   const [log, setLog] = useState(["[ENTRY]: You descend into the dark. Choose your ground."]);
   const [activeZone, setActiveZone] = useState(null);
   const [merchantOpen, setMerchantOpen] = useState(false);
-  const [questLogOpen, setQuestLogOpen] = useState(false);
-  const [inventoryOpen, setInventoryOpen] = useState(false);
-  const [skillTreeOpen, setSkillTreeOpen] = useState(false);
   const logEndRef = useRef(null);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [log]);
-
-  // Recalculate essence on mount (server-side regen)
-  useEffect(() => {
-    const { essence, newTimestamp } = calculateEssence(
-      hero.essence_last_regen,
-      hero.essence ?? 100,
-      100
-    );
-    if (essence !== (hero.essence ?? 100)) {
-      updateHero({ ...hero, essence, essence_last_regen: newTimestamp });
-    }
-  }, []);
-
-  // Initialize daily quests if missing or stale
-  useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const existingQuests = hero.daily_quests;
-    if (!existingQuests || !existingQuests[0]?.id?.includes(today)) {
-      updateHero({ ...hero, daily_quests: getDailyQuests(hero.class) });
-    }
-  }, []);
 
   const addLog = (msg) => setLog(prev => [...prev, msg]);
 
@@ -134,80 +108,12 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
     updateHero(newHero);
   };
 
-  const equipArtifact = (artifact) => {
-    if (artifact.type === 'WEAPON') {
-      updateHero({ ...hero, equippedWeapon: artifact });
-      addLog(`⚔️ Equipped: ${artifact.name} (+${artifact.stat} DMG)`);
-    } else {
-      updateHero({ ...hero, equippedArmor: artifact });
-      addLog(`🛡️ Equipped: ${artifact.name}`);
-    }
-  };
 
-  const essencePct = Math.min(100, ((hero.essence ?? 100) / 100) * 100);
 
   return (
-    <div className="animate-in fade-in duration-700 w-full max-w-6xl mx-auto px-4 pt-6 pb-10">
-      {questLogOpen && (
-        <QuestLog quests={hero.daily_quests} onClose={() => setQuestLogOpen(false)} />
-      )}
-      {skillTreeOpen && (
-        <SkillTreePanel hero={hero} updateHero={updateHero} onClose={() => setSkillTreeOpen(false)} />
-      )}
-
-      {/* Top HUD */}
-      <header className="flex flex-wrap justify-between items-center bg-black/60 border border-neutral-900 px-6 py-4 mb-6 gap-4">
-        <div>
-          <h2 className="text-xl font-serif font-black text-stone-200 uppercase tracking-[0.2em]">
-            {activeZone ? activeZone.name : 'The Catacombs'}
-            {activeZone && <span className="ml-3 text-stone-600 text-xs">{activeZone.icon}</span>}
-          </h2>
-          <p className="text-[10px] text-stone-600 font-mono uppercase tracking-widest mt-0.5">
-            {activeZone ? activeZone.description : 'Choose a zone to descend into'}
-          </p>
-        </div>
-        <div className="flex items-center gap-4 font-mono">
-          <div className="text-right">
-            <div className="text-[10px] text-stone-600 uppercase tracking-widest mb-1">Blood Essence</div>
-            <div className="flex items-center gap-2">
-              <div className="w-28 h-2 bg-neutral-900 border border-neutral-800">
-                <div
-                  className="h-full bg-red-800 transition-all duration-1000"
-                  style={{ width: `${essencePct}%` }}
-                />
-              </div>
-              <span className={`text-xs font-bold ${currentEssence < 20 ? 'text-red-600' : 'text-red-400'}`}>
-                {currentEssence}/100
-              </span>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-[10px] text-stone-600 uppercase tracking-widest">Gold</div>
-            <div className="text-yellow-600 font-bold text-sm">{hero.gold}g</div>
-          </div>
-          <button onClick={() => setQuestLogOpen(true)} className="relative bg-black border border-neutral-800 px-4 py-2 text-[10px] uppercase tracking-widest text-stone-400 hover:border-red-900 hover:text-red-500 transition-all">
-            Contracts
-            {hero.daily_quests?.some(q => q.progress < q.target) && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full animate-pulse" />
-            )}
-          </button>
-          <button onClick={() => setSkillTreeOpen(true)} className="relative bg-black border border-neutral-800 px-4 py-2 text-[10px] uppercase tracking-widest text-stone-400 hover:border-purple-900 hover:text-purple-400 transition-all">
-            Skills
-            {(hero.unspentSkillPoints ?? 0) > 0 && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
-            )}
-          </button>
-          <button onClick={() => setInventoryOpen(!inventoryOpen)} className={`bg-black border px-4 py-2 text-[10px] uppercase tracking-widest transition-all ${inventoryOpen ? 'border-red-900 text-red-500' : 'border-neutral-800 text-stone-400 hover:border-neutral-700'}`}>
-            Arsenal
-          </button>
-        </div>
-      </header>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LEFT: Zone Selector + Narrative */}
-        <section className="lg:col-span-2 flex flex-col gap-4">
-          
-          {/* Zone Selection */}
+    <div className="animate-in fade-in duration-700 w-full max-w-4xl mx-auto pt-6 pb-10">
+      <div className="flex flex-col gap-6">
+        {/* Zone Selection */}
           {!activeZone && (
             <div className="bg-[#020202] border border-neutral-800 p-6 animate-in fade-in">
               <div className="text-xs text-stone-600 font-mono uppercase tracking-widest mb-5">Select Your Ground</div>
@@ -320,76 +226,6 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
               </div>
             </div>
           )}
-        </section>
-
-        {/* RIGHT: Inventory */}
-        <section className={`${inventoryOpen ? 'block' : 'hidden lg:block'}`}>
-          <div className="bg-[#050505] border border-neutral-800 p-5 font-mono flex flex-col gap-4 sticky top-4">
-            <h3 className="text-stone-300 font-bold tracking-widest uppercase text-xs border-b border-neutral-800 pb-3">Personal Arsenal</h3>
-
-            {/* Equipped */}
-            <div className="space-y-2">
-              <div className="text-[10px] text-stone-600 uppercase tracking-widest">Equipped</div>
-              <div className="bg-black border border-neutral-900 p-3 flex justify-between text-xs">
-                <span className="text-stone-600">Weapon</span>
-                {hero.equippedWeapon ? (
-                  <span className="text-purple-400 font-bold">{hero.equippedWeapon.name}</span>
-                ) : <span className="text-stone-700 italic">None</span>}
-              </div>
-            </div>
-
-            {/* Flasks */}
-            <div className="bg-black border border-neutral-900 p-3 flex justify-between text-xs">
-              <span className="text-stone-600 uppercase tracking-widest">Crimson Flasks</span>
-              <span className="text-red-600 font-bold">{hero.flasks}</span>
-            </div>
-
-            {/* Artifacts */}
-            <div className="flex-1">
-              <div className="text-[10px] text-stone-600 uppercase tracking-widest mb-2">Artifacts</div>
-              {!hero.artifacts?.length ? (
-                <div className="text-stone-700 text-xs text-center py-8 italic border border-neutral-900">Empty</div>
-              ) : (
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {hero.artifacts.map((art, i) => (
-                    <div key={i} className="border border-purple-900/30 bg-purple-950/10 p-3">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-purple-400 text-xs font-bold uppercase leading-tight">{art.name}</span>
-                        <span className="text-stone-600 text-[10px]">+{art.stat}</span>
-                      </div>
-                      {hero.equippedWeapon?.id === art.id ? (
-                        <span className="text-[10px] uppercase tracking-widest text-emerald-600 font-bold">Equipped</span>
-                      ) : (
-                        <button onClick={() => equipArtifact(art)} className="text-[10px] uppercase tracking-widest bg-black border border-purple-900/40 text-stone-500 hover:text-white hover:bg-purple-900/20 px-3 py-1 transition-all w-full">
-                          Equip
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Learned Tomes */}
-            <div>
-              <div className="text-[10px] text-stone-600 uppercase tracking-widest mb-2">Learned Tomes</div>
-              {!hero.learnedTomes?.length ? (
-                <div className="text-stone-700 text-xs text-center py-4 italic border border-neutral-900">None discovered</div>
-              ) : (
-                <div className="space-y-2">
-                  {hero.learnedTomes.map((tomeId) => {
-                    const rarity = tomeId.includes('mythic') ? 'text-fuchsia-500' : tomeId.includes('legendary') ? 'text-yellow-500' : 'text-blue-400';
-                    return (
-                      <div key={tomeId} className="border border-yellow-900/30 bg-yellow-950/5 p-2 text-[10px] uppercase tracking-widest">
-                        <span className={`font-bold ${rarity}`}>{tomeId.replace('tome_', '').replace(/_/g, ' ')}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
       </div>
     </div>
   );

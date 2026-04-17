@@ -1,13 +1,13 @@
 'use client';
 
-export default function QuestLog({ quests, onClose }) {
+export default function QuestLog({ quests, onClose, inline = false }) {
   if (!quests || quests.length === 0) return null;
 
   const allComplete = quests.every(q => q.progress >= q.target);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 animate-in fade-in duration-200">
-      <div className="bg-[#050505] border border-red-900/30 shadow-[0_0_50px_rgba(153,27,27,0.2)] w-full max-w-lg mx-4 animate-in zoom-in-95 duration-300">
+    <div className={inline ? "w-full animate-in fade-in duration-500" : "fixed inset-0 z-50 flex items-center justify-center bg-black/80 animate-in fade-in duration-200"}>
+      <div className={`bg-[#050505] border border-red-900/30 w-full ${inline ? 'max-w-4xl mx-auto border-t-0' : 'max-w-lg mx-4 shadow-[0_0_50px_rgba(153,27,27,0.2)] animate-in zoom-in-95 duration-300'}`}>
         
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-red-900/20">
@@ -15,9 +15,11 @@ export default function QuestLog({ quests, onClose }) {
             <h2 className="text-xl font-serif font-black text-red-600 uppercase tracking-[0.2em]">Daily Contracts</h2>
             <p className="text-xs text-stone-600 font-mono uppercase tracking-widest mt-1">Resets at midnight</p>
           </div>
-          <button onClick={onClose} className="text-stone-600 hover:text-white transition-colors text-xs font-mono uppercase tracking-widest">
-            Close
-          </button>
+          {!inline && (
+            <button onClick={onClose} className="text-stone-600 hover:text-white transition-colors text-xs font-mono uppercase tracking-widest">
+              Close
+            </button>
+          )}
         </div>
 
         {/* Quest List */}

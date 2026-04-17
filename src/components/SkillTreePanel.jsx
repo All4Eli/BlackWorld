@@ -1,7 +1,7 @@
 'use client';
 import { SKILL_TREE, calculateSkillBonuses } from '@/lib/skillTree';
 
-export default function SkillTreePanel({ hero, updateHero, onClose }) {
+export default function SkillTreePanel({ hero, updateHero, onClose, inline = false }) {
   const skillPoints = hero.skillPoints || {};
   const availablePoints = (hero.unspentSkillPoints ?? 0);
   const bonuses = calculateSkillBonuses(skillPoints);
@@ -35,22 +35,24 @@ export default function SkillTreePanel({ hero, updateHero, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 animate-in fade-in duration-200">
-      <div className="bg-[#050505] border border-red-900/30 shadow-[0_0_60px_rgba(153,27,27,0.15)] w-full max-w-4xl max-h-[90vh] overflow-y-auto mx-4 animate-in zoom-in-95 duration-300">
+    <div className={inline ? "w-full h-full animate-in fade-in duration-500" : "fixed inset-0 z-50 flex items-center justify-center bg-black/85 animate-in fade-in duration-200"}>
+      <div className={`bg-[#050505] border border-red-900/30 w-full max-w-5xl overflow-y-auto mx-auto ${inline ? 'h-full border-t-0' : 'max-h-[90vh] shadow-[0_0_60px_rgba(153,27,27,0.15)] animate-in zoom-in-95 duration-300'}`}>
 
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-red-900/20 sticky top-0 bg-[#050505] z-10">
           <div>
-            <h2 className="text-xl font-serif font-black text-red-600 uppercase tracking-[0.2em]">Skill Tree</h2>
+            <h2 className="text-xl font-serif font-black text-red-600 uppercase tracking-[0.2em]">{inline ? "The Skill Tree" : "Skill Tree"}</h2>
             <p className="text-xs text-stone-600 font-mono uppercase tracking-widest mt-1">
               {availablePoints > 0
-                ? <span className="text-yellow-600">{availablePoints} point{availablePoints > 1 ? 's' : ''} to spend</span>
+                ? <span className="text-yellow-600 font-bold">{availablePoints} point{availablePoints > 1 ? 's' : ''} to spend</span>
                 : 'Level up to earn more points'}
             </p>
           </div>
-          <button onClick={onClose} className="text-stone-600 hover:text-white transition-colors text-xs font-mono uppercase tracking-widest">
-            Close
-          </button>
+          {!inline && (
+            <button onClick={onClose} className="text-stone-600 hover:text-white transition-colors text-xs font-mono uppercase tracking-widest">
+              Close
+            </button>
+          )}
         </div>
 
         {/* Branches */}

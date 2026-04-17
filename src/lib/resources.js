@@ -16,8 +16,7 @@ export const calculateMaxResource = (resourceType, hero) => {
 
 export const calculateCurrentResource = (resourceRecord, resourceType, maxVal) => {
   if (!resourceRecord) return { current: 0, max: maxVal, next_tick: 0 };
-  // If field is truly undefined (fresh/legacy account), default to FULL.
-  const rawCurrent = resourceRecord[`${resourceType}_current`];
+  const rawCurrent = resourceRecord[`${resourceType}_current`] ?? resourceRecord[resourceType];
   const current = rawCurrent !== undefined ? Number(rawCurrent) : maxVal;
   
   if (current >= maxVal) return { current: maxVal, max: maxVal, next_tick: 0 };

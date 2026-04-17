@@ -1,13 +1,31 @@
 'use client';
 import { calculateSkillBonuses } from '@/lib/skillTree';
+import { calcCombatStats } from '@/lib/gameData';
 
-export default function DashboardView({ hero }) {
+export default function DashboardView({ hero, updateHero }) {
   const sb = calculateSkillBonuses(hero?.skillPoints || {});
+  const c = calcCombatStats(hero, sb);
   
   const currentHp = hero?.hp ?? 0;
-  const maxHp = (hero?.maxHp ?? 100) + sb.maxHp;
+  const maxHp = c.maxHp;
   const currentLevel = hero?.level ?? 1;
   const currentXp = hero?.xp ?? 0;
+  
+  const str = hero?.str ?? 5;
+  const def = hero?.def ?? 5;
+  const dex = hero?.dex ?? 5;
+  const int = hero?.int ?? 5;
+  const vit = hero?.vit ?? 5;
+  const unspentStats = hero?.unspentStatPoints ?? 0;
+
+  const handleAllocate = (statStr) => {
+    if (unspentStats <= 0) return;
+    updateHero({
+      ...hero,
+      [statStr]: (hero[statStr] ?? 5) + 1,
+      unspentStatPoints: unspentStats - 1
+    });
+  };
   
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -55,49 +73,91 @@ export default function DashboardView({ hero }) {
       </section>
 
       {/* Stats Breakdown */}
-      <section className="lg:col-span-2 flex flex-col gap-8">
-        
+      <section className="lg:col-span-2 flex flex-col gap-6">
+
+        {/* CORE ATTRIBUTES PANEL */}
         <div className="border border-neutral-900 bg-black/40 p-6 flex-1">
-          <h3 className="font-serif text-xl tracking-[0.2em] uppercase text-stone-400 border-b border-red-900/30 pb-3 mb-6">Combat Math</h3>
+          <div className="flex justify-between items-end border-b border-red-900/30 pb-3 mb-6">
+            <h3 className="font-serif text-xl tracking-[0.2em] uppercase text-stone-400">Core Attributes</h3>
+            <div className="text-xs font-mono uppercase tracking-[0.1em] text-stone-500">
+               <span className={unspentStats > 0 ? "text-yellow-500 font-bold drop-shadow-[0_0_5px_rgba(234,179,8,0.5)]" : ""}>
+                 {unspentStats}
+               </span> Points Available
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono">
+            {[
+              { id: 'str', label: 'Strength', val: str, math: '+1 DMG / pt' },
+              { id: 'def', label: 'Defense', val: def, math: '+0.5 Damage Reduction / pt' },
+              { id: 'dex', label: 'Dexterity', val: dex, math: '+1.5% Crit / pt' },
+              { id: 'int', label: 'Intelligence', val: int, math: '+3 Mana, +1 Magic Power / pt' },
+              { id: 'vit', label: 'Vitality', val: vit, math: '+5 Max HP / pt' }
+            ].map(attr => (
+              <div key={attr.id} className="flex justify-between items-center bg-[#030303] border border-neutral-800 p-3">
+                <div>
+                  <div className="text-stone-300 font-bold uppercase tracking-widest text-sm flex gap-3 items-center">
+                    <span className="text-red-700">{attr.val}</span>
+                    {attr.label}
+                  </div>
+                  <div className="text-[10px] text-stone-600 mt-1 uppercase tracking-widest">{attr.math}</div>
+                </div>
+                {unspentStats > 0 && (
+                  <button 
+                    onClick={() => handleAllocate(attr.id)}
+                    className="w-8 h-8 flex items-center justify-center bg-black border border-red-900/50 text-red-500 hover:bg-neutral-900 hover:text-red-400 hover:border-red-600 transition-all shadow-[0_0_10px_rgba(153,27,27,0.2)]"
+                  >
+                    +
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* COMBAT MATH PANEL */}
+        <div className="border border-neutral-900 bg-black/40 p-6 flex-1">
+          <h3 className="font-serif text-xl tracking-[0.2em] uppercase text-stone-400 border-b border-neutral-800 pb-3 mb-6">Combat Math</h3>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-6 font-mono text-xs text-stone-500">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 font-mono text-xs text-stone-500">
             <div>
               <div className="uppercase text-[10px] text-stone-700 mb-1">Attack Damage</div>
               <div className="text-lg text-stone-200">
-                {(hero?.baseDmg || 12) + (hero?.equippedWeapon?.stat || 0) + (sb.baseDmg || 0)}
-                <span className="text-stone-600 text-[10px] ml-2">BASE + GEAR</span>
+                {c.attackDamage}
+                <span className="text-stone-600 text-[10px] ml-2">TOTAL</span>
               </div>
             </div>
             
             <div>
               <div className="uppercase text-[10px] text-stone-700 mb-1">Magic Power</div>
-              <div className="text-lg text-purple-400">{sb.magicDmg || 0}</div>
+              <div className="text-lg text-purple-400">{c.magicPower}</div>
             </div>
 
             <div>
               <div className="uppercase text-[10px] text-stone-700 mb-1">Maximum Mana</div>
-              <div className="text-lg text-blue-400">{50 + (sb.maxMana || 0)}</div>
+              <div className="text-lg text-blue-400">{c.maxMana}</div>
             </div>
 
             <div>
               <div className="uppercase text-[10px] text-stone-700 mb-1">Critical Chance</div>
-              <div className="text-lg text-yellow-600">{sb.critChance || 0}%</div>
+              <div className="text-lg text-yellow-600">{c.critChance}%</div>
             </div>
 
             <div>
               <div className="uppercase text-[10px] text-stone-700 mb-1">Damage Reduction</div>
-              <div className="text-lg text-stone-400">{sb.damageReduction || 0}</div>
+              <div className="text-lg text-stone-400">{c.damageReduction}</div>
             </div>
 
             <div>
               <div className="uppercase text-[10px] text-stone-700 mb-1">Lifesteal</div>
-              <div className="text-lg text-red-400">{sb.lifesteal || 0} HP/HIT</div>
+              <div className="text-lg text-red-400">{c.lifesteal} HP/HIT</div>
             </div>
           </div>
         </div>
 
+        {/* EQUIPPED INSTRUMENTS */}
         <div className="border border-neutral-900 bg-black/40 p-6 flex-1">
-          <h3 className="font-serif text-xl tracking-[0.2em] uppercase text-stone-400 border-b border-red-900/30 pb-3 mb-6">Equipped Instruments</h3>
+          <h3 className="font-serif text-xl tracking-[0.2em] uppercase text-stone-400 border-b border-neutral-800 pb-3 mb-6">Equipped Instruments</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="border border-neutral-800 bg-[#030303] p-4 flex items-center justify-between">

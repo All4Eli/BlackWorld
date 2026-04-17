@@ -40,6 +40,19 @@ export async function POST(request) {
             modified = true;
         }
 
+        // 3. Retroactive Level Loop
+        hero.level = hero.level || 1;
+        hero.unspentStatPoints = hero.unspentStatPoints || 0;
+        
+        if ((hero.xp || 0) >= 100) {
+             while (hero.xp >= 100) {
+                  hero.xp -= 100;
+                  hero.level += 1;
+                  hero.unspentStatPoints += 3;
+             }
+             modified = true;
+        }
+
         if (modified) {
             const { error: updateError } = await supabase
                 .from('players')

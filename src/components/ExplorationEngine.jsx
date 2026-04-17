@@ -4,6 +4,7 @@ import { ZONES } from '@/lib/gameData';
 import { supabase } from '@/lib/supabaseClient';
 import { calcPlayerStats, rollDamage, calcMonsterStats, isHitDodged } from '@/lib/combat';
 import { validateAndConsume } from '@/lib/resources';
+import DungeonGrid from './DungeonGrid';
 
 export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
   const [log, setLog] = useState(["[ENTRY]: You descend into the dark. Choose your ground."]);
@@ -343,52 +344,21 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
             </div>
           )}
 
-          {/* Narrative Terminal */}
-          <div className="bg-[#020202] border border-neutral-800 flex flex-col" style={{ height: activeZone ? '500px' : '200px' }}>
-            <div className="bg-[#050505] border-b border-neutral-900 p-3 font-mono text-[10px] uppercase tracking-widest text-stone-700 flex justify-between">
-              <span>Chronicle</span>
-              {activeZone && (
-                <button onClick={() => setActiveZone(null)} className="text-stone-700 hover:text-stone-500 transition-colors">
-                  ← Change Zone
-                </button>
-              )}
-            </div>
-            <div className="flex-1 overflow-y-auto p-6 font-serif text-sm leading-loose space-y-3">
-              {log.map((entry, i) => {
-                let color = 'text-stone-500';
-                if (entry.includes('AMBUSH') || entry.includes('ENCOUNTER')) color = 'text-red-500 font-bold';
-                else if (entry.includes('PLUNDER') || entry.includes('Gold')) color = 'text-yellow-600 font-bold';
-                else if (entry.includes('SANCTUARY')) color = 'text-emerald-700 font-bold italic';
-                else if (entry.includes('MERCHANT')) color = 'text-yellow-500 italic';
-                else if (entry.includes('EXHAUSTED')) color = 'text-red-800 font-bold';
-                else if (entry.includes('ZONE')) color = 'text-stone-300 italic';
-                return (
-                  <p key={i} className={`${color}`}>
-                    {entry}
-                  </p>
-                );
-              })}
-              <div ref={logEndRef} />
-            </div>
-            {activeZone && (
-              <div className="grid grid-cols-2 gap-3 p-4 border-t border-neutral-900 bg-[#050505]">
-                <button
-                  onClick={() => handleAction('SAFE')}
-                  disabled={exploreCooldown}
-                  className="bg-neutral-900/50 hover:bg-neutral-800 border border-neutral-800 py-4 text-xs tracking-widest uppercase text-stone-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all font-mono"
-                >
-                  Tread Carefully
-                </button>
-                <button
-                  onClick={() => handleAction('DARK')}
-                  disabled={exploreCooldown}
-                  className="bg-red-950/10 hover:bg-red-900/25 border border-red-900/30 py-4 text-xs tracking-widest uppercase text-red-500 font-bold disabled:opacity-30 disabled:cursor-not-allowed transition-all font-mono"
-                >
-                  Plunge into Darkness
-                </button>
+          {/* Procedural Grid mapping */}
+          {activeZone && (
+              <div ref={logEndRef}>
+                  <DungeonGrid 
+                      activeZone={activeZone}
+                      onTriggerCombat={() => handleAction('DARK')}
+                      onTriggerLoot={() => handleAction('SAFE')}
+                  />
+                  <div className="text-center mt-4">
+                      <button onClick={() => setActiveZone(null)} className="text-stone-500 hover:text-stone-300 transition-colors uppercase font-mono tracking-widest text-xs border border-neutral-800 bg-black px-6 py-2">
+                        ← Exit Depth
+                      </button>
+                  </div>
               </div>
-            )}
-          </div>
+          )}
       </div>
     </div>
   );

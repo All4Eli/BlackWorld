@@ -13,6 +13,7 @@ import BattlePassHub from './BattlePassHub';
 import PremiumStore from './PremiumStore';
 import WorldEventBanner from './WorldEventBanner';
 import BlackWorldSidebar from './BlackWorldSidebar';
+import GlobalChatWidget from './GlobalChatWidget';
 
 export default function GameShell({ hero, updateHero, onFindCombat }) {
   const [activeTab, setActiveTab] = useState('DASHBOARD');
@@ -224,6 +225,8 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
       )}
 
     </div>
+    
+    <GlobalChatWidget hero={hero} />
     </>
   );
 }

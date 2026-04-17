@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 import { calculateEssence } from '@/lib/gameData';
 import DashboardView from './DashboardView';
 import ExplorationEngine from './ExplorationEngine';
@@ -13,21 +14,30 @@ import PremiumStore from './PremiumStore';
 import ResourceBars from './ResourceBars';
 import ResourceRefillModal from './ResourceRefillModal';
 import WorldEventBanner from './WorldEventBanner';
+import MobileResourceStrip from './MobileResourceStrip';
 
 export default function GameShell({ hero, updateHero, onFindCombat }) {
   const [activeTab, setActiveTab] = useState('DASHBOARD');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [refillModal, setRefillModal] = useState(null);
+  const [onlineCount, setOnlineCount] = useState(1);
 
   useEffect(() => {
     if (!hero) return;
     
-    // Server-side initialization of timers (Essence Regen & Daily Quests)
+    // Parse URL logic for persistence
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam) {
+       setActiveTab(tabParam.toUpperCase());
+    }
+
+    // Server-side initialization of timers
     const syncTimers = async () => {
         try {
             const res = await fetch('/api/player/sync-timers', { method: 'POST' });
             const data = await res.json();
-            if (res.ok) {
+            if (res.ok && data.updatedHero) {
                 updateHero(data.updatedHero);
             }
         } catch (err) {
@@ -36,17 +46,42 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
     };
     
     syncTimers();
+
+    // Supabase Presence Tracking
+    const channel = supabase.channel('world_presence', {
+        config: { presence: { key: hero.name || 'player' } }
+    });
+
+    channel.on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        setOnlineCount(Math.max(1, Object.keys(state).length));
+    }).subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+            await channel.track({ online_at: new Date().toISOString() });
+        }
+    });
+
+    return () => {
+        supabase.removeChannel(channel);
+    };
   }, []);
 
+  const handleTabChange = (id) => {
+      setActiveTab(id);
+      const newUrl = new URL(window.location);
+      newUrl.searchParams.set('tab', id.toLowerCase());
+      window.history.pushState({}, '', newUrl);
+  };
+
   const unspentPoints = hero?.unspentSkillPoints ?? 0;
-  const unfinishedQuests = hero?.daily_quests?.some(q => q.progress < q.target) ?? false;
+  const claimableQuests = hero?.daily_quests?.some(q => q.progress >= q.target && !q.claimed) ?? false;
 
   const mainTabs = [
     { id: 'DASHBOARD', label: 'Home', icon: '⌂' },
     { id: 'TOWN', label: 'City', icon: '♜' },
     { id: 'EXPLORE', label: 'Explore', icon: '⛫' },
-    { id: 'CONTRACTS', label: 'Quests', icon: '⚑', alert: unfinishedQuests },
-    { id: 'BATTLE_PASS', label: 'Battle Pass', icon: '✦', alert: true },
+    { id: 'CONTRACTS', label: 'Quests', icon: '⚑', alert: claimableQuests },
+    { id: 'BATTLE_PASS', label: 'Battle Pass', icon: '✦' },
     { id: 'STORE', label: 'Premium Store', icon: '✧' }
   ];
 
@@ -63,7 +98,7 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
     return (
       <button
         onClick={() => {
-          setActiveTab(tab.id);
+          handleTabChange(tab.id);
           if (isMobile) setMobileMenuOpen(false);
         }}
         className={`relative flex items-center gap-3 px-4 py-3 font-mono text-xs uppercase tracking-[0.2em] transition-all text-left w-full ${
@@ -84,6 +119,7 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
   return (
     <>
     <WorldEventBanner />
+    <MobileResourceStrip hero={hero} onRefillClick={(t) => setRefillModal({ type: t })} />
     <div className="flex flex-col md:flex-row w-full h-full min-h-[85vh] max-w-7xl mx-auto px-4 py-6 animate-in fade-in duration-700">
       
       {/* MOBILE NAV (Top bar with Hamburger Menu, hidden on md+) */}
@@ -95,7 +131,7 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
           <div className="flex items-center gap-3">
             <span className="text-xl opacity-80">{activeTabData?.icon || '⌂'}</span>
             {activeTabData?.label || 'Menu'}
-            {(unspentPoints > 0 || unfinishedQuests) && !mobileMenuOpen && (
+            {(unspentPoints > 0 || claimableQuests) && !mobileMenuOpen && (
               <span className="w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)] ml-2" />
             )}
           </div>
@@ -133,6 +169,12 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
             <div className="flex flex-col gap-1">
                {charTabs.map(tab => <NavItem key={tab.id} tab={tab} isMobile={false} />)}
             </div>
+         </div>
+         <div className="mt-8 pt-6 border-t border-red-900/20 px-4">
+             <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono text-stone-500">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)]"></span>
+                {onlineCount} Player{onlineCount !== 1 ? 's' : ''} Online
+             </div>
          </div>
       </aside>
 

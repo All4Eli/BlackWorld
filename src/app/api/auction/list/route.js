@@ -13,26 +13,54 @@ export async function POST(request) {
          return NextResponse.json({ error: 'Invalid listing details.' }, { status: 400 });
       }
 
-      const { data: auction, error } = await supabase.rpc('execute_auction_list', {
-          p_seller_id: userId,
-          p_seller_name: sellerName || 'Unknown',
-          p_item_id: item.id,
-          p_item_name: item.name,
-          p_item_type: item.type,
-          p_item_rarity: item.rarity,
-          p_item_stats: item.stats,
-          p_buyout_price: buyoutPrice
-      });
-
-      if (error) throw new Error(error.message);
-
-      const { data: player } = await supabase
+      // 1. Fetch player
+      const { data: player, error: playerError } = await supabase
           .from('players')
           .select('hero_data')
           .eq('clerk_user_id', userId)
           .single();
 
-      return NextResponse.json({ auction, updatedHero: player?.hero_data });
+      if (playerError || !player) throw new Error('Player not found.');
+
+      let hero = player.hero_data || {};
+      const artifacts = hero.artifacts || [];
+
+      // Find the artifact to remove
+      const itemIdx = artifacts.findIndex(a => a.id === item.id);
+      if (itemIdx === -1) {
+          return NextResponse.json({ error: 'Item not found in inventory.' }, { status: 404 });
+      }
+
+      // Remove item
+      hero.artifacts.splice(itemIdx, 1);
+
+      // 2. Insert into Auctions table
+      const { data: auction, error: insertError } = await supabase
+          .from('auctions')
+          .insert({
+              seller_id: userId,
+              seller_name: sellerName || 'Unknown',
+              item_id: item.id,
+              item_name: item.name,
+              item_type: item.type,
+              item_rarity: item.rarity,
+              item_stats: item.stats,
+              buyout_price: buyoutPrice
+          })
+          .select()
+          .single();
+
+      if (insertError) throw new Error(insertError.message);
+
+      // 3. Update player data
+      const { error: updateError } = await supabase
+          .from('players')
+          .update({ hero_data: hero })
+          .eq('clerk_user_id', userId);
+
+      if (updateError) throw updateError;
+
+      return NextResponse.json({ auction, updatedHero: hero });
   } catch(err) {
       return NextResponse.json({ error: err.message }, { status: 500 });
   }

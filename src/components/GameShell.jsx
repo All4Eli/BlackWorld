@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { calculateEssence, getDailyQuests } from '@/lib/gameData';
 import DashboardView from './DashboardView';
 import ExplorationEngine from './ExplorationEngine';
+import TownView from './TownView';
 import ArsenalView from './ArsenalView';
 import SkillTreePanel from './SkillTreePanel';
 import QuestLog from './QuestLog';
@@ -39,6 +40,7 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
 
   const mainTabs = [
     { id: 'DASHBOARD', label: 'Home', icon: '⌂' },
+    { id: 'TOWN', label: 'City', icon: '♜' },
     { id: 'EXPLORE', label: 'Explore', icon: '⛫' },
     { id: 'CONTRACTS', label: 'Quests', icon: '⚑', alert: unfinishedQuests }
   ];
@@ -128,7 +130,8 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
 
       {/* View Rendering Container */}
       <main className="flex-1 overflow-x-hidden min-w-0">
-        {activeTab === 'DASHBOARD' && <DashboardView hero={hero} />}
+        {activeTab === 'DASHBOARD' && <DashboardView hero={hero} updateHero={updateHero} />}
+        {activeTab === 'TOWN' && <TownView hero={hero} updateHero={updateHero} />}
         {activeTab === 'EXPLORE' && <ExplorationEngine hero={hero} updateHero={updateHero} onFindCombat={onFindCombat} />}
         {activeTab === 'ARSENAL' && <ArsenalView hero={hero} updateHero={updateHero} />}
         {activeTab === 'SKILLS' && <SkillTreePanel hero={hero} updateHero={updateHero} inline={true} />}

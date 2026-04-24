@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import CovenRaidView from './CovenRaidView';
 
 export default function CovenView({ hero, updateHero, onBack }) {
   const [covens, setCovens] = useState([]);
@@ -12,6 +13,7 @@ export default function CovenView({ hero, updateHero, onBack }) {
   const [newTag, setNewTag] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [foundingError, setFoundingError] = useState('');
+  const [raidMode, setRaidMode] = useState(false);
 
   const isPledged = !!hero?.coven_id;
   const currentGold = hero?.gold || 0;
@@ -106,6 +108,11 @@ export default function CovenView({ hero, updateHero, onBack }) {
   // ==== SANCTUARY VIEW (ALREADY PLEDGED) ====
   if (isPledged && covenDetails) {
       const { coven, roster } = covenDetails;
+
+      if (raidMode) {
+        return <CovenRaidView hero={hero} updateHero={updateHero} onBack={() => setRaidMode(false)} />;
+      }
+
       return (
         <div className="w-full max-w-4xl mx-auto flex flex-col gap-8 animate-in slide-in-from-right-4 duration-500 pb-10">
           <button onClick={onBack} className="text-stone-500 hover:text-stone-300 font-mono text-xs uppercase tracking-widest text-left mb-4">
@@ -124,10 +131,13 @@ export default function CovenView({ hero, updateHero, onBack }) {
                    <div className="border border-neutral-800 bg-[#020202] px-4 py-2 font-mono text-xs text-stone-400">
                       Members: <span className="text-stone-200 font-bold">{coven.member_count}</span>
                    </div>
-                   <button onClick={handleLeaveCoven} className="text-stone-600 hover:text-red-500 uppercase tracking-widest text-[10px] font-mono transition-colors">
-                      Abandon Coven
-                   </button>
-                </div>
+                   <button onClick={() => setRaidMode(true)} className="px-4 py-2 border border-red-900/50 bg-red-950/20 text-red-500 hover:bg-red-900 hover:text-white uppercase tracking-widest text-[10px] font-mono transition-colors font-bold">
+                       ⚔ Raid Boss
+                    </button>
+                    <button onClick={handleLeaveCoven} className="text-stone-600 hover:text-red-500 uppercase tracking-widest text-[10px] font-mono transition-colors">
+                       Abandon Coven
+                    </button>
+                 </div>
              </div>
 
              <div className="bg-[#020202] border border-neutral-900 p-6">

@@ -1,4 +1,4 @@
-import { HeroStats, Composite, PvP } from '@/lib/dal';
+import { HeroStats, Composite, PvP, sql } from '@/lib/dal';
 import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { calcPlayerStats, rollDamage, isHitDodged } from '@/lib/combat';
@@ -106,6 +106,42 @@ export async function POST(request) {
             eloChange, 
             roundsDone
         );
+
+        // Update seasonal stats
+        const newElo = Math.max(0, aElo + eloChange);
+        const rankTier = newElo >= 2000 ? 'Sovereign'
+            : newElo >= 1800 ? 'Champion'
+            : newElo >= 1600 ? 'Diamond'
+            : newElo >= 1400 ? 'Platinum'
+            : newElo >= 1200 ? 'Gold'
+            : newElo >= 1000 ? 'Silver'
+            : 'Bronze';
+
+        try {
+            const { data: activeSeason } = await sql(
+                `SELECT id FROM pvp_seasons WHERE is_active = true LIMIT 1`
+            );
+            if (activeSeason && activeSeason.length > 0) {
+                const seasonId = activeSeason[0].id;
+                await sql(
+                    `INSERT INTO pvp_season_stats (player_id, season_id, wins, losses, elo, peak_elo, rank_tier, win_streak)
+                     VALUES ($1, $2, $3, $4, $5, $5, $6, $7)
+                     ON CONFLICT (player_id, season_id) DO UPDATE SET
+                       wins = pvp_season_stats.wins + $3,
+                       losses = pvp_season_stats.losses + $4,
+                       elo = $5,
+                       peak_elo = GREATEST(pvp_season_stats.peak_elo, $5),
+                       rank_tier = $6,
+                       win_streak = CASE WHEN $3 = 1 THEN pvp_season_stats.win_streak + 1 ELSE 0 END,
+                       best_streak = GREATEST(pvp_season_stats.best_streak, 
+                         CASE WHEN $3 = 1 THEN pvp_season_stats.win_streak + 1 ELSE pvp_season_stats.best_streak END),
+                       gold_earned = pvp_season_stats.gold_earned + $8`,
+                    [userId, seasonId, win ? 1 : 0, win ? 0 : 1, newElo, rankTier, win ? 1 : 0, goldGained]
+                );
+            }
+        } catch (seasonErr) {
+            console.error('[SEASON SYNC]', seasonErr);
+        }
 
         // Rebuild frontend payload
         const updatedHero = {

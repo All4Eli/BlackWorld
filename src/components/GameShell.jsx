@@ -13,6 +13,22 @@ import WorldEventBanner from './WorldEventBanner';
 import BlackWorldSidebar from './BlackWorldSidebar';
 import GlobalChatWidget from './GlobalChatWidget';
 import GatheringView from './GatheringView';
+import { useSounds } from './SoundEngine';
+import BloodStoneShop from './BloodStoneShop';
+
+function SoundToggle() {
+  const sound = useSounds();
+  if (!sound) return null;
+  return (
+    <button
+      onClick={sound.toggleMute}
+      className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono text-stone-600 hover:text-stone-400 transition-colors"
+    >
+      <span>{sound.muted ? '🔇' : '🔊'}</span>
+      {sound.muted ? 'Unmute' : 'Mute'}
+    </button>
+  );
+}
 
 export default function GameShell({ hero, updateHero, onFindCombat }) {
   const [activeTab, setActiveTab] = useState('DASHBOARD');
@@ -85,7 +101,8 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
   const charTabs = [
     { id: 'ARSENAL', label: 'Arsenal', icon: '⚔' },
     { id: 'SKILLS', label: 'Skills', icon: '✧', alert: unspentPoints > 0 },
-    { id: 'ACHIEVEMENTS', label: 'Legacy', icon: '♆' }
+    { id: 'ACHIEVEMENTS', label: 'Legacy', icon: '♆' },
+    { id: 'SHOP', label: 'Blood Shop', icon: '✧' }
   ];
 
   const activeTabData = [...mainTabs, ...charTabs].find(t => t.id === activeTab);
@@ -173,12 +190,13 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
                {charTabs.map(tab => <NavItem key={tab.id} tab={tab} isMobile={false} />)}
             </div>
          </div>
-         <div className="mt-8 pt-6 border-t border-red-900/20 px-4">
-             <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono text-stone-500">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)]"></span>
-                {onlineCount} Player{onlineCount !== 1 ? 's' : ''} Online
-             </div>
-         </div>
+         <div className="mt-8 pt-6 border-t border-red-900/20 px-4 flex flex-col gap-3">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono text-stone-500">
+                 <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)]"></span>
+                 {onlineCount} Player{onlineCount !== 1 ? 's' : ''} Online
+              </div>
+              <SoundToggle />
+          </div>
       </aside>
 
 
@@ -192,6 +210,7 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
         {activeTab === 'CONTRACTS' && <QuestLog hero={hero} updateHero={updateHero} onBack={() => setActiveTab('DASHBOARD')} />}
         {activeTab === 'ACHIEVEMENTS' && <AchievementPanel hero={hero} updateHero={updateHero} />}
         {activeTab === 'GATHERING' && <GatheringView hero={hero} updateHero={updateHero} onBack={() => setActiveTab('DASHBOARD')} />}
+        {activeTab === 'SHOP' && <BloodStoneShop hero={hero} updateHero={updateHero} />}
       </main>
 
       {refillModal && (

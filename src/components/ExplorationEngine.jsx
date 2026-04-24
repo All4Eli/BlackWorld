@@ -6,6 +6,7 @@ import { calcPlayerStats, rollDamage, calcMonsterStats, isHitDodged } from '@/li
 import { validateAndConsume } from '@/lib/resources';
 import DungeonGrid from './DungeonGrid';
 import WorldMap from './WorldMap';
+import { useSounds } from './SoundEngine';
 
 export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
   const [log, setLog] = useState(["[ENTRY]: You descend into the dark. Choose your ground."]);
@@ -14,6 +15,7 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
   const [merchantOpen, setMerchantOpen] = useState(false);
   const logEndRef = useRef(null);
   const combatLogEndRef = useRef(null);
+  const sound = useSounds();
 
   useEffect(() => {
     fetch('/api/bounties/active')
@@ -167,6 +169,9 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
          if (data.newEnemyState) {
             setCurrentEnemy(prev => ({ ...prev, ...data.newEnemyState }));
          }
+         // Play hit sound
+         if (data.initialLogs?.some(l => l.includes('CRITICAL'))) sound?.play('crit');
+         else sound?.play('hit');
 
          // Phase 2: Enemy Sequential Retaliation (Delayed for UI fluidity)
          setTimeout(() => {
@@ -177,12 +182,14 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
                  setCombatEnded(true);
                  if (data.win) {
                      addCombatLog(`>> [VICTORY] You defeated the enemy! Gained ${data.expGained} EXP and ${data.goldGained} Gold.`);
+                     sound?.play('victory');
                      setTimeout(() => {
                          setCombatActive(false);
                          updateHero(data.updatedHero); // Finalize rewards globally
                      }, 2000);
                  } else if (data.updatedHero.hp <= 0) {
                      addCombatLog(`>> [DEFEAT] You were struck down...`);
+                     sound?.play('death');
                      setTimeout(() => {
                          setCombatActive(false);
                          setActiveZone(null);

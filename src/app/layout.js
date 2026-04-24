@@ -42,6 +42,7 @@ export const metadata = {
 };
 
 import ErrorBoundary from "@/components/ErrorBoundary";
+import SoundEngine from "@/components/SoundEngine";
 
 export default function RootLayout({ children }) {
   return (
@@ -57,7 +58,9 @@ export default function RootLayout({ children }) {
       </head>
       <body className="min-h-full flex flex-col">
           <ErrorBoundary>
-            {children}
+            <SoundEngine>
+              {children}
+            </SoundEngine>
           </ErrorBoundary>
       </body>
     </html>

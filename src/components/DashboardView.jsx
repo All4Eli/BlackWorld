@@ -95,10 +95,10 @@ export default function DashboardView({ hero, updateHero }) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
 
       {/* Primary Hero Plaque */}
-      <section className="lg:col-span-1 border border-neutral-900 bg-[#050505] p-8 shadow-[0_0_20px_rgba(0,0,0,0.8)] flex flex-col items-center text-center">
+      <section className="lg:col-span-1 border border-neutral-900 bg-[#050505] p-4 sm:p-8 shadow-[0_0_20px_rgba(0,0,0,0.8)] flex flex-col items-center text-center">
         <div className="w-24 h-24 bg-red-950/20 border border-red-900/50 flex flex-col items-center justify-center text-red-600 mb-6 shadow-inner">
           <span className="text-4xl font-serif leading-none mt-2">†</span>
           <span className="text-[10px] font-mono mt-1 opacity-50">SOUL</span>

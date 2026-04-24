@@ -134,7 +134,7 @@ export default function CovenRaidView({ hero, updateHero, onBack }) {
 
       {/* No active raid */}
       {!raid || raid.status === 'defeated' ? (
-        <div className="border border-neutral-900 bg-[#050505] p-8 text-center">
+        <div className="border border-neutral-900 bg-[#050505] p-4 sm:p-8 text-center">
           {raid?.status === 'defeated' && (
             <div className="mb-8 p-6 border border-green-900/30 bg-green-950/10">
               <div className="text-green-500 font-serif text-3xl mb-2">♛ VICTORY</div>
@@ -142,7 +142,7 @@ export default function CovenRaidView({ hero, updateHero, onBack }) {
             </div>
           )}
 
-          <h2 className="text-3xl font-black uppercase tracking-[0.2em] font-serif text-stone-200 mb-4">Raid Summoning</h2>
+          <h2 className="text-xl sm:text-3xl font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] font-serif text-stone-200 mb-4">Raid Summoning</h2>
           <p className="text-stone-500 font-mono text-xs tracking-widest mb-8 max-w-lg mx-auto">
             Summon a world boss for your coven. All members can attack. Rewards are split by damage contribution. Costs 1000g from the treasury.
           </p>
@@ -175,13 +175,13 @@ export default function CovenRaidView({ hero, updateHero, onBack }) {
       ) : (
         <>
           {/* Active Raid */}
-          <div className={`border-2 ${TIER_BORDERS[raid.bossTier]} ${TIER_BG[raid.bossTier]} p-8 shadow-[0_0_50px_rgba(153,27,27,0.15)]`}>
+          <div className={`border-2 ${TIER_BORDERS[raid.bossTier]} ${TIER_BG[raid.bossTier]} p-4 sm:p-8 shadow-[0_0_50px_rgba(153,27,27,0.15)]`}>
             {/* Boss Header */}
             <div className="text-center mb-6">
               <div className={`text-[10px] font-mono uppercase tracking-widest mb-2 ${TIER_COLORS[raid.bossTier]}`}>
                 {raid.bossTier} Raid Boss
               </div>
-              <h2 className="text-4xl font-black uppercase tracking-[0.15em] font-serif text-stone-200 mb-1">{raid.bossName}</h2>
+              <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-[0.1em] sm:tracking-[0.15em] font-serif text-stone-200 mb-1">{raid.bossName}</h2>
               <div className="text-stone-600 text-[10px] font-mono uppercase tracking-widest">
                 Expires: {new Date(raid.expiresAt).toLocaleString()}
               </div>
@@ -249,7 +249,7 @@ export default function CovenRaidView({ hero, updateHero, onBack }) {
           )}
 
           {/* Contribution Leaderboard */}
-          <div className="border border-neutral-900 bg-[#050505] p-6">
+          <div className="border border-neutral-900 bg-[#050505] p-3 sm:p-6">
             <h3 className="font-serif text-lg uppercase tracking-widest text-stone-400 mb-4">Damage Leaderboard</h3>
             <div className="flex flex-col gap-2">
               <div className="grid grid-cols-12 gap-4 pb-2 border-b border-neutral-800 text-[10px] text-stone-600 font-mono uppercase tracking-widest">

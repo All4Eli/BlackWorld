@@ -1,70 +1,94 @@
-import { supabase } from '@/lib/supabase';
-import { auth } from '@clerk/nextjs/server';
+// ═══════════════════════════════════════════════════════════════════
+// POST /api/equipment/equip — Equip or unequip an item
+// ═══════════════════════════════════════════════════════════════════
+// Client sends intent: { inventoryId, slot } to equip,
+//                       { slot } (no inventoryId) to unequip.
+// Server validates ownership, level, slot compat, and handles swap.
+// ═══════════════════════════════════════════════════════════════════
+
 import { NextResponse } from 'next/server';
+import { withMiddleware } from '@/lib/middleware';
+import * as InventoryDal from '@/lib/db/dal/inventory';
 
-export async function POST(request) {
-    const { userId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+/**
+ * POST /api/equipment/equip
+ *
+ * Body (equip):   { inventoryId: "uuid", slot: "mainHand" }
+ * Body (unequip): { slot: "mainHand" }
+ *
+ * All validation happens server-side via the DAL:
+ *   - Ownership check (inventory row belongs to player)
+ *   - Level requirement (hero_stats.level >= items.level_required)
+ *   - Slot compatibility (item's catalog slot matches target slot)
+ *   - Swap handling (old item returned to inventory, unlocked)
+ *
+ * @param {Request} request
+ * @param {{ userId: string }} ctx
+ */
+async function handlePost(request, { userId }) {
+  try {
+    const body = await request.json();
+    const { inventoryId, slot } = body;
 
-    try {
-        const { artifactId, slotId } = await request.json();
-
-        if (!slotId) {
-            return NextResponse.json({ error: 'Missing slot to equip.' }, { status: 400 });
-        }
-
-        const { data: player, error: playerError } = await supabase
-            .from('players')
-            .select('hero_data')
-            .eq('clerk_user_id', userId)
-            .single();
-
-        if (playerError || !player) throw new Error('Player not found.');
-
-        let hero = player.hero_data || {};
-        if (!hero.artifacts) hero.artifacts = [];
-        if (!hero.equipment) hero.equipment = { head: null, amulet: null, body: null, mainHand: null, offHand: null, ring1: null, ring2: null, boots: null };
-
-        let itemToEquip = null;
-        let originalItemIndex = -1;
-
-        if (artifactId) {
-             originalItemIndex = hero.artifacts.findIndex(a => a.id === artifactId);
-             if (originalItemIndex === -1) {
-                  return NextResponse.json({ error: 'Item not found in inventory.' }, { status: 400 });
-             }
-             itemToEquip = { ...hero.artifacts[originalItemIndex] };
-        }
-
-        // Handle Current Equipped Item
-        const currentlyEquipped = hero.equipment[slotId];
-        if (currentlyEquipped) {
-            // Push old item back to inventory
-            hero.artifacts.push({ ...currentlyEquipped });
-        }
-
-        if (itemToEquip) {
-            // Remove the newly equipped item from raw inventory
-            hero.artifacts.splice(originalItemIndex, 1);
-            hero.equipment[slotId] = itemToEquip;
-        } else {
-            // Un-equip only
-            hero.equipment[slotId] = null;
-        }
-
-        const { error: updateError } = await supabase
-            .from('players')
-            .update({ hero_data: hero })
-            .eq('clerk_user_id', userId);
-
-        if (updateError) throw updateError;
-
-        return NextResponse.json({
-            success: true,
-            updatedHero: hero
-        });
-
-    } catch (err) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+    if (!slot) {
+      return NextResponse.json(
+        { error: 'BAD_REQUEST', message: 'Equipment slot is required.' },
+        { status: 400 }
+      );
     }
+
+    // ── Unequip (no inventoryId provided) ──
+    if (!inventoryId) {
+      const { data, error } = await InventoryDal.unequipItem(userId, slot);
+      if (error) {
+        return NextResponse.json(
+          { error: 'UNEQUIP_FAILED', message: error.message },
+          { status: 400 }
+        );
+      }
+
+      // Return updated equipment for the client to sync
+      const { data: equipment } = await InventoryDal.getEquipment(userId);
+
+      return NextResponse.json({
+        success: true,
+        action: 'unequip',
+        ...data,
+        equipment: equipment || [],
+      });
+    }
+
+    // ── Equip ──
+    const { data, error } = await InventoryDal.equipItem(userId, inventoryId, slot);
+    if (error) {
+      // Determine appropriate status code from error message
+      const msg = error.message;
+      let status = 400;
+      if (msg.includes('not found')) status = 404;
+      if (msg.includes('Level') || msg.includes('cannot be equipped') || msg.includes('cannot go in')) status = 403;
+
+      return NextResponse.json({ error: 'EQUIP_FAILED', message: msg }, { status });
+    }
+
+    // Return updated equipment for the client to sync
+    const { data: equipment } = await InventoryDal.getEquipment(userId);
+
+    return NextResponse.json({
+      success: true,
+      action: 'equip',
+      ...data,
+      equipment: equipment || [],
+    });
+  } catch (err) {
+    console.error('[POST /api/equipment/equip]', err);
+    return NextResponse.json(
+      { error: 'INTERNAL_ERROR', message: err.message },
+      { status: 500 }
+    );
+  }
 }
+
+export const POST = withMiddleware(handlePost, {
+  rateLimit: 'combat',     // 60 req/min — equipment changes are frequent
+  idempotency: true,       // prevent double-equip from network retries
+});

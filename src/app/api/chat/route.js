@@ -1,16 +1,12 @@
-import { supabase } from '@/lib/supabase';
-import { auth } from '@clerk/nextjs/server';
+import { Chat, Players } from '@/lib/dal';
+import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
-        const { data, error } = await supabase
-            .from('global_chat')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(50);
+        const { data, error } = await Chat.getRecent('global', 50);
             
         if (error) throw error;
         
@@ -32,23 +28,17 @@ export async function POST(request) {
         }
 
         // Fetch user data directly to prevent local spoofing
-        const { data: player } = await supabase
-           .from('players')
-           .select('username')
-           .eq('clerk_user_id', userId)
-           .single();
+        const { data: player } = await Players.getByUserId(userId);
 
         if (!player) return NextResponse.json({ error: 'Player data not found' }, { status: 404 });
 
         // Push directly to global_chat bypassing RLS
-        const { error } = await supabase
-           .from('global_chat')
-           .insert([{
-               player_id: userId,
-               username: player.username,
-               message: message.substring(0, 250), // Enforce length limit
-               channel: channel
-           }]);
+        const { error } = await Chat.send(
+            userId,
+            player.username,
+            message.substring(0, 250), // Enforce length limit
+            channel
+        );
            
         if (error) throw error;
         
@@ -58,3 +48,4 @@ export async function POST(request) {
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }
+

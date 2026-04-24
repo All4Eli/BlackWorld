@@ -1,0 +1,604 @@
+# BlackWorld — Game Design Document
+
+> *"Where the world ends. The Sovereign sits and waits."*
+
+---
+
+## 1. Overview
+
+| | |
+|---|---|
+| **Title** | BlackWorld |
+| **Genre** | Dark Fantasy Browser MMORPG |
+| **Platform** | Web (desktop + mobile responsive) |
+| **Tech Stack** | Next.js 15, PostgreSQL 18, JWT auth, server-authoritative |
+| **Art Direction** | Minimalist dark gothic — black/crimson palette, serif typography, no pixel art, no cartoons |
+| **Monetization** | Free-to-play. Optional "Dark Pact" subscription + à la carte Blood Stone shop |
+| **Target Audience** | Fans of Torn, MafiaReturns, dark idle RPGs, and text-based MMOs |
+
+### Elevator Pitch
+
+BlackWorld is a **persistent browser-based dark fantasy MMORPG** where players explore zones, fight monsters, enhance equipment, trade on a player-driven marketplace, join covens, and compete in PvP — all through a sleek, minimalist interface that feels more like a luxury dashboard than a traditional game.
+
+### Design Pillars
+
+1. **Depth over graphics** — The game is played through decisions, numbers, and strategy — not animation
+2. **Server-authoritative** — All mutations happen server-side. The client is a display layer.
+3. **Persistent progression** — Every action (kill, craft, trade) permanently advances your character
+4. **Social competition** — Leaderboards, covens, PvP, and the auction house create emergent community
+5. **Respect the player's time** — No mandatory sessions. Play 5 minutes or 5 hours.
+
+---
+
+## 2. Game Flow
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│  BOOT       │───▶│  CREATION   │───▶│  PLAYING     │───▶│  ENDGAME    │
+│  Landing    │    │  Name Entry │    │  Game Shell  │    │  Leaderboard│
+│  Login/Reg  │    │  Stats Show │    │  All Systems │    │  PvP, Raids │
+└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+```
+
+### 2.1 Boot Screen (Unauthenticated)
+- Dark landing page with game logo, lore tagline, particle effects
+- **Login** and **Register** buttons open modal forms
+- Registration creates account + mints JWT session cookie
+- Login verifies credentials with timing-safe comparison
+
+### 2.2 Character Creation
+- Player chooses a display name (2-16 chars, alphanumeric + underscore)
+- All players start identical — no class selection
+- Base stats: 100 HP, 50 Mana, 12 DMG, 100 Blood Essence
+- Core attributes: STR 5, DEF 5, DEX 5, INT 5, VIT 5
+
+### 2.3 Main Game Shell
+The game uses a **sidebar + content** layout:
+
+**Navigation Tabs:**
+
+| Tab | Component | Function |
+|---|---|---|
+| Home | `DashboardView` | Stats overview, equipment slots, resource bars |
+| City | `TownView` | NPC locations (shop, healer, bank, etc.) |
+| Explore | `ExplorationEngine` | Zone selection → combat encounters |
+| Quests | `QuestLog` | Active/completed quests, dailies, weeklies |
+| Arsenal | `ArsenalView` | Full inventory management |
+| Skills | `SkillTreePanel` | Skill point allocation across 3 branches |
+| Legacy | `AchievementPanel` | Achievement tracking and rewards |
+
+---
+
+## 3. Core Systems
+
+### 3.1 Combat System
+
+**Type:** Turn-based, server-resolved
+
+**Flow:**
+1. Player selects zone → spends Blood Essence → encounters random enemy
+2. Player chooses: **Attack**, **Use Flask**, **Use Ability**, or **Flee**
+3. Server resolves turn: player attack → enemy attack → status effects
+4. On victory: gold, XP, chance for loot and Tome drops
+5. On defeat: lose % of gold, return to town
+
+**Combat Math:**
+```
+MaxHP      = 100 + (VIT × 5) + (Level × 5) + gear.hp + skills.maxHp
+AttackDMG  = 12 + (STR × 1) + gear.dmg + skills.baseDmg
+DmgReduct  = DEF × 0.5 + gear.def + skills.damageReduction
+CritChance = DEX × 1.5 + gear.crit + skills.critChance
+MaxMana    = 50 + (INT × 3) + gear.maxMana + skills.maxMana
+MagicPower = INT × 1 + gear.magicDmg + skills.magicDmg
+```
+
+**Special Mechanics:**
+- Critical hits deal 1.5x damage
+- Lifesteal heals attacker per hit
+- Bosses have special abilities (stored in `monsters.special_abilities` JSONB)
+- Bleed (from Serrated Blades keystone) stacks per hit
+- Blood Aegis shield triggers at 30% HP
+- Undying prevents one killing blow per combat
+
+### 3.2 Exploration
+
+**Resource:** Blood Essence (regenerates over time, configurable via `resource_config`)
+
+**Zones (8):**
+
+| Zone | Level | Essence | Danger | Gold× | XP× |
+|---|---|---|---|---|---|
+| The Bone Crypts | 1 | 8 | Normal | 1.0 | 1.0 |
+| The Ashen Wastes | 5 | 12 | Normal | 1.5 | 1.4 |
+| The Hollow Cathedral | 10 | 18 | Dangerous | 2.2 | 2.0 |
+| The Crimson Depths | 15 | 20 | Dangerous | 2.8 | 2.5 |
+| The Abyssal Rift | 20 | 25 | Dangerous | 3.5 | 3.2 |
+| The Iron Wastes | 25 | 30 | Dangerous | 4.0 | 3.8 |
+| The Throne of Nothing | 35 | 40 | Lethal | 6.0 | 5.0 |
+| The Void Spire | 40 | 50 | Lethal | 8.0 | 7.0 |
+
+Each zone contains:
+- 3-4 regular enemies (COMMON → RARE tier)
+- 1-2 boss enemies (BOSS tier, higher HP/DMG/rewards)
+- Gathering nodes (ore, herb, gem, essence, skin)
+
+### 3.3 Progression
+
+**Level System:**
+- XP required per level: `100 × 1.4^(level-1)` (exponential curve)
+- Each level-up grants: 1 unspent attribute point, 1 skill point
+- No level cap (soft cap via XP curve)
+
+**Core Attributes (5):**
+
+| Attribute | Effect |
+|---|---|
+| **STR** (Strength) | +1 Attack Damage per point |
+| **DEF** (Defense) | +0.5 Damage Reduction per point |
+| **DEX** (Dexterity) | +1.5% Crit Chance per point |
+| **INT** (Intelligence) | +3 Max Mana, +1 Magic Power per point |
+| **VIT** (Vitality) | +5 Max HP per point |
+
+### 3.4 Skill Tree
+
+**Structure:** 3 branches, no class restriction. All players access all branches.
+
+#### Combat Branch (⚔)
+| Skill | Max Rank | Effect per Rank |
+|---|---|---|
+| Iron Flesh | 5 | +10 Max HP |
+| Sharpened Edge | 5 | +3 Base Damage |
+| Berserker | 3 | +5% Crit Chance *(requires Sharpened Edge 2)* |
+| Executioner | 1 | Kill heals 20 HP *(requires Berserker 2)* |
+| **Keystone: Serrated Blades** | 1 | Physical attacks inflict stacking 5 DMG bleed *(requires Executioner 1)* |
+
+#### Blood Magic Branch (♦)
+| Skill | Max Rank | Effect per Rank |
+|---|---|---|
+| Mana Well | 5 | +10 Max Mana |
+| Blood Siphon | 3 | +3 Lifesteal per hit |
+| Soul Burn | 3 | +6 Magic Damage *(requires Mana Well 2)* |
+| Death Mark | 1 | Enemies take 15% more damage *(requires Soul Burn 2)* |
+| **Keystone: Blood Aegis** | 1 | Below 30% HP, gain shield = Max HP for 1 turn *(requires Death Mark 1)* |
+
+#### Survival Branch (⛨)
+| Skill | Max Rank | Effect per Rank |
+|---|---|---|
+| Thick Skin | 5 | -2 Damage taken |
+| Efficient Flasks | 3 | +15 Flask heal amount |
+| Essence Flow | 3 | +5 Max Blood Essence |
+| Undying | 1 | Survive fatal blow with 1 HP (once per combat) *(requires Thick Skin 3)* |
+| **Keystone: Barbed Carapace** | 1 | Reflect 25% mitigated damage back *(requires Undying 1)* |
+
+### 3.5 Tomes
+
+Tomes are **ultra-rare permanent ability unlocks** dropped by bosses. They cannot be purchased.
+
+| Tome | Rarity | Drop Rate | Effect |
+|---|---|---|---|
+| Tome of Inferno | LEGENDARY | 2% | Inferno Strike: 2× damage, 30 mana |
+| Tome of Resurrection | LEGENDARY | 1% | Revive with 50% HP on death |
+| Tome of Void Walk | MYTHIC | 0.5% | Skip enemy turn, 50 mana |
+| Tome of the Blood Pact | EPIC | 5% | +5 permanent Base Damage |
+| Tome of Iron Will | EPIC | 4% | +30 permanent Max HP |
+| Tome of Essence Mastery | RARE | 8% | +20 permanent Max Essence |
+
+---
+
+## 4. Economy
+
+### 4.1 Gold
+- Primary currency. Earned from combat, quests, auction sales.
+- Spent on: shop items, enhancement, crafting, casino, healer, bank fees
+- Death penalty: lose a configurable % of carried gold (`server_config.death_gold_loss_pct`)
+- Gold in the bank is **protected** from death loss
+
+### 4.2 Blood Stones (Premium Currency)
+
+Blood Stones are the premium currency, modeled after Torn City's Points system. Critically, Blood Stones are **tradeable between players** on the auction house, creating an F2P path to all premium content.
+
+**How Blood Stones are obtained:**
+- **Direct purchase** — via Packs or Subscription (see below)
+- **Free earning** — achievements, daily logins, PvP season rewards, weekly quests (~60-80 BS/month for active F2P players)
+- **Player trading** — buy from other players on the auction house using gold
+
+**Blood Stone Shop:**
+
+| Item | Cost | Effect |
+|---|---|---|
+| Enhancement Protection Scroll | 50 BS | Prevents item break on one failed enhancement |
+| Essence Refill | 20 BS | Instantly refills Blood Essence to max |
+| Inventory Expansion (+10 slots) | 200 BS | Permanent. Stacks up to 5 times |
+| Name Color (Crimson/Amber/Void) | 300 BS | Cosmetic. Permanent |
+| Profile Border (15 designs) | 150 BS | Cosmetic. Permanent |
+| Custom Title Slot | 100 BS | Display a custom title under your name |
+| Loot Charm (24h) | 30 BS | +10% loot drop chance for 24 hours |
+| XP Incense (24h) | 30 BS | +15% XP gain for 24 hours |
+| Flask Restock | 15 BS | Refill all combat flasks immediately |
+
+> **Whale Path:** Enhancement Protection Scrolls at +15-20 where break chance is 35-60%. A whale can protect every attempt while F2P players risk destruction. Massive gold/time savings, but doesn't gate power — persistence still wins.
+
+### 4.3 Blood Stone Packs (One-time Purchase)
+
+Blood Stone Packs are **tradeable items** — like Torn's Donator Packs. A paying player can sell their pack on the auction house for gold, letting F2P players buy Donator status with in-game effort.
+
+| Pack | Price | Blood Stones | Donator Status | Bonus |
+|---|---|---|---|---|
+| **Shard Pack** | $4.99 | 75 BS | 31 days Donator | — |
+| **Core Pack** | $9.99 | 175 BS | 31 days Donator | +1 Enhancement Protection Scroll |
+| **Rift Pack** | $24.99 | 500 BS | 31 days Donator | +3 Enhancement Protection Scrolls |
+| **Sovereign Pack** | $49.99 | 1,200 BS | 62 days Donator | +7 Enhancement Protection Scrolls + Exclusive Profile Border |
+
+**Donator Status (31 days):**
+When a pack is consumed (used or purchased), the player becomes a **Donator** for 31 days:
+
+| Perk | Effect |
+|---|---|
+| Max Essence Increase | +25 Blood Essence cap (base 100 → 125) |
+| Essence Regen Boost | +15% faster Blood Essence regeneration |
+| Donator Badge | ✦ icon beside name in chat and leaderboards |
+| Auction Fee Reduction | Listing fee reduced from 5% to 3% |
+
+### 4.4 Dark Pact (Monthly Subscription — $5.99/mo)
+
+The subscription offers **strictly more value** than one-time packs. It includes everything from Donator status plus exclusive perks that cannot be obtained any other way.
+
+| Comparison | Shard Pack ($4.99) | Dark Pact ($5.99/mo) |
+|---|---|---|
+| Blood Stones | 75 (one-time) | 450/mo (15/day) |
+| Donator Status | 31 days | Continuous |
+| Max Essence Bonus | +25 | **+50** (base 100 → 150) |
+| Essence Regen | +15% | **+25%** |
+| Value per dollar | 15 BS/$ | 75 BS/$ |
+
+**Exclusive Dark Pact perks (subscription only):**
+
+| Perk | Effect |
+|---|---|
+| Daily Blood Stone Stipend | +15 Blood Stones per day (450/mo) |
+| Max Essence Increase | **+50** Blood Essence cap (base 100 → 150) |
+| Essence Regen Boost | **+25%** faster regeneration |
+| Auto-Loot | Combat loot is automatically picked up |
+| Expanded Inventory | +20 inventory slots (while subscribed) |
+| Dark Pact Name Glow | Crimson glow on your name in chat/leaderboards |
+| Priority Queue | Cooldown timers reduced by 25% |
+| Bank Interest | +0.1% daily interest on bank balance (capped 100g/day) |
+| Monthly Special Item | One random RARE+ item delivered on renewal day |
+| Donator Badge | ✦✦ double icon — distinguishes subscribers from pack donors |
+
+> **F2P Path to Premium:** Because Blood Stone Packs are tradeable on the auction house, a dedicated F2P player can grind gold → buy packs listed by paying players → gain Donator status. This mirrors Torn City's economy where real money converts to in-game liquidity and vice versa.
+
+> **Anti-P2W Guardrails:**
+> - No direct stat purchases, no exclusive gear, no level advantages
+> - Essence cap increases let you explore **more per session**, not hit harder
+> - Expanded inventory reverts on sub lapse (items safe, just inaccessible)
+> - Bank interest capped at 100g/day
+> - All premium consumables (loot charms, XP incense, protection scrolls) are time-limited or single-use — never permanent power
+
+### 4.5 Auction House
+- Players list items with a minimum price and optional buyout price
+- Listings expire after 48 hours (configurable)
+- Listing fee: 5% of price (configurable)
+- Buyer pays full price → item transfers → gold to seller minus fee
+- Rate limited to prevent market manipulation
+
+### 4.6 Casino
+- Games: Coin Flip, High-Low, Slots, Dice, Blackjack
+- House always has a statistical edge
+- All results are server-side RNG (no client manipulation)
+- Full history tracked in `casino_history` for analytics
+
+### 4.7 Banking
+- Players deposit/withdraw gold
+- Bank balance is immune to death loss
+- Dark Pact subscribers earn 0.1% daily interest (capped at 100g/day)
+- All transactions logged in `trade_log`
+
+---
+
+## 5. Items & Equipment
+
+### 5.1 Item Tiers
+
+| Tier | Color | Stat Multiplier | Drop Weight |
+|---|---|---|---|
+| COMMON | `#9ca3af` (gray) | 1.0× | High |
+| UNCOMMON | `#22c55e` (green) | 1.5× | Medium |
+| RARE | `#3b82f6` (blue) | 2.5× | Low |
+| EPIC | `#a855f7` (purple) | 4.0× | Very Low |
+| LEGENDARY | `#f59e0b` (amber) | 7.0× | Ultra Rare |
+| MYTHIC | `#ef4444` (red) | 10× | Near Zero |
+| CELESTIAL | `#f0f0f0` (white) | 15× | Event Only |
+
+### 5.2 Equipment Slots (8)
+
+| Slot | Primary Stat |
+|---|---|
+| Main Hand | DMG |
+| Off Hand | DMG + Crit |
+| Body | DEF + HP |
+| Head | DEF + HP |
+| Boots | DEF + HP + Crit |
+| Ring 1 | HP + Crit |
+| Ring 2 | HP + Crit |
+| Amulet | Mana + Magic DMG |
+
+### 5.3 Enhancement System (Forge)
+
+The Blacksmith allows infinite enhancement from +0 to +20:
+
+| Level | Success | Gold Cost | Break Chance | Stat Multi |
+|---|---|---|---|---|
+| +1 | 95% | 100 | 0% | 1.10× |
+| +5 | 75% | 750 | 0% | 1.55× |
+| +10 | 30% | 4,000 | 15% | 2.40× |
+| +15 | 8% | 15,000 | 35% | 4.00× |
+| +20 | 1% | 100,000 | 60% | 7.50× |
+
+- Breaking an item **destroys** it permanently (unless protected)
+- Enhancement protection scrolls prevent breakage (premium shop)
+- All attempts logged for analytics
+
+### 5.4 Crafting
+
+Players combine materials from gathering + monster drops to create items:
+- 8 recipes currently (consumables + gear)
+- Each recipe lists ingredient items + quantities
+- Result is a specific item from the `items` catalog
+- Requires minimum player level and optionally a gathering skill level
+
+---
+
+## 6. Gathering System
+
+### 6.1 Gathering Skills (5)
+
+| Skill | Node Type | Zones |
+|---|---|---|
+| Mining | Ore | All zones |
+| Herbalism | Herb | All zones |
+| Woodcutting | Wood | Forest zones |
+| Gemcraft | Gem | Cathedral+ |
+| Skinning | Skin | Wastes+ |
+
+- Each skill levels independently via gathering XP
+- Higher skill levels unlock higher-tier nodes
+- Nodes have respawn timers (300s–900s)
+- Gathering produces materials used in crafting
+
+---
+
+## 7. Social Systems
+
+### 7.1 Covens (Guilds)
+- Creation cost: 5,000 gold
+- Max 20 members (base)
+- Roles: Leader, Officer, Member
+- Coven treasury with deposit/withdraw auditing
+- Coven leveling via member contributions
+
+### 7.2 Friends & Social
+- Friend request system (pending → accepted → blocked)
+- Player-to-player messaging (mailbox)
+- Global chat with channel support
+- Player online presence tracking
+
+### 7.3 Leaderboards
+- **Level** — Top 500 players by level + XP
+- **PvP** — Top 500 by Elo rating
+- **Wealth** — Top 500 by total gold (carried + banked)
+- All leaderboards are **materialized views** refreshed on schedule (no live query load)
+
+---
+
+## 8. PvP System
+
+### 8.1 Arena
+- Players challenge other active PvP participants
+- Uses the same combat engine but player vs player stats
+- Elo rating system (K-factor: 32)
+- Win/loss streak tracking
+
+### 8.2 Ranked Tiers
+
+| Tier | Elo Range |
+|---|---|
+| Bronze | 0–999 |
+| Silver | 1000–1199 |
+| Gold | 1200–1399 |
+| Platinum | 1400–1599 |
+| Diamond | 1600–1799 |
+| Champion | 1800–1999 |
+| Sovereign | 2000+ |
+
+### 8.3 PvP Seasons
+- Seasons run for a fixed duration
+- End-of-season rewards based on final rank
+- Elo resets at season start (soft reset)
+
+---
+
+## 9. Dungeons
+
+- Predefined multi-floor challenge runs
+- Each floor has an enemy encounter
+- Final floor has a boss
+- Cooldown between runs (24h default)
+- Difficulty tiers: Normal, Hard, Nightmare, Inferno
+- Rewards scale with difficulty
+- Tracked via `dungeon_runs` table
+
+---
+
+## 10. Quests
+
+### 10.1 Quest Types
+
+| Type | Refresh | Example |
+|---|---|---|
+| **Story** | One-time | "Defeat the Crypt Warden" |
+| **Daily** | Resets daily | "Kill 5 enemies in any zone" |
+| **Weekly** | Resets weekly | "Defeat 3 bosses" |
+| **Bounty** | One-time, hard | "Hunt the Blood Matriarch" |
+| **Event** | During events | Event-specific objectives |
+
+### 10.2 Quest Chain (Story)
+
+1. First Blood (Lv 1) → Kill 1 enemy in Bone Crypts
+2. Crypt Warden's Demise (Lv 3) → Kill the Crypt Warden boss
+3. Into the Ashes (Lv 5) → Survive 3 Ashen Wastes encounters
+4. Fall of the Ember Sovereign (Lv 8) → Kill Ember Sovereign
+5. The Hollow Gates (Lv 10) → 5 kills in the Cathedral
+6. The Nameless One (Lv 15) → Kill the Nameless Sovereign
+7. Rift Breaker (Lv 25) → Kill the Warden of the Abyss
+8. The Final Throne (Lv 35) → Kill the Throne Sovereign
+
+---
+
+## 11. Daily Login System
+
+- 28-day reward calendar
+- Milestones at Day 7 (500g), Day 14 (1000g), Day 21 (2000g), Day 28 (5000g)
+- Mix of gold and crafting materials
+- Streak tracking with best-streak persistence
+
+---
+
+## 12. Achievement System
+
+Achievements are **per-player, definition-embedded** (no junction table):
+- Each unlocked achievement stores its own name, description, icon, category, and point value
+- Categories: combat, exploration, economy, social, crafting, pvp
+- Points contribute to a total achievement score displayed on the profile
+
+---
+
+## 13. World Events
+
+- Server-wide events with bonus multipliers (XP, gold, drop rate)
+- Types: Global, Zone-specific, Seasonal, Boss Spawn, Invasion, Tournament
+- Displayed via `WorldEventBanner` component at top of game shell
+- Active events queried from `world_events` table
+
+---
+
+## 14. Town Locations
+
+The City screen is organized into districts:
+
+| District | Locations |
+|---|---|
+| **Market District** | Merchant (buy gear), Blacksmith (enhance), Auction House (trade), Blood Bank (deposit) |
+| **Proving Grounds** | The Colosseum (PvP arena) |
+| **Sanctuary** | Hollow Healer (restore HP/flasks), Notice Board (quests) |
+| **The Underbelly** | Blood Covens (guilds), Demon Casino (gambling) |
+| **Hall of Legends** | The Monuments (leaderboards) |
+
+Each location is backed by an NPC with unique dialogue stored in the `npcs` table.
+
+---
+
+## 15. UI/UX Design
+
+### 15.1 Visual Language
+- **Color Palette:** Black (#000/#050505), Crimson (#cf2a2a), Stone grays, no whites
+- **Typography:** Serif (headings), Monospace (stats/numbers), uppercase tracking everywhere
+- **Animations:** Fade-in on mount, subtle hover state transitions, no flashy animations
+- **Layout:** Sidebar navigation (desktop), bottom tab bar (mobile)
+- **Icons:** Unicode symbols (⚔ ✟ ☠ ⛫ ♛) — no image assets for icons
+
+### 15.2 Design Principles
+- Every screen should feel like a **luxury dark dashboard** not a game UI
+- Numbers and stats are the primary visual content
+- Borders use `border-neutral-900` or `border-red-900/30`
+- Hover states glow with `shadow-[0_0_20px_rgba(153,27,27,0.1)]`
+- No scrollbars visible (webkit-scrollbar: none)
+- Everything uppercase with `tracking-widest` or `tracking-[0.2em]`
+
+---
+
+## 16. Technical Architecture
+
+### 16.1 Database
+- **46 base tables**, 78 monthly partitions, 3 materialized views
+- **188 indexes** including partial indexes and GIN for JSONB
+- Auto-update triggers on `players` and `hero_stats`
+- Soft deletes on critical tables (players, inventory, auctions, covens)
+- Time-series partitioning on 6 high-volume tables
+- Idempotency keys for economic transactions
+- Rate limiting at the database layer
+
+### 16.2 API Pattern
+```
+Client Component → fetch('/api/...') → API Route → auth() → DAL → PostgreSQL
+                                                              ↓
+                                                    return { updatedHero }
+```
+- All state mutations are server-side only
+- Client receives `updatedHero` object and re-renders
+- No direct database access from client components
+
+### 16.3 Auth
+- Custom JWT auth via `jose` library
+- Passwords hashed with `scrypt`
+- Session stored as HttpOnly cookie (`__bw_sess`)
+- `auth()` function extracts userId from cookie on every API request
+
+### 16.4 Environment Routing
+```
+Development → Local PostgreSQL (pg Pool)
+Production  → Supabase Cloud (@supabase/supabase-js)
+```
+
+---
+
+## 17. Scripts & Tooling
+
+| Script | Purpose |
+|---|---|
+| `scripts/rebuild_database.js` | Drops and recreates full 46-table schema |
+| `scripts/scaling_migration.js` | Adds partitioning, views, triggers, rate limits |
+| `scripts/seed_game_content.js` | Populates all reference/config data |
+| `scripts/db_status.js` | Prints full database health report |
+| `scripts/setup_database.js` | Legacy — original 9-table setup |
+| `scripts/setup_extended.js` | Legacy — original extended tables |
+
+---
+
+## 18. Development Roadmap
+
+### Phase 1: Foundation ✅
+- [x] Database schema (46 tables)
+- [x] Scaling infrastructure (partitioning, views, triggers)
+- [x] Game content seeding (zones, monsters, items, NPCs, quests)
+- [x] Custom auth (login/register/logout)
+- [x] Connection pooling
+
+### Phase 2: Data Access Layer
+- [ ] Typed query functions replacing JSONB hero_data blob
+- [ ] Migrate hero state from `hero_data` JSONB → normalized `hero_stats` columns
+- [ ] Build inventory/equipment DAL using `items` + `inventory` + `equipment` tables
+- [ ] Quest progress tracking via `player_quests` table
+
+### Phase 3: API Route Modernization
+- [ ] Rewire all 23 API route folders to use DAL
+- [ ] Add idempotency key checks to economic endpoints
+- [ ] Add rate limiting middleware
+- [ ] Server-side quest progression tracking
+
+### Phase 4: Feature Completion
+- [ ] Gathering system (nodes, skills, XP)
+- [ ] Dungeon system (multi-floor runs, cooldowns)
+- [ ] NPC shop backed by `npc_shop_inventory`
+- [ ] Crafting backed by normalized `crafting_recipes`
+- [ ] Enhancement backed by `enhancement_config`
+- [ ] Friends list
+- [ ] Leaderboard views using materialized views
+
+### Phase 5: Polish & Deploy
+- [ ] Blood Stone shop implementation
+- [ ] Dark Pact subscription system
+- [ ] Sound design
+- [ ] Mobile responsive audit
+- [ ] Migrate to Supabase for production
+- [ ] Real-time presence and chat via Supabase Realtime

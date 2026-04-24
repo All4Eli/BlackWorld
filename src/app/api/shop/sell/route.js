@@ -1,52 +1,69 @@
-import { supabase } from '@/lib/supabase';
-import { auth } from '@clerk/nextjs/server';
+// ═══════════════════════════════════════════════════════════════════
+// POST /api/shop/sell — Sell an inventory item
+// ═══════════════════════════════════════════════════════════════════
+// Client sends: { inventoryId: "uuid", quantity?: 1 }
+// Server validates ownership, calculates sell price from the item
+// catalog, and atomically removes + grants gold.
+// ═══════════════════════════════════════════════════════════════════
+
 import { NextResponse } from 'next/server';
+import { withMiddleware } from '@/lib/middleware';
+import * as InventoryDal from '@/lib/db/dal/inventory';
 
-export async function POST(request) {
-    const { userId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+/**
+ * POST /api/shop/sell
+ *
+ * Body: { inventoryId: "uuid", quantity?: 1 }
+ *
+ * Server determines sell price from the items catalog (sell_price column).
+ * The client does NOT send a price — server-authoritative.
+ */
+async function handlePost(request, { userId }) {
+  try {
+    const body = await request.json();
+    const { inventoryId, quantity = 1 } = body;
 
-    try {
-        const { itemId, itemName } = await request.json();
-
-        const { data: player, error: playerError } = await supabase
-            .from('players')
-            .select('hero_data')
-            .eq('clerk_user_id', userId)
-            .single();
-
-        if (playerError || !player) throw new Error('Player not found.');
-
-        let hero = player.hero_data || {};
-        const artifacts = hero.artifacts || [];
-
-        // Find item
-        const itemIdx = artifacts.findIndex(a => a.id === itemId || a.name === itemName);
-        if (itemIdx === -1) {
-            return NextResponse.json({ error: 'Item not found in inventory.' }, { status: 404 });
-        }
-
-        const item = artifacts[itemIdx];
-
-        // Determine value
-        const baseValues = { COMMON: 20, UNCOMMON: 50, RARE: 150, EPIC: 400, LEGENDARY: 1000, CELESTIAL: 3000 };
-        const goldAwarded = baseValues[item.rarity || 'COMMON'] || 10;
-
-        // Remove from inventory
-        hero.artifacts.splice(itemIdx, 1);
-        
-        // Add gold
-        hero.gold = (hero.gold || 0) + goldAwarded;
-
-        const { error: updateError } = await supabase
-            .from('players')
-            .update({ hero_data: hero })
-            .eq('clerk_user_id', userId);
-
-        if (updateError) throw updateError;
-
-        return NextResponse.json({ success: true, updatedHero: hero, goldAwarded });
-    } catch(err) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+    if (!inventoryId) {
+      return NextResponse.json(
+        { error: 'BAD_REQUEST', message: 'inventoryId is required.' },
+        { status: 400 }
+      );
     }
+
+    if (quantity < 1) {
+      return NextResponse.json(
+        { error: 'BAD_REQUEST', message: 'Quantity must be at least 1.' },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } = await InventoryDal.sellItem(userId, inventoryId, quantity);
+
+    if (error) {
+      const msg = error.message;
+      let status = 400;
+      if (msg.includes('not found')) status = 404;
+      if (msg.includes('locked') || msg.includes('equipped')) status = 403;
+      if (msg.includes('cannot be sold')) status = 403;
+
+      return NextResponse.json({ error: 'SELL_FAILED', message: msg }, { status });
+    }
+
+    return NextResponse.json({
+      success: true,
+      goldEarned: data.goldEarned,
+      goldTotal: data.goldTotal,
+    });
+  } catch (err) {
+    console.error('[POST /api/shop/sell]', err);
+    return NextResponse.json(
+      { error: 'INTERNAL_ERROR', message: err.message },
+      { status: 500 }
+    );
+  }
 }
+
+export const POST = withMiddleware(handlePost, {
+  rateLimit: 'shop_buy',   // same rate limit as buying
+  idempotency: true,
+});

@@ -1,5 +1,5 @@
-import { supabase } from '@/lib/supabase';
-import { auth } from '@clerk/nextjs/server';
+import { PvP, sql } from '@/lib/dal';
+import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
@@ -8,32 +8,31 @@ export async function GET(request) {
 
     try {
         // 1. Fetch current player's pvp stats utilizing their internal player ID
-        const { data: player, error: pError } = await supabase
-            .from('players')
-            .select('id, hero_data')
-            .eq('clerk_user_id', userId)
-            .single();
-            
-        if (pError || !player) throw new Error('Player not found');
-
-        const { data: stats } = await supabase
-            .from('pvp_stats')
-            .select('*')
-            .eq('player_id', player.id)
-            .single();
+        const { data: stats } = await PvP.getStats(userId);
 
         // 2. Fetch other players
-        const { data: allPlayers } = await supabase
-            .from('players')
-            .select('id, username, level, pvp_flag, pvp_stats(elo_rating, rank_tier)')
-            .neq('id', player.id)
-            .limit(20);
+        const { data: allPlayers } = await sql(`
+            SELECT p.clerk_user_id as id, p.username, h.level, ps.elo_rating, ps.rank_tier
+            FROM players p
+            JOIN hero_stats h ON p.clerk_user_id = h.player_id
+            LEFT JOIN pvp_stats ps ON p.clerk_user_id = ps.player_id
+            WHERE p.clerk_user_id != $1
+            LIMIT 20
+        `, [userId]);
 
         return NextResponse.json({
             stats: stats || { arena_wins: 0, arena_losses: 0, elo_rating: 1000, infamy: 0, total_gold_won: 0 },
-            players: allPlayers || []
+            // Make sure the UI maps to the correct player object structure since we broke the old relation shape
+            players: allPlayers?.map(p => ({
+                id: p.id,
+                username: p.username,
+                level: p.level,
+                pvp_flag: true,
+                pvp_stats: { elo_rating: p.elo_rating ?? 1000, rank_tier: p.rank_tier || 'Bronze' }
+            })) || []
         });
     } catch (err) {
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }
+

@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlackWorld | Interactive GDD & Market Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap"
+        rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bw: {
+                            black: '#050505',
+                            dark: '#121212',
+                            panel: '#1a1a1a',
+                            border: '#333333',
+                            crimson: '#8b0000',
+                            crimsonLight: '#b22222',
+                            text: '#d4d4d4',
+                            muted: '#808080'
+                        }
+                    },
+                    fontFamily: {
+                        serif: ['"Playfair Display"', 'serif'],
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar for a sleek look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #050505;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333333;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #8b0000;
+        }
+
+        body {
+            background-color: #050505;
+            /* Enforce dark theme requested in GDD */
+            color: #d4d4d4;
+        }
+
+        /* Enforced Chart Container Styling */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+            padding: 1rem;
+            background-color: #121212;
+            border: 1px solid #333333;
+            border-radius: 0.5rem;
+        }
+
+        @media (max-width: 640px) {
+            .chart-container {
+                height: 280px;
+            }
+        }
+
+        .nav-active {
+            border-left: 4px solid #8b0000;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body class="font-sans antialiased flex h-screen overflow-hidden">
+
+    <!-- Chosen Palette: BlackWorld Dark Gothic (Blacks, Dark Grays, Crimson Accents, Off-White Text) -->
+
+    <!-- Application Structure Plan: The SPA uses a "Dashboard" architecture. Given the GDD format, a linear read is tedious. A dashboard allows stakeholders to navigate between the high-level pitch, the newly integrated market research, the core interactive game systems, and the technical roadmap. This chunking of information reduces cognitive load and allows focused exploration of specific game design pillars. The left sidebar serves as persistent functional navigation. -->
+
+    <!-- Visualization & Content Choices: 
+         1. Radar Chart: Compares BlackWorld to Market Averages. Goal: Compare. Viz: Chart.js Radar. Justification: Best for multi-variable comparative analysis of game mechanics.
+         2. Process Flow (HTML/Tailwind): Shows the Core Game Loop. Goal: Organize/Inform. Viz: HTML Grid/Flex interactive steps. Justification: SVG/Mermaid forbidden; interactive HTML blocks allow detailed hover states without external dependencies.
+         3. Doughnut Chart: Monetization & Economy flow. Goal: Inform/Proportions. Viz: Chart.js Doughnut. Justification: Clearly shows the split between F2P, Subscription (Dark Pact), and Shop mechanics.
+    -->
+
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <!-- Sidebar Navigation -->
+    <nav class="w-64 bg-bw-dark border-r border-bw-border flex flex-col justify-between shrink-0 z-20">
+        <div>
+            <div class="p-6 border-b border-bw-border">
+                <h1 class="text-2xl font-serif text-white tracking-wider">BLACK<span
+                        class="text-bw-crimson">WORLD</span></h1>
+                <p class="text-xs text-bw-muted mt-2 font-serif italic">"Where the world ends."</p>
+            </div>
+            <ul class="py-4 space-y-1">
+                <li><button onclick="navTo('overview')" id="nav-overview"
+                        class="w-full text-left px-6 py-3 text-sm font-semibold text-bw-text hover:bg-bw-panel hover:text-white transition-colors nav-active">Executive
+                        Summary</button></li>
+                <li><button onclick="navTo('market')" id="nav-market"
+                        class="w-full text-left px-6 py-3 text-sm font-semibold text-bw-text hover:bg-bw-panel hover:text-white transition-colors">Market
+                        Intelligence</button></li>
+                <li><button onclick="navTo('systems')" id="nav-systems"
+                        class="w-full text-left px-6 py-3 text-sm font-semibold text-bw-text hover:bg-bw-panel hover:text-white transition-colors">Core
+                        Systems & Loop</button></li>
+                <li><button onclick="navTo('tech')" id="nav-tech"
+                        class="w-full text-left px-6 py-3 text-sm font-semibold text-bw-text hover:bg-bw-panel hover:text-white transition-colors">Tech
+                        & Roadmap</button></li>
+            </ul>
+        </div>
+        <div class="p-6 border-t border-bw-border">
+            <div class="text-xs text-bw-muted">Interactive GDD v1.1<br>Includes Market Analysis</div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto bg-bw-black relative scroll-smooth p-6 md:p-10">
+
+        <!-- View: Overview -->
+        <div id="view-overview" class="view-section fade-in max-w-5xl mx-auto">
+            <header class="mb-10 border-b border-bw-border pb-6">
+                <h2 class="text-4xl font-serif text-white mb-4">Executive Summary</h2>
+                <p class="text-lg text-bw-muted font-light leading-relaxed">This section outlines the core vision of
+                    BlackWorld. It translates the raw GDD elevator pitch into actionable design pillars. Here,
+                    stakeholders can quickly grasp the tone, target audience, and fundamental philosophy driving the
+                    project.</p>
+            </header>
+
+            <div class="bg-bw-dark p-8 rounded-lg border border-bw-border mb-10 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-1 h-full bg-bw-crimson"></div>
+                <h3 class="text-2xl font-serif text-white mb-4">The Pitch</h3>
+                <p class="text-lg leading-relaxed text-bw-text">BlackWorld is a <strong class="text-white">persistent
+                        browser-based dark fantasy MMORPG</strong> where players explore zones, fight monsters, enhance
+                    equipment, trade on a player-driven marketplace, join covens, and compete in PvP — all through a
+                    sleek, minimalist interface that feels more like a luxury dashboard than a traditional game.</p>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-bw-border">
+                    <div><span class="block text-xs text-bw-muted uppercase tracking-wider mb-1">Genre</span><span
+                            class="text-sm font-semibold">Dark Fantasy Text MMO</span></div>
+                    <div><span class="block text-xs text-bw-muted uppercase tracking-wider mb-1">Platform</span><span
+                            class="text-sm font-semibold">Web (Mobile Responsive)</span></div>
+                    <div><span
+                            class="block text-xs text-bw-muted uppercase tracking-wider mb-1">Monetization</span><span
+                            class="text-sm font-semibold text-bw-crimsonLight">F2P / Dark Pact Sub</span></div>
+                    <div><span class="block text-xs text-bw-muted uppercase tracking-wider mb-1">Target</span><span
+                            class="text-sm font-semibold">Torn / Idle RPG Fans</span></div>
+                </div>
+            </div>
+
+            <h3 class="text-2xl font-serif text-white mb-6">Design Pillars</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Pillar Cards via HTML/Tailwind -->
+                <div class="bg-bw-panel p-6 rounded border border-bw-border hover:border-bw-crimson transition-colors group cursor-pointer"
+                    onclick="toggleDetails('pillar-1')">
+                    <div class="text-3xl mb-3">⚖️</div>
+                    <h4 class="text-lg font-bold text-white mb-2 group-hover:text-bw-crimsonLight transition-colors">
+                        Depth Over Graphics</h4>
+                    <p class="text-sm text-bw-muted">Played through decisions, numbers, and strategy — not animation.
+                        (Click to expand)</p>
+                    <div id="pillar-1" class="hidden mt-4 text-sm text-bw-text pt-4 border-t border-bw-border">UI
+                        focuses on typography, layout, and immediate data readability. "Luxury Dashboard" aesthetic.
+                    </div>
+                </div>
+                <div class="bg-bw-panel p-6 rounded border border-bw-border hover:border-bw-crimson transition-colors group cursor-pointer"
+                    onclick="toggleDetails('pillar-2')">
+                    <div class="text-3xl mb-3">⚙️</div>
+                    <h4 class="text-lg font-bold text-white mb-2 group-hover:text-bw-crimsonLight transition-colors">
+                        Server-Authoritative</h4>
+                    <p class="text-sm text-bw-muted">All mutations happen server-side. The client is purely a display
+                        layer. (Click to expand)</p>
+                    <div id="pillar-2" class="hidden mt-4 text-sm text-bw-text pt-4 border-t border-bw-border">Prevents
+                        cheating common in browser games. Every action (attack, craft, trade) validated via Next.js API
+                        to PostgreSQL.</div>
+                </div>
+                <div class="bg-bw-panel p-6 rounded border border-bw-border hover:border-bw-crimson transition-colors group cursor-pointer"
+                    onclick="toggleDetails('pillar-3')">
+                    <div class="text-3xl mb-3">📈</div>
+                    <h4 class="text-lg font-bold text-white mb-2 group-hover:text-bw-crimsonLight transition-colors">
+                        Persistent Progression</h4>
+                    <p class="text-sm text-bw-muted">Every action permanently advances your character in the world.
+                        (Click to expand)</p>
+                    <div id="pillar-3" class="hidden mt-4 text-sm text-bw-text pt-4 border-t border-bw-border">No
+                        resets. Gathering, crafting, and combat contribute to an overarching prestige system.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View: Market Intelligence -->
+        <div id="view-market" class="view-section hidden fade-in max-w-5xl mx-auto">
+            <header class="mb-10 border-b border-bw-border pb-6">
+                <h2 class="text-4xl font-serif text-white mb-4">Market Intelligence & Feature Integration</h2>
+                <p class="text-lg text-bw-muted font-light leading-relaxed">This section fulfills the research request.
+                    It analyzes current top-tier text-based MMOs (e.g., Torn, MafiaReturns, Cyberpunk Idle) and compares
+                    their feature sets against the BlackWorld GDD. This helps validate our feature priorities and
+                    identifies potential market gaps.</p>
+            </header>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-10">
+                <div>
+                    <h3 class="text-xl font-serif text-white mb-4">Market Standard vs. BlackWorld</h3>
+                    <p class="text-sm text-bw-muted mb-6">Visualizing how our proposed design stack up against the
+                        current market titans. BlackWorld intentionally indexes higher on Modern UI and Deep Economy,
+                        while shifting away from the punishing "legacy tick" systems of older games.</p>
+
+                    <div class="chart-container">
+                        <canvas id="marketRadarChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <h3 class="text-xl font-serif text-white mb-4">Key Market Findings Integrated into GDD</h3>
+
+                    <div class="bg-bw-panel border border-bw-border p-5 rounded-lg border-l-4 border-l-bw-crimson">
+                        <h4 class="text-white font-bold mb-2">1. The "Energy/Tick" Mechanic Evolution</h4>
+                        <p class="text-sm text-bw-muted mb-3"><strong>Market:</strong> Legacy games use rigid intervals
+                            (e.g., 5 energy every 15 mins) forcing players to log in at specific
+                            times.<br><strong>BlackWorld Solution:</strong> Adopted "Respect the player's time" pillar.
+                            Use a banked action system or cooldowns that pool over 24 hours. Play 5 mins or 5 hours.</p>
+                    </div>
+
+                    <div class="bg-bw-panel border border-bw-border p-5 rounded-lg border-l-4 border-l-gray-500">
+                        <h4 class="text-white font-bold mb-2">2. Player-Driven Economies as Endgame</h4>
+                        <p class="text-sm text-bw-muted mb-3"><strong>Market:</strong> The most retentive text MMOs have
+                            economies where 90% of items are player-crafted/found.<br><strong>BlackWorld
+                                Solution:</strong> Implemented `items`, `inventory`, `crafting_recipes`, and
+                            `npc_shop_inventory` tables in Phase 4. Added Auction House as a core social competition
+                            pillar.</p>
+                    </div>
+
+                    <div class="bg-bw-panel border border-bw-border p-5 rounded-lg border-l-4 border-l-gray-500">
+                        <h4 class="text-white font-bold mb-2">3. Asynchronous Social Conflict (Covens/Factions)</h4>
+                        <p class="text-sm text-bw-muted mb-3"><strong>Market:</strong> Faction wars, bounties, and
+                            territory control generate infinite content.<br><strong>BlackWorld Solution:</strong>
+                            "Covens" system planned. Need to ensure Phase 4 "Friends List" extends into Coven management
+                            and Leaderboard-driven warfare.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View: Core Systems -->
+        <div id="view-systems" class="view-section hidden fade-in max-w-5xl mx-auto">
+            <header class="mb-10 border-b border-bw-border pb-6">
+                <h2 class="text-4xl font-serif text-white mb-4">Core Systems & Game Loop</h2>
+                <p class="text-lg text-bw-muted font-light leading-relaxed">Explore the mechanics that drive BlackWorld.
+                    This section breaks down the daily player loop and the underlying economic flows. Interact with the
+                    flow chart below to understand the step-by-step player journey.</p>
+            </header>
+
+            <h3 class="text-2xl font-serif text-white mb-6">The Interactive Core Loop</h3>
+            <p class="text-sm text-bw-muted mb-6">Click on a phase to reveal backend mechanics and database interactions
+                as defined in the GDD Phase 1 & 2 specs.</p>
+
+            <!-- Interactive Flow Chart built with HTML/CSS Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-10 text-center">
+                <button onclick="updateLoopDetails('prepare')"
+                    class="loop-btn bg-bw-panel border border-bw-border p-4 rounded hover:bg-bw-crimson hover:text-white transition-all">1.
+                    Prepare 🏕️</button>
+                <div class="hidden md:flex items-center justify-center text-bw-border">➜</div>
+                <button onclick="updateLoopDetails('explore')"
+                    class="loop-btn bg-bw-panel border border-bw-border p-4 rounded hover:bg-bw-crimson hover:text-white transition-all">2.
+                    Explore 🗺️</button>
+                <div class="hidden md:flex items-center justify-center text-bw-border">➜</div>
+                <button onclick="updateLoopDetails('combat')"
+                    class="loop-btn bg-bw-panel border border-bw-border p-4 rounded hover:bg-bw-crimson hover:text-white transition-all">3.
+                    Combat ⚔️</button>
+                <div class="hidden md:flex items-center justify-center text-bw-border">➜</div>
+                <button onclick="updateLoopDetails('loot')"
+                    class="loop-btn bg-bw-panel border border-bw-border p-4 rounded hover:bg-bw-crimson hover:text-white transition-all">4.
+                    Loot & Craft ⚒️</button>
+                <div class="hidden md:flex items-center justify-center text-bw-border">➜</div>
+                <button onclick="updateLoopDetails('trade')"
+                    class="loop-btn bg-bw-panel border border-bw-border p-4 rounded hover:bg-bw-crimson hover:text-white transition-all">5.
+                    Trade/PvP ⚖️</button>
+            </div>
+
+            <div id="loop-details-container"
+                class="bg-bw-dark border border-bw-crimson p-6 rounded-lg min-h-[150px] mb-12 shadow-[0_0_15px_rgba(139,0,0,0.1)]">
+                <h4 id="loop-title" class="text-xl font-bold text-white mb-2">Select a phase above</h4>
+                <p id="loop-desc" class="text-bw-text">Interact with the flow chart to see technical implementation
+                    details.</p>
+                <code id="loop-tech" class="block mt-4 text-xs text-bw-crimsonLight font-mono"></code>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 border-t border-bw-border pt-10">
+                <div>
+                    <h3 class="text-xl font-serif text-white mb-4">Economic Strategy (Monetization & Flow)</h3>
+                    <p class="text-sm text-bw-muted mb-4">Visualizing the projected flow of resources and monetization
+                        based on GDD notes (Dark Pact + Blood Stone shop).</p>
+                    <div class="chart-container">
+                        <canvas id="economyChart"></canvas>
+                    </div>
+                </div>
+                <div class="flex flex-col justify-center">
+                    <div class="bg-bw-panel p-6 rounded border border-bw-border mb-4">
+                        <h4 class="font-bold text-white mb-2">The Dark Pact (Subscription)</h4>
+                        <p class="text-sm text-bw-muted">Provides QoL (Quality of Life) features like advanced sorting,
+                            extended action queues, and exclusive cosmetic titles. Strictly NO pay-to-win combat stats.
+                        </p>
+                    </div>
+                    <div class="bg-bw-panel p-6 rounded border border-bw-border">
+                        <h4 class="font-bold text-white mb-2">Blood Stone Shop (A La Carte)</h4>
+                        <p class="text-sm text-bw-muted">Premium currency for cosmetics, name changes, and market
+                            listing slot expansions. Tradable between players to allow F2P players to access premium
+                            features.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View: Tech & Roadmap -->
+        <div id="view-tech" class="view-section hidden fade-in max-w-5xl mx-auto">
+            <header class="mb-10 border-b border-bw-border pb-6">
+                <h2 class="text-4xl font-serif text-white mb-4">Architecture & Development Roadmap</h2>
+                <p class="text-lg text-bw-muted font-light leading-relaxed">This section tracks the technical execution
+                    of BlackWorld. It provides an interactive view of the tech stack choices and the phase-by-phase
+                    completion status from the GDD.</p>
+            </header>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                <div class="bg-bw-dark border border-bw-border p-6 rounded text-center">
+                    <div class="text-2xl mb-2">⚛️</div>
+                    <h4 class="font-bold text-white">Frontend</h4>
+                    <p class="text-sm text-bw-muted">Next.js 15, React, TailwindCSS. Minimalist luxury dashboard.</p>
+                </div>
+                <div class="bg-bw-dark border border-bw-border p-6 rounded text-center">
+                    <div class="text-2xl mb-2">🗄️</div>
+                    <h4 class="font-bold text-white">Database</h4>
+                    <p class="text-sm text-bw-muted">PostgreSQL 18. Partitioning, Views, Triggers. 46 core tables.</p>
+                </div>
+                <div class="bg-bw-dark border border-bw-border p-6 rounded text-center">
+                    <div class="text-2xl mb-2">🔐</div>
+                    <h4 class="font-bold text-white">Security</h4>
+                    <p class="text-sm text-bw-muted">JWT Auth, custom routing. Server-side validation for all mutations.
+                    </p>
+                </div>
+            </div>
+
+            <h3 class="text-2xl font-serif text-white mb-6">Development Roadmap Tracking</h3>
+
+            <div class="space-y-4">
+                <!-- Phase 1 -->
+                <div class="bg-bw-panel border border-green-900 p-5 rounded">
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="text-lg font-bold text-white flex items-center">Phase 1: Foundation <span
+                                class="ml-3 text-xs bg-green-900 text-green-300 px-2 py-1 rounded">✅ Complete</span>
+                        </h4>
+                    </div>
+                    <ul class="text-sm text-bw-muted space-y-1 ml-5 list-disc">
+                        <li>Database schema (46 tables)</li>
+                        <li>Scaling infrastructure (partitioning, views, triggers)</li>
+                        <li>Game content seeding (zones, monsters, items, NPCs, quests)</li>
+                        <li>Custom auth & Connection pooling</li>
+                    </ul>
+                </div>
+
+                <!-- Phase 2 -->
+                <div
+                    class="bg-bw-panel border border-bw-border p-5 rounded relative overflow-hidden group hover:border-bw-crimson transition-colors">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-yellow-600"></div>
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="text-lg font-bold text-white ml-2">Phase 2: Data Access Layer (In Progress)</h4>
+                    </div>
+                    <ul class="text-sm text-bw-muted space-y-2 ml-7 list-none">
+                        <li><span class="text-yellow-600 mr-2">⏳</span> Typed query functions replacing JSONB hero_data
+                            blob</li>
+                        <li><span class="text-yellow-600 mr-2">⏳</span> Migrate hero state from `hero_data` JSONB →
+                            normalized `hero_stats` columns</li>
+                        <li><span class="text-bw-border mr-2">◻️</span> Build inventory/equipment DAL using `items` +
+                            `inventory` + `equipment` tables</li>
+                        <li><span class="text-bw-border mr-2">◻️</span> Quest progress tracking via `player_quests`
+                            table</li>
+                    </ul>
+                </div>
+
+                <!-- Phase 3, 4, 5 summarized -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div class="bg-bw-panel border border-bw-border p-4 rounded opacity-75">
+                        <h5 class="font-bold text-white text-sm mb-2">Phase 3: API Modernization</h5>
+                        <p class="text-xs text-bw-muted">Rewire 23 API routes, add idempotency keys, rate limiting,
+                            server-side tracking.</p>
+                    </div>
+                    <div class="bg-bw-panel border border-bw-border p-4 rounded opacity-75">
+                        <h5 class="font-bold text-white text-sm mb-2">Phase 4: Feature Completion</h5>
+                        <p class="text-xs text-bw-muted">Gathering, Dungeons, NPC Shops, Crafting, Enhancement, Friends,
+                            Leaderboards.</p>
+                    </div>
+                    <div class="bg-bw-panel border border-bw-border p-4 rounded opacity-75">
+                        <h5 class="font-bold text-white text-sm mb-2">Phase 5: Polish & Deploy</h5>
+                        <p class="text-xs text-bw-muted">Blood Stone shop, Dark Pact Sub, Sound design, Mobile Audit.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        // --- Navigation Logic ---
+        function navTo(viewId) {
+            // Hide all views
+            document.querySelectorAll('.view-section').forEach(el => {
+                el.classList.add('hidden');
+            });
+            // Show target view
+            document.getElementById(`view-${viewId}`).classList.remove('hidden');
+
+            // Update nav styling
+            document.querySelectorAll('nav button').forEach(el => {
+                el.classList.remove('nav-active');
+            });
+            document.getElementById(`nav-${viewId}`).classList.add('nav-active');
+
+            // Render charts if navigating to those tabs (lazy load simulation)
+            if (viewId === 'market' && !window.radarChartRendered) {
+                initRadarChart();
+                window.radarChartRendered = true;
+            }
+            if (viewId === 'systems' && !window.econChartRendered) {
+                initEconChart();
+                window.econChartRendered = true;
+            }
+        }
+
+        // --- Interaction Logic: Pillars Expand ---
+        function toggleDetails(id) {
+            const el = document.getElementById(id);
+            if (el.classList.contains('hidden')) {
+                el.classList.remove('hidden');
+                el.classList.add('fade-in');
+            } else {
+                el.classList.add('hidden');
+                el.classList.remove('fade-in');
+            }
+        }
+
+        // --- Interaction Logic: Core Loop Data ---
+        const loopData = {
+            prepare: {
+                title: "1. Prepare (Town Hub)",
+                desc: "Players manage inventory, equip gear crafted in previous sessions, and accept quests. The UI provides a dense but readable dashboard of current stats.",
+                tech: "Tables: inventory, equipment, player_quests, npc_shop_inventory"
+            },
+            explore: {
+                title: "2. Explore (Zone Selection)",
+                desc: "Players select regions. Gathering nodes for crafting materials are available here. Navigation costs AP/Time depending on the zone's danger level.",
+                tech: "Tables: zones, gathering_nodes | Next.js Rate Limiting Middleware"
+            },
+            combat: {
+                title: "3. Combat (Asynchronous & Dungeon Runs)",
+                desc: "Turn-based calculations done entirely server-side. Multi-floor dungeon runs with cooldowns. No client-side prediction needed.",
+                tech: "Tables: monsters, hero_stats | Server-authoritative API routes"
+            },
+            loot: {
+                title: "4. Loot & Crafting (Progression)",
+                desc: "Defeating enemies yields materials. Players use normalized crafting recipes to create gear, fueling the player-driven economy.",
+                tech: "Tables: crafting_recipes, enhancement_config | Idempotency checks applied"
+            },
+            trade: {
+                title: "5. Trade & Social (Endgame)",
+                desc: "Loot is listed on the Auction House. Players vie for leaderboard dominance, engage in PvP, and manage Coven politics.",
+                tech: "Tables: auction_house (planned), friends_list, leaderboards (Materialized Views)"
+            }
+        };
+
+        function updateLoopDetails(step) {
+            const data = loopData[step];
+            const container = document.getElementById('loop-details-container');
+
+            // Brief animation reset
+            container.classList.remove('fade-in');
+            void container.offsetWidth; // trigger reflow
+
+            document.getElementById('loop-title').innerText = data.title;
+            document.getElementById('loop-desc').innerText = data.desc;
+            document.getElementById('loop-tech').innerText = data.tech;
+
+            container.classList.add('fade-in');
+
+            // Highlight button
+            document.querySelectorAll('.loop-btn').forEach(btn => btn.classList.remove('bg-bw-crimson', 'text-white'));
+            event.target.classList.add('bg-bw-crimson', 'text-white');
+        }
+
+        // --- Chart.js Implementations ---
+
+        // Global Chart Defaults for Theme
+        Chart.defaults.color = '#d4d4d4';
+        Chart.defaults.font.family = 'Inter, sans-serif';
+
+        function initRadarChart() {
+            const ctx = document.getElementById('marketRadarChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Economy Depth', 'Asynchronous PvP', 'UI/UX Modernity', 'Idle/Tick Reliance', 'Social/Coven Impact'],
+                    datasets: [{
+                        label: 'BlackWorld Design',
+                        data: [90, 75, 95, 30, 85],
+                        backgroundColor: 'rgba(139, 0, 0, 0.2)',
+                        borderColor: 'rgba(178, 34, 34, 1)',
+                        pointBackgroundColor: 'rgba(178, 34, 34, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(178, 34, 34, 1)'
+                    }, {
+                        label: 'Market Average (Legacy Text MMOs)',
+                        data: [70, 80, 40, 90, 80],
+                        backgroundColor: 'rgba(128, 128, 128, 0.2)',
+                        borderColor: 'rgba(128, 128, 128, 1)',
+                        pointBackgroundColor: 'rgba(128, 128, 128, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(128, 128, 128, 1)'
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            pointLabels: { color: '#d4d4d4', font: { size: 12 } },
+                            ticks: { display: false, min: 0, max: 100 }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#d4d4d4' } },
+                        tooltip: {
+                            backgroundColor: 'rgba(26, 26, 26, 0.9)',
+                            titleColor: '#fff',
+                            bodyColor: '#d4d4d4',
+                            borderColor: '#8b0000',
+                            borderWidth: 1
+                        }
+                    }
+                }
+            });
+        }
+
+        function initEconChart() {
+            const ctx = document.getElementById('economyChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['F2P Organic Gameplay', 'Dark Pact (Sub)', 'Blood Stone (Cosmetics)', 'Market Tax (Gold Sink)'],
+                    datasets: [{
+                        data: [50, 25, 15, 10],
+                        backgroundColor: [
+                            '#333333', // F2P
+                            '#8b0000', // Sub
+                            '#b22222', // Premium
+                            '#1a1a1a'  // Tax
+                        ],
+                        borderColor: '#050505',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { position: 'right', labels: { color: '#d4d4d4' } },
+                        tooltip: {
+                            backgroundColor: 'rgba(26, 26, 26, 0.9)',
+                            borderColor: '#333',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function (context) {
+                                    return ' ' + context.label + ': ' + context.parsed + '% Volume';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

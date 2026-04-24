@@ -1,5 +1,5 @@
-import { supabase } from '@/lib/supabase';
-import { auth } from '@clerk/nextjs/server';
+import { Covens, Composite } from '@/lib/dal';
+import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
 export async function POST(request) {
@@ -13,49 +13,45 @@ export async function POST(request) {
          return NextResponse.json({ error: 'Missing coven ID.' }, { status: 400 });
       }
 
-      // 1. Fetch Coven Details
-      const { data: coven, error: covenError } = await supabase
-        .from('covens')
-        .select('id, name, tag, member_count')
-        .eq('id', covenId)
-        .single();
-        
-      if (covenError) throw new Error('Coven not found.');
+      // Check if already in a coven
+      const { data: currentCoven } = await Covens.getPlayerCoven(userId);
+      if (currentCoven) {
+          return NextResponse.json({ error: 'You are already in a Coven.' }, { status: 400 });
+      }
 
-      // 2. Update the Player
-      const { error: updateError } = await supabase
-        .from('players')
-        .update({
-           coven_id: coven.id,
-           coven_name: coven.name,
-           coven_tag: coven.tag,
-           coven_role: 'Member'
-        })
-        .eq('clerk_user_id', userId);
+      // 1. Fetch Coven Details
+      const { data: coven, error: covenError } = await Covens.getById(covenId);
+        
+      if (covenError || !coven) throw new Error('Coven not found.');
+
+      // 2. Add member
+      const { error: updateError } = await Covens.addMember(coven.id, userId, 'Member');
 
       if (updateError) throw updateError;
 
-      // 3. Atomically increment Coven Member Count
-      await supabase.rpc('increment_member_count', { coven_uuid: coven.id });
-
       // Fetch the mutated player row for authoritative response
-      const { data: updatedPlayer } = await supabase
-         .from('players')
-         .select('*')
-         .eq('clerk_user_id', userId)
-         .single();
+      const { data: composite, error: fetchError } = await Composite.getFullPlayer(userId);
+      if (fetchError || !composite) throw new Error('Failed to fetch updated player data.');
          
       const payload = {
-         ...(updatedPlayer?.hero_data || {}),
-         coven_id: updatedPlayer?.coven_id,
-         coven_name: updatedPlayer?.coven_name,
-         coven_tag: updatedPlayer?.coven_tag,
-         coven_role: updatedPlayer?.coven_role,
-         bankedGold: updatedPlayer?.bank_balance
+         ...(composite.stats?.hero_data || {}),
+         coven_id: composite.coven?.id,
+         coven_name: composite.coven?.name,
+         coven_tag: composite.coven?.tag,
+         coven_role: composite.coven?.role,
+         bankedGold: composite.stats?.bank_balance,
+         gold: composite.stats?.gold,
+         hp: composite.stats?.hp,
+         max_hp: composite.stats?.max_hp,
+         level: composite.stats?.level
       };
 
       return NextResponse.json({ success: true, coven, updatedHero: payload });
   } catch(err) {
+      if (err.code === '23505') {
+          return NextResponse.json({ error: 'You are already in a Coven.' }, { status: 400 });
+      }
       return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+

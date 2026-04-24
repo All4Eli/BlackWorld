@@ -1,51 +1,60 @@
-import { supabase } from '@/lib/supabase';
-import { auth } from '@clerk/nextjs/server';
+// ═══════════════════════════════════════════════════════════════════
+// POST /api/quests/accept — Accept an available quest
+// ═══════════════════════════════════════════════════════════════════
+
 import { NextResponse } from 'next/server';
+import { withMiddleware } from '@/lib/middleware';
+import * as QuestDal from '@/lib/db/dal/quests';
 
-export async function POST(request) {
-    const { userId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+/**
+ * POST /api/quests/accept
+ *
+ * Body: { questKey: "story_first_blood" }
+ *
+ * Server validates level, prerequisites, and duplicate acceptance.
+ */
+async function handlePost(request, { userId }) {
+  try {
+    const body = await request.json();
+    const { questKey } = body;
 
-    try {
-        const { quest } = await request.json();
+    // Backward compatibility: some old legacy UI might send full quest object
+    // Extract the key if they send { quest: { id: "story_..." } } 
+    const keyToUse = questKey || (body.quest && body.quest.id) || (body.quest && body.quest.key);
 
-        if (!quest || !quest.id) {
-            return NextResponse.json({ error: 'Valid quest object required.' }, { status: 400 });
-        }
-
-        const { data: player, error: playerError } = await supabase
-            .from('players')
-            .select('hero_data')
-            .eq('clerk_user_id', userId)
-            .single();
-
-        if (playerError || !player) throw new Error('Player not found.');
-
-        let hero = player.hero_data || {};
-        
-        let accepted = hero.accepted_quests || [];
-        
-        // Prevent dupes
-        if (accepted.find(q => q.id === quest.id)) {
-             return NextResponse.json({ error: 'Quest already accepted.' }, { status: 400 });
-        }
-        
-        accepted.push({ ...quest, accepted_at: new Date().toISOString() });
-        hero.accepted_quests = accepted;
-
-        const { error: updateError } = await supabase
-            .from('players')
-            .update({ hero_data: hero })
-            .eq('clerk_user_id', userId);
-
-        if (updateError) throw updateError;
-
-        return NextResponse.json({
-            success: true,
-            updatedHero: hero
-        });
-
-    } catch (err) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+    if (!keyToUse) {
+      return NextResponse.json(
+        { error: 'BAD_REQUEST', message: 'questKey is required.' },
+        { status: 400 }
+      );
     }
+
+    const { data: acceptedQuest, error } = await QuestDal.startQuest(userId, keyToUse);
+
+    if (error) {
+      const msg = error.message;
+      let status = 400;
+      if (msg.includes('not found')) status = 404;
+      if (msg.includes('already')) status = 409;
+      if (msg.includes('Level') || msg.includes('prerequisite')) status = 403;
+
+      return NextResponse.json({ error: 'ACCEPT_FAILED', message: msg }, { status });
+    }
+
+    return NextResponse.json({
+      success: true,
+      quest: acceptedQuest,
+    });
+  } catch (err) {
+    console.error('[POST /api/quests/accept]', err);
+    return NextResponse.json(
+      { error: 'INTERNAL_ERROR', message: err.message },
+      { status: 500 }
+    );
+  }
 }
+
+export const POST = withMiddleware(handlePost, {
+  rateLimit: 'quest',
+  idempotency: true,
+});

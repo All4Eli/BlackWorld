@@ -9,11 +9,10 @@ import ArsenalView from './ArsenalView';
 import SkillTreePanel from './SkillTreePanel';
 import QuestLog from './QuestLog';
 import AchievementPanel from './AchievementPanel';
-import BattlePassHub from './BattlePassHub';
-import PremiumStore from './PremiumStore';
 import WorldEventBanner from './WorldEventBanner';
 import BlackWorldSidebar from './BlackWorldSidebar';
 import GlobalChatWidget from './GlobalChatWidget';
+import GatheringView from './GatheringView';
 
 export default function GameShell({ hero, updateHero, onFindCombat }) {
   const [activeTab, setActiveTab] = useState('DASHBOARD');
@@ -80,8 +79,7 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
     { id: 'TOWN', label: 'City', icon: '♜' },
     { id: 'EXPLORE', label: 'Explore', icon: '⛫' },
     { id: 'CONTRACTS', label: 'Quests', icon: '⚑', alert: claimableQuests },
-    { id: 'BATTLE_PASS', label: 'Battle Pass', icon: '✦' },
-    { id: 'STORE', label: 'Premium Store', icon: '✧' }
+    { id: 'GATHERING', label: 'Gathering', icon: '⛏' }
   ];
 
   const charTabs = [
@@ -193,8 +191,7 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
         {activeTab === 'SKILLS' && <SkillTreePanel hero={hero} updateHero={updateHero} inline={true} />}
         {activeTab === 'CONTRACTS' && <QuestLog hero={hero} updateHero={updateHero} onBack={() => setActiveTab('DASHBOARD')} />}
         {activeTab === 'ACHIEVEMENTS' && <AchievementPanel hero={hero} updateHero={updateHero} />}
-        {activeTab === 'BATTLE_PASS' && <BattlePassHub hero={hero} updateHero={updateHero} />}
-        {activeTab === 'STORE' && <PremiumStore hero={hero} updateHero={updateHero} />}
+        {activeTab === 'GATHERING' && <GatheringView hero={hero} updateHero={updateHero} onBack={() => setActiveTab('DASHBOARD')} />}
       </main>
 
       {refillModal && (

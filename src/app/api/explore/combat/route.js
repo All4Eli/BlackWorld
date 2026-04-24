@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { calcPlayerStats, rollDamage, calcMonsterStats, isHitDodged } from '@/lib/combat';
 import { validateAndConsume } from '@/lib/resources';
@@ -222,19 +222,6 @@ export async function POST(request) {
                 hero.level = hero.level || 1;
                 hero.unspentStatPoints = hero.unspentStatPoints || 0;
                 hero.skillPointsUnspent = hero.skillPointsUnspent || 0;
-                
-                // --- BATTLEPASS XP HOOK ---
-                if (!hero.battlepass) {
-                    hero.battlepass = { current_tier: 1, current_xp: 0, xp_per_tier: 1000, is_premium: false, claimed_free: [], claimed_premium: [] };
-                }
-                const bpXpGained = fetchedEnemy.tier === 'Boss' ? 250 : 25;
-                hero.battlepass.current_xp += bpXpGained;
-                if (hero.battlepass.current_xp >= hero.battlepass.xp_per_tier) {
-                     hero.battlepass.current_xp -= hero.battlepass.xp_per_tier;
-                     hero.battlepass.current_tier += 1;
-                     initialLogs.push(`✧ [BATTLE PASS]: You reached Tier ${hero.battlepass.current_tier}!`);
-                }
-                // ---------------------------
 
                 const { calculateXPRequirement } = require('@/lib/gameData');
                 let requiredXp = calculateXPRequirement(hero.level);

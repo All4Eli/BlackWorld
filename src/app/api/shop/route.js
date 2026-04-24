@@ -1,112 +1,141 @@
-import { supabase } from '@/lib/supabase';
-import { auth } from '@clerk/nextjs/server';
+// ═══════════════════════════════════════════════════════════════════
+// GET  /api/shop — Fetch NPC shop inventory
+// POST /api/shop — Purchase an item from the shop
+// ═══════════════════════════════════════════════════════════════════
+// Shop items come from the database (npc_shop_inventory → items catalog).
+// No more server-side random generation or client-trusted prices.
+// ═══════════════════════════════════════════════════════════════════
+
 import { NextResponse } from 'next/server';
+import { withMiddleware } from '@/lib/middleware';
+import { auth } from '@/lib/auth';
+import * as InventoryDal from '@/lib/db/dal/inventory';
+import * as HeroDal from '@/lib/db/dal/hero';
+import { sql } from '@/lib/db/pool';
 
-// Server-side shop inventory generation (same logic that was client-side)
-const RARITIES = ['COMMON', 'COMMON', 'COMMON', 'UNCOMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY'];
-const TYPES = ['WEAPON', 'ARMOR', 'ACCESSORY'];
-const WEAPON_PREFIXES = ['Bloodforged', 'Soulwrought', 'Voidtouched', 'Demonhewn', 'Ashborn'];
-const ARMOR_PREFIXES = ['Shadowspun', 'Boneclad', 'Veilweave', 'Cinderbound', 'Dreadplate'];
-const SUFFIXES = ['of Ruin', 'of the Depths', 'of Agony', 'of Whispers', 'of Flame', 'of Night'];
-
-function generateShopItem(level, index) {
-    const rarity = RARITIES[Math.floor(Math.random() * RARITIES.length)];
-    const type = TYPES[Math.floor(Math.random() * TYPES.length)];
-    const prefixes = type === 'WEAPON' ? WEAPON_PREFIXES : ARMOR_PREFIXES;
-    const name = `${prefixes[Math.floor(Math.random() * prefixes.length)]} ${type === 'WEAPON' ? 'Blade' : type === 'ARMOR' ? 'Plate' : 'Ring'} ${SUFFIXES[Math.floor(Math.random() * SUFFIXES.length)]}`;
-
-    const rarityCostMult = { 'COMMON': 1, 'UNCOMMON': 2.5, 'RARE': 5, 'EPIC': 12, 'LEGENDARY': 30 }[rarity] || 1;
-    const rarityStatMult = { 'COMMON': 1, 'UNCOMMON': 1.5, 'RARE': 2.5, 'EPIC': 4, 'LEGENDARY': 7 }[rarity] || 1;
-
-    const stats = {};
-    if (type === 'WEAPON') stats.dmg = Math.floor((3 + level * 2) * rarityStatMult);
-    if (type === 'ARMOR') {
-        stats.def = Math.floor((2 + level * 1.5) * rarityStatMult);
-        stats.hp = Math.floor((5 + level * 3) * rarityStatMult);
-    }
-    if (type === 'ACCESSORY') {
-        stats.crit = Math.floor(2 * rarityStatMult);
-        stats.hp = Math.floor((3 + level) * rarityStatMult);
-    }
-
-    return {
-        id: `shop_${Date.now()}_${index}`,
-        name,
-        type,
-        rarity,
-        level,
-        stats,
-        cost: Math.floor(Math.random() * 50 * level * rarityCostMult) + (50 * level * rarityCostMult)
-    };
-}
-
+/**
+ * GET /api/shop?npcKey=shadow_merchant
+ *
+ * Returns the shop inventory for a specific NPC, filtered by the
+ * player's level. All items come from the `npc_shop_inventory`
+ * → `items` catalog join.
+ */
 export async function GET(request) {
-    const { searchParams } = new URL(request.url);
-    const level = parseInt(searchParams.get('level')) || 1;
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json(
+      { error: 'UNAUTHORIZED', message: 'You must be logged in.' },
+      { status: 401 }
+    );
+  }
 
-    const items = [];
-    for (let i = 0; i < 8; i++) {
-        items.push(generateShopItem(level, i));
-    }
+  const { searchParams } = new URL(request.url);
+  const npcKey = searchParams.get('npcKey') || 'shadow_merchant';
 
-    return NextResponse.json({ items });
+  // Fetch player level for filtering
+  const { data: hero } = await HeroDal.getHeroStats(userId);
+  const playerLevel = hero?.level || 1;
+
+  // Fetch shop inventory from DB
+  const { data: shopItems, error } = await sql(
+    `SELECT
+       i.id              AS item_id,
+       i.key             AS item_key,
+       i.name,
+       i.type,
+       i.slot,
+       i.tier,
+       i.description,
+       i.base_stats,
+       i.level_required,
+       COALESCE(nsi.price_override, i.buy_price) AS price,
+       i.sell_price,
+       nsi.stock
+     FROM npc_shop_inventory nsi
+     JOIN items i ON nsi.item_id = i.id
+     JOIN npcs n ON nsi.npc_id = n.id
+     WHERE n.key = $1
+       AND i.level_required <= $2
+     ORDER BY nsi.sort_order, i.level_required, i.tier`,
+    [npcKey, playerLevel]
+  );
+
+  if (error) {
+    console.error('[GET /api/shop]', error.message);
+    return NextResponse.json(
+      { error: 'INTERNAL_ERROR', message: 'Failed to load shop.' },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({
+    npcKey,
+    playerLevel,
+    playerGold: hero?.gold || 0,
+    items: shopItems || [],
+  });
 }
 
-export async function POST(request) {
-    const { userId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    try {
-        const { itemId, itemCost } = await request.json();
+/**
+ * POST /api/shop — Purchase an item
+ *
+ * Body: { itemKey: "bone_shard_dagger", quantity?: 1 }
+ *
+ * Server validates gold, level, and item existence.
+ * Uses InventoryDal.purchaseItem for atomic gold deduction + item grant.
+ */
+async function handlePost(request, { userId }) {
+  try {
+    const body = await request.json();
+    const { itemKey, quantity = 1 } = body;
 
-        if (!itemId || !itemCost || itemCost <= 0) {
-            return NextResponse.json({ error: 'Invalid purchase.' }, { status: 400 });
-        }
-
-        const { data: player, error: fetchError } = await supabase
-            .from('players')
-            .select('hero_data')
-            .eq('clerk_user_id', userId)
-            .single();
-
-        if (fetchError || !player) {
-            return NextResponse.json({ error: 'Player not found.' }, { status: 404 });
-        }
-
-        let hero = player.hero_data || {};
-        const currentGold = hero.gold || 0;
-
-        if (currentGold < itemCost) {
-            return NextResponse.json({ error: 'Not enough gold.' }, { status: 400 });
-        }
-
-        // Server generates the item fresh to prevent client stat tampering
-        // The itemId format is shop_{timestamp}_{index} — we regenerate to validate
-        const indexMatch = itemId.match(/_(\d+)$/);
-        const itemIndex = indexMatch ? parseInt(indexMatch[1]) : 0;
-        const item = generateShopItem(hero.level || 1, itemIndex);
-        
-        // Use the server-generated item but keep the original ID for dedup
-        item.id = itemId;
-        item.acquired_at = new Date().toISOString();
-
-        hero.gold = currentGold - itemCost;
-        if (!hero.artifacts) hero.artifacts = [];
-        hero.artifacts.push(item);
-
-        const { error: updateError } = await supabase
-            .from('players')
-            .update({ hero_data: hero })
-            .eq('clerk_user_id', userId);
-
-        if (updateError) throw updateError;
-
-        return NextResponse.json({
-            success: true,
-            item,
-            updatedHero: hero
-        });
-    } catch (err) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+    if (!itemKey) {
+      return NextResponse.json(
+        { error: 'BAD_REQUEST', message: 'itemKey is required.' },
+        { status: 400 }
+      );
     }
+
+    if (quantity < 1 || quantity > 99) {
+      return NextResponse.json(
+        { error: 'BAD_REQUEST', message: 'Quantity must be between 1 and 99.' },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } = await InventoryDal.purchaseItem(userId, itemKey, quantity);
+
+    if (error) {
+      const msg = error.message;
+      let status = 400;
+      if (msg.includes('not found')) status = 404;
+      if (msg.includes('Insufficient gold')) status = 403;
+      if (msg.includes('Level')) status = 403;
+
+      return NextResponse.json({ error: 'PURCHASE_FAILED', message: msg }, { status });
+    }
+
+    return NextResponse.json({
+      success: true,
+      purchased: {
+        itemKey: data.item.item_key,
+        itemName: data.item.item_name,
+        quantity,
+      },
+      goldSpent: data.goldSpent,
+      goldRemaining: data.goldRemaining,
+    });
+  } catch (err) {
+    console.error('[POST /api/shop]', err);
+    return NextResponse.json(
+      { error: 'INTERNAL_ERROR', message: err.message },
+      { status: 500 }
+    );
+  }
 }
+
+export const POST = withMiddleware(handlePost, {
+  rateLimit: 'shop_buy',
+  idempotency: true,
+});

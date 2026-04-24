@@ -1,31 +1,28 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAuth } from '@clerk/nextjs';
 
 const DEFAULT_SAVE = { stage: 'BOOT', heroData: null };
 
 export function usePlayerData() {
-  const { isLoaded, isSignedIn } = useAuth();
   const [saveData, setSaveData] = useState(DEFAULT_SAVE);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSignedIn, setIsSignedIn] = useState(false);
   const [error, setError] = useState(null);
   const saveTimeout = useRef(null);
 
   // Load player data from the database on mount
   useEffect(() => {
-    if (!isLoaded) return;
-    if (!isSignedIn) {
-      setIsLoading(false);
-      return;
-    }
-
     async function loadPlayer() {
       try {
         const res = await fetch('/api/player');
-        if (!res.ok) throw new Error('Failed to load');
+        if (!res.ok) {
+            setIsSignedIn(false);
+            return;
+        }
         const { player } = await res.json();
 
         if (player) {
+          setIsSignedIn(true);
           setSaveData({
             stage: player.stage || 'BOOT',
             heroData: player.hero_data || null
@@ -34,12 +31,13 @@ export function usePlayerData() {
       } catch (err) {
         console.error('Failed to load player data:', err);
         setError(err.message);
+        setIsSignedIn(false);
       } finally {
         setIsLoading(false);
       }
     }
     loadPlayer();
-  }, [isLoaded, isSignedIn]);
+  }, []);
 
   // Debounced save to database (saves 500ms after last state change)
   const saveToCloud = useCallback(async (data) => {
@@ -69,5 +67,15 @@ export function usePlayerData() {
     });
   }, [saveToCloud]);
 
-  return { saveData, setSaveData: updateSaveData, isLoading, error };
+  const logout = useCallback(async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      setIsSignedIn(false);
+      setSaveData(DEFAULT_SAVE);
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
+  }, []);
+
+  return { saveData, setSaveData: updateSaveData, isLoading, isSignedIn, logout, error };
 }

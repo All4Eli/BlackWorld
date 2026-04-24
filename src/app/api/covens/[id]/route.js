@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { Covens } from '@/lib/dal';
 import { NextResponse } from 'next/server';
 
 export async function GET(request, { params }) {
@@ -9,26 +9,26 @@ export async function GET(request, { params }) {
 
   try {
       // 1. Fetch Coven basic data
-      const { data: coven, error: covenError } = await supabase
-        .from('covens')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const { data: coven, error: covenError } = await Covens.getById(id);
         
       if (covenError) throw covenError;
 
-      // 2. Fetch Coven Roster from players table
-      // We only want lightweight data to avoid leaking hero stats if not intended
-      const { data: roster, error: rosterError } = await supabase
-        .from('players')
-        .select('clerk_user_id, username, level, coven_role')
-        .eq('coven_id', id)
-        .order('level', { ascending: false });
+      // 2. Fetch Coven Roster from coven_members table
+      const { data: members, error: rosterError } = await Covens.getMembers(id);
 
       if (rosterError) throw rosterError;
+
+      // Map to legacy format
+      const roster = members?.map((m) => ({
+         clerk_user_id: m.player_id,
+         username: m.username,
+         level: m.level,
+         coven_role: m.role
+      })) || [];
 
       return NextResponse.json({ coven, roster });
   } catch(err) {
       return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+

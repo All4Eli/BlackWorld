@@ -1,79 +1,97 @@
-import { supabase } from '@/lib/supabase';
-import { auth } from '@clerk/nextjs/server';
+import { HeroStats, sqlOne } from '@/lib/dal';
+import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
-import { calculateEssence, getDailyQuests } from '@/lib/gameData';
+import { calculateEssence, getDailyQuests, calculateXPRequirement } from '@/lib/gameData';
 
 export async function POST(request) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const { data: player, error: playerError } = await supabase
-            .from('players')
-            .select('hero_data')
-            .eq('clerk_user_id', userId)
-            .single();
+        const { data: stats, error: playerError } = await HeroStats.get(userId);
 
-        if (playerError || !player) throw new Error('Player not found.');
+        if (playerError || !stats) throw new Error('Player stats not found.');
 
-        let hero = player.hero_data || {};
         let modified = false;
+        const updates = {};
+        
+        let newEssence = stats.essence;
+        let newRegenAt = stats.essence_regen_at;
 
         // 1. Sync Essence
         const { essence, newTimestamp } = calculateEssence(
-            hero.essence_last_regen,
-            hero.essence ?? 100,
-            100
+            stats.essence_regen_at ? new Date(stats.essence_regen_at).toISOString() : new Date().toISOString(),
+            stats.essence ?? 100,
+            stats.max_essence ?? 100
         );
 
-        if (essence !== (hero.essence ?? 100)) {
-            hero.essence = essence;
-            hero.essence_last_regen = newTimestamp;
+        if (essence !== (stats.essence ?? 100)) {
+            newEssence = essence;
+            newRegenAt = newTimestamp;
+            updates.essence = essence;
+            updates.essence_regen_at = newTimestamp;
             modified = true;
         }
 
         // 2. Sync Daily Quests
         const today = new Date().toISOString().split('T')[0];
-        const existingQuests = hero.daily_quests;
-        if (!existingQuests || !existingQuests[0]?.id?.includes(today)) {
-            hero.daily_quests = getDailyQuests();
+        const existingQuests = stats.daily_quests || [];
+        let newQuests = existingQuests;
+        if (!existingQuests.length || !existingQuests[0]?.id?.includes(today)) {
+            newQuests = getDailyQuests();
+            updates.daily_quests = newQuests;
             modified = true;
         }
 
         // 3. Retroactive Level Loop
-        hero.level = hero.level || 1;
-        hero.unspentStatPoints = hero.unspentStatPoints || 0;
-        hero.skillPointsUnspent = hero.skillPointsUnspent || 0;
+        let currentXp = stats.xp || 0;
+        let currentLevel = stats.level || 1;
+        let unspentPoints = stats.unspent_points || 0;
+        let skillPointsUnspent = stats.skill_points_unspent || 0;
         
-        const { calculateXPRequirement } = require('@/lib/gameData');
-        let requiredXp = calculateXPRequirement(hero.level);
+        let requiredXp = calculateXPRequirement(currentLevel);
 
-        if ((hero.xp || 0) >= requiredXp) {
-             while ((hero.xp || 0) >= requiredXp) {
-                  hero.xp -= requiredXp;
-                  hero.level += 1;
-                  hero.unspentStatPoints += 3;
-                  hero.skillPointsUnspent += 1;
-                  requiredXp = calculateXPRequirement(hero.level);
+        if (currentXp >= requiredXp) {
+             while (currentXp >= requiredXp) {
+                  currentXp -= requiredXp;
+                  currentLevel += 1;
+                  unspentPoints += 3;
+                  skillPointsUnspent += 1;
+                  requiredXp = calculateXPRequirement(currentLevel);
              }
+             updates.xp = currentXp;
+             updates.level = currentLevel;
+             updates.unspent_points = unspentPoints;
+             updates.skill_points_unspent = skillPointsUnspent;
              modified = true;
         }
 
         if (modified) {
-            const { error: updateError } = await supabase
-                .from('players')
-                .update({ hero_data: hero })
-                .eq('clerk_user_id', userId);
-
+            const { error: updateError } = await HeroStats.update(userId, updates);
             if (updateError) throw updateError;
         }
 
+        // Reconstruct the legacy 'hero' object for frontend compatibility
+        const legacyHeroData = stats.hero_data || {};
+        const updatedHero = {
+            ...legacyHeroData,
+            level: updates.level || stats.level,
+            xp: updates.xp ?? stats.xp,
+            essence: newEssence,
+            essence_last_regen: newRegenAt,
+            daily_quests: newQuests,
+            unspentStatPoints: updates.unspent_points ?? stats.unspent_points,
+            skillPointsUnspent: updates.skill_points_unspent ?? stats.skill_points_unspent,
+            max_essence: stats.max_essence
+        };
+
         return NextResponse.json({
             success: true,
-            updatedHero: hero
+            updatedHero
         });
 
     } catch (err) {
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }
+

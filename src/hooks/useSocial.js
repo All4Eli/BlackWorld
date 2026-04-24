@@ -1,9 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@clerk/nextjs';
 
 export function useSocial() {
-  const { isLoaded, isSignedIn } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [messages, setMessages] = useState([]);
   
@@ -12,7 +10,6 @@ export function useSocial() {
   const unreadMessagesCount = messages.filter(m => !m.is_read && m.sender_id !== m.receiver_id).length;
 
   const fetchNotifications = useCallback(async () => {
-    if (!isSignedIn) return;
     try {
       const res = await fetch('/api/social/notifications');
       if (res.ok) {
@@ -22,10 +19,9 @@ export function useSocial() {
     } catch(err) {
       console.error(err);
     }
-  }, [isSignedIn]);
+  }, []);
 
   const fetchMessages = useCallback(async () => {
-    if (!isSignedIn) return;
     try {
       const res = await fetch('/api/social/messages?type=inbox');
       if (res.ok) {
@@ -35,21 +31,18 @@ export function useSocial() {
     } catch(err) {
       console.error(err);
     }
-  }, [isSignedIn]);
+  }, []);
 
   const markNotificationsRead = useCallback(async () => {
-    if (!isSignedIn) return;
     try {
       await fetch('/api/social/notifications', { method: 'PATCH', body: JSON.stringify({}) });
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     } catch(err) {
       console.error(err);
     }
-  }, [isSignedIn]);
+  }, []);
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
-    
     fetchNotifications();
     fetchMessages();
     
@@ -60,7 +53,7 @@ export function useSocial() {
     }, 60000);
     
     return () => clearInterval(interval);
-  }, [fetchNotifications, fetchMessages, isLoaded, isSignedIn]);
+  }, [fetchNotifications, fetchMessages]);
 
   return {
     notifications,

@@ -1,17 +1,17 @@
-import { supabase } from '@/lib/supabase';
+import { sql } from '@/lib/dal';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
       // Fetch dynamic active listings, ordered by newest first
-      const { data, error } = await supabase
-        .from('auctions')
-        .select('*')
-        .eq('status', 'ACTIVE')
-        .gte('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(100);
-        
+      const { data, error } = await sql(`
+          SELECT * FROM auctions 
+          WHERE status = 'ACTIVE' 
+          AND expires_at >= NOW() 
+          ORDER BY created_at DESC 
+          LIMIT 100
+      `);
+      
       if (error) throw error;
 
       return NextResponse.json({ auctions: data });
@@ -19,3 +19,4 @@ export async function GET() {
       return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+

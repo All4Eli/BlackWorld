@@ -237,7 +237,7 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
 
       return (
         <div className="animate-in fade-in zoom-in-95 duration-500 w-full max-w-4xl mx-auto pt-6 pb-10">
-          <div className="bg-[#050505] border border-red-900 shadow-[0_0_50px_rgba(153,27,27,0.15)] flex flex-col h-[600px]">
+          <div className="bg-[#050505] border border-red-900 shadow-[0_0_50px_rgba(153,27,27,0.15)] flex flex-col h-[80vh] sm:h-[600px]">
              
              {/* Combat Header */}
              <div className="border-b border-red-900/50 p-4 flex justify-between items-center bg-black">
@@ -250,7 +250,7 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
              </div>
 
              {/* Animated HP Bars */}
-             <div className="grid grid-cols-2 gap-8 p-8 border-b border-neutral-900 bg-[#020202]">
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-8 p-3 sm:p-8 border-b border-neutral-900 bg-[#020202]">
                 <div className="flex flex-col gap-2">
                    <div className="flex justify-between font-mono uppercase tracking-widest text-xs font-bold text-stone-300">
                       <span>{hero.name}</span>
@@ -279,7 +279,7 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
              </div>
 
              {/* Combat Log */}
-             <div className="flex-1 overflow-y-auto p-6 font-serif text-sm leading-loose space-y-2 bg-[#050505]">
+             <div className="flex-1 overflow-y-auto p-3 sm:p-6 font-serif text-xs sm:text-sm leading-relaxed sm:leading-loose space-y-1 sm:space-y-2 bg-[#050505]">
                 {combatLog.map((entry, i) => {
                    let color = 'text-stone-400';
                    if (entry.includes('STRIKE')) color = 'text-stone-200';
@@ -299,22 +299,22 @@ export default function ExplorationEngine({ hero, updateHero, onFindCombat }) {
 
              {/* Action Bar */}
              {!combatEnded && !combatLoading && (
-              <div className="p-8 pb-10 mt-auto">
-                 <div className="grid grid-cols-3 gap-4 mb-4">
-                     <button onClick={handleAttack} disabled={combatLoading} className="bg-red-950/20 hover:bg-red-950/40 border border-red-900/50 py-4 font-mono uppercase tracking-widest text-sm text-red-500 disabled:opacity-30 disabled:cursor-not-allowed">
+              <div className="p-3 sm:p-8 pb-4 sm:pb-10 mt-auto">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-3 sm:mb-4">
+                     <button onClick={handleAttack} disabled={combatLoading} className="bg-red-950/20 hover:bg-red-950/40 border border-red-900/50 py-3 sm:py-4 font-mono uppercase tracking-wider sm:tracking-widest text-xs sm:text-sm text-red-500 disabled:opacity-30 disabled:cursor-not-allowed">
                         Attack (Melee)
                      </button>
-                     <button onClick={handleUseItem} disabled={combatLoading || (hero.flasks || 0) <= 0} className="bg-stone-900/40 hover:bg-stone-800 border border-stone-800 py-4 font-mono uppercase tracking-widest text-sm text-stone-400 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                     <button onClick={handleUseItem} disabled={combatLoading || (hero.flasks || 0) <= 0} className="bg-stone-900/40 hover:bg-stone-800 border border-stone-800 py-3 sm:py-4 font-mono uppercase tracking-wider sm:tracking-widest text-xs sm:text-sm text-stone-400 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-1 sm:gap-2">
                         <span>Flask</span>
                         <span className="text-red-800 text-xs">x{hero.flasks || 0}</span>
                      </button>
-                     <button onClick={handleFlee} disabled={combatLoading} className="bg-stone-950 hover:bg-stone-900 border border-neutral-900 py-4 font-mono uppercase tracking-widest text-sm text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed">
+                     <button onClick={handleFlee} disabled={combatLoading} className="bg-stone-950 hover:bg-stone-900 border border-neutral-900 py-3 sm:py-4 font-mono uppercase tracking-wider sm:tracking-widest text-xs sm:text-sm text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed">
                         Flee
                      </button>
                  </div>
                  
                  {/* The Combat Grimoire (Arcana Hotbar) */}
-                 <div className="border border-purple-900/30 bg-[#050505] p-4 flex items-center gap-4">
+                 <div className="border border-purple-900/30 bg-[#050505] p-2 sm:p-4 flex items-center gap-2 sm:gap-4">
                      <div className="text-xs font-mono uppercase tracking-widest text-purple-600 pr-4 border-r border-purple-900/30">
                         Arcana <br/><span className="text-cyan-600">{hero.energy || 100} MP</span>
                      </div>

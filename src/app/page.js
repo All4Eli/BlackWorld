@@ -27,6 +27,17 @@ export default function GameStateDirector() {
 
   const stage = saveData?.stage || 'BOOT';
 
+  // Check if tutorial should show for new players
+  // NOTE: This useEffect MUST be above all early returns to satisfy React's Rules of Hooks
+  useEffect(() => {
+    if (saveData?.heroData && typeof window !== 'undefined') {
+      const tutorialDone = localStorage.getItem('bw_tutorial_done');
+      if (!tutorialDone) {
+        setShowTutorial(true);
+      }
+    }
+  }, [saveData?.heroData]);
+
   // Wait for player data to finish loading
   if (isLoading) {
     return (
@@ -111,16 +122,6 @@ export default function GameStateDirector() {
       }
     });
   };
-
-  // Check if tutorial should show for new players
-  useEffect(() => {
-    if (saveData?.heroData && typeof window !== 'undefined') {
-      const tutorialDone = localStorage.getItem('bw_tutorial_done');
-      if (!tutorialDone) {
-        setShowTutorial(true);
-      }
-    }
-  }, [saveData?.heroData]);
 
   const updateHero = (newHeroData) => {
     setSaveData(prev => ({ ...prev, heroData: newHeroData }));

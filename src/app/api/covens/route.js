@@ -1,16 +1,22 @@
-import { supabase } from '@/lib/supabase';
-import { auth } from '@clerk/nextjs/server';
+import { Covens, HeroStats, Composite, sql } from '@/lib/dal';
+import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  const { data, error } = await supabase
-    .from('covens')
-    .select('id, name, tag, description, member_count, leader_id')
-    .order('member_count', { ascending: false })
-    .limit(50);
-    
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ covens: data });
+  try {
+      const { data, error } = await sql(`
+          SELECT c.id, c.name, c.tag, c.description, c.leader_id, 
+                 (SELECT COUNT(*) FROM coven_members cm WHERE cm.coven_id = c.id) as member_count
+          FROM covens c 
+          WHERE c.deleted_at IS NULL
+          ORDER BY member_count DESC 
+          LIMIT 50
+      `);
+      if (error) throw error;
+      return NextResponse.json({ covens: data });
+  } catch (err) {
+      return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }
 
 export async function POST(request) {
@@ -25,60 +31,45 @@ export async function POST(request) {
       }
 
       // 1. Validate Gold First
-      const { data: playerRows, error: pError } = await supabase
-        .from('players')
-        .select('*')
-        .eq('clerk_user_id', userId)
-        .single();
+      const { data: composite, error: playerError } = await Composite.getFullPlayer(userId);
 
-      if (pError || !playerRows) throw new Error('Player not found.');
+      if (playerError || !composite || !composite.stats) throw new Error('Player not found.');
 
-      let hero = playerRows.hero_data || {};
-      if ((hero.gold || 0) < 1000) {
+      if ((composite.stats.gold || 0) < 1000) {
         return NextResponse.json({ error: 'Not enough gold.' }, { status: 400 });
       }
 
+      const { data: currentCoven } = await Covens.getPlayerCoven(userId);
+      if (currentCoven) {
+          return NextResponse.json({ error: 'You are already in a Coven.' }, { status: 400 });
+      }
+
       // 2. Create the Coven
-      const { data: newCoven, error: createError } = await supabase
-        .from('covens')
-        .insert({
-           name,
-           tag: tag.toUpperCase(),
-           description,
-           leader_id: userId,
-           member_count: 1
-        })
-        .select()
-        .single();
+      const { data: newCoven, error: createError } = await Covens.create(name, tag.toUpperCase(), userId, description);
         
       if (createError) throw createError;
 
-      // 3. Deduct Gold & Update the Creator's player row
-      hero.gold -= 1000;
-      
-      const { data: updatedPlayerRows, error: updateError } = await supabase
-        .from('players')
-        .update({
-           hero_data: hero,
-           coven_id: newCoven.id,
-           coven_name: newCoven.name,
-           coven_tag: newCoven.tag,
-           coven_role: 'Leader'
-        })
-        .eq('clerk_user_id', userId)
-        .select('*')
-        .single();
+      // 3. Add Leader to Members
+      const { error: addMemberError } = await Covens.addMember(newCoven.id, userId, 'Leader');
+      if (addMemberError) throw addMemberError;
+
+      // 4. Deduct Gold
+      const { error: updateError } = await HeroStats.update(userId, { gold: composite.stats.gold - 1000 });
 
       if (updateError) throw updateError;
       
       // Inject updated payload
       const payload = {
-         ...(updatedPlayerRows?.hero_data || {}),
-         coven_id: updatedPlayerRows?.coven_id,
-         coven_name: updatedPlayerRows?.coven_name,
-         coven_tag: updatedPlayerRows?.coven_tag,
-         coven_role: updatedPlayerRows?.coven_role,
-         bankedGold: updatedPlayerRows?.bank_balance
+         ...(composite.stats.hero_data || {}),
+         coven_id: newCoven.id,
+         coven_name: newCoven.name,
+         coven_tag: newCoven.tag,
+         coven_role: 'Leader',
+         bankedGold: composite.stats.bank_balance,
+         gold: composite.stats.gold - 1000,
+         hp: composite.stats.hp,
+         max_hp: composite.stats.max_hp,
+         level: composite.stats.level
       };
 
       return NextResponse.json({ coven: newCoven, updatedHero: payload });
@@ -89,3 +80,4 @@ export async function POST(request) {
       return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+

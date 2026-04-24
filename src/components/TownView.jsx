@@ -10,6 +10,7 @@ import ArenaHub from './ArenaHub';
 import QuestLog from './QuestLog';
 import CraftingStation from './CraftingStation';
 import LeaderboardHub from './LeaderboardHub';
+import BloodStoneShop from './BloodStoneShop';
 
 export default function TownView({ hero, updateHero }) {
   const [activeLocation, setActiveLocation] = useState(null);
@@ -42,6 +43,7 @@ export default function TownView({ hero, updateHero }) {
       locations: [
         { id: 'covens', name: 'Blood Covens', description: 'Pledge loyalty to a community guild.', status: null },
         { id: 'casino', name: 'Demon Casino', description: 'Wager gold on dark outcomes.', status: null },
+        { id: 'premium', name: 'Blood Stone Altar', description: 'Exchange mortal currency for Blood Stones and dark power.', status: null },
       ]
     },
     {
@@ -62,6 +64,7 @@ export default function TownView({ hero, updateHero }) {
   if (activeLocation === 'quests') return <QuestLog hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
   if (activeLocation === 'forge') return <CraftingStation hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
   if (activeLocation === 'leaderboard') return <LeaderboardHub hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'premium') return <BloodStoneShop hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col gap-8 animate-in slide-in-from-bottom-4 duration-700">

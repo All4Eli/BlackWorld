@@ -1,45 +1,76 @@
-import { supabase } from '@/lib/supabase';
-import { auth } from '@clerk/nextjs/server';
+// ═══════════════════════════════════════════════════════════════════
+// POST /api/player/allocate — Spend unspent attribute points
+// ═══════════════════════════════════════════════════════════════════
+// Client sends intent: { str: 1, vit: 2 }
+// Server validates available points and applies atomically.
+// ═══════════════════════════════════════════════════════════════════
+
 import { NextResponse } from 'next/server';
+import { withMiddleware } from '@/lib/middleware';
+import * as HeroDal from '@/lib/db/dal/hero';
 
-export async function POST(request) {
-    const { userId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+/**
+ * POST /api/player/allocate
+ *
+ * Body: { str?: number, def?: number, dex?: number, int?: number, vit?: number }
+ *
+ * Each field is the number of points to add to that stat.
+ * Total must be <= hero_stats.unspent_points.
+ *
+ * Uses HeroDal.allocatePoints which locks the row with FOR UPDATE
+ * to prevent concurrent allocations from doubling points.
+ */
+async function handlePost(request, { userId }) {
+  try {
+    const body = await request.json();
+    const { str, def, dex, int: intStat, vit } = body;
 
-    try {
-        const { statStr } = await request.json();
-        
-        const validStats = ['str', 'def', 'dex', 'int', 'vit'];
-        if (!validStats.includes(statStr)) {
-            return NextResponse.json({ error: 'Invalid stat allocation.' }, { status: 400 });
-        }
+    const allocation = {};
+    if (str) allocation.str = str;
+    if (def) allocation.def = def;
+    if (dex) allocation.dex = dex;
+    if (intStat) allocation.int = intStat;
+    if (vit) allocation.vit = vit;
 
-        const { data: player, error: pError } = await supabase
-            .from('players')
-            .select('hero_data')
-            .eq('clerk_user_id', userId)
-            .single();
-
-        if (pError || !player) throw new Error('Player not found.');
-
-        let hero = player.hero_data || {};
-        
-        if ((hero.unspentStatPoints || 0) <= 0) {
-            return NextResponse.json({ error: 'No stat points available.' }, { status: 400 });
-        }
-
-        hero[statStr] = (hero[statStr] || 5) + 1;
-        hero.unspentStatPoints -= 1;
-        
-        const { error: updateError } = await supabase
-            .from('players')
-            .update({ hero_data: hero })
-            .eq('clerk_user_id', userId);
-
-        if (updateError) throw updateError;
-
-        return NextResponse.json({ success: true, updatedHero: hero });
-    } catch(err) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+    const totalPoints = Object.values(allocation).reduce((sum, v) => sum + v, 0);
+    if (totalPoints <= 0) {
+      return NextResponse.json(
+        { error: 'BAD_REQUEST', message: 'At least one stat point must be allocated.' },
+        { status: 400 }
+      );
     }
+
+    const { data, error } = await HeroDal.allocatePoints(userId, allocation);
+
+    if (error) {
+      const msg = error.message;
+      let status = 400;
+      if (msg.includes('Not enough points')) status = 403;
+      if (msg.includes('negative')) status = 400;
+
+      return NextResponse.json({ error: 'ALLOCATE_FAILED', message: msg }, { status });
+    }
+
+    return NextResponse.json({
+      success: true,
+      stats: {
+        str: data.str,
+        def: data.def,
+        dex: data.dex,
+        int: data.int,
+        vit: data.vit,
+        unspentPoints: data.unspent_points,
+      },
+    });
+  } catch (err) {
+    console.error('[POST /api/player/allocate]', err);
+    return NextResponse.json(
+      { error: 'INTERNAL_ERROR', message: err.message },
+      { status: 500 }
+    );
+  }
 }
+
+export const POST = withMiddleware(handlePost, {
+  rateLimit: 'combat',
+});

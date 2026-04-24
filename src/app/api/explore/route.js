@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { incrementQuestProgress } from '@/lib/quests';
 import { generateLoot } from '@/lib/gameData';

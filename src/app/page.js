@@ -1,7 +1,6 @@
 'use client';
 import { useState } from 'react';
 import { usePlayerData } from '@/hooks/usePlayerData';
-import { useUser, UserButton, SignOutButton } from '@clerk/nextjs';
 import { getDailyQuests, calcCombatStats } from '@/lib/gameData';
 import { calculateSkillBonuses } from '@/lib/skillTree';
 import { useSocial } from '@/hooks/useSocial';
@@ -14,8 +13,7 @@ import MailboxModal from '@/components/MailboxModal';
 import NotificationsDropdown from '@/components/NotificationsDropdown';
 
 export default function GameStateDirector() {
-  const { isLoaded, isSignedIn, user } = useUser();
-  const { saveData, setSaveData, isLoading } = usePlayerData();
+  const { saveData, setSaveData, isLoading, isSignedIn, logout } = usePlayerData();
   const { notifications, messages, unreadNotificationsCount, unreadMessagesCount, fetchMessages, markNotificationsRead, fetchNotifications } = useSocial();
   
   // UI State Mode
@@ -27,8 +25,8 @@ export default function GameStateDirector() {
 
   const stage = saveData?.stage || 'BOOT';
 
-  // Wait for both Clerk and the database to finish loading
-  if (!isLoaded || (isSignedIn && isLoading)) {
+  // Wait for player data to finish loading
+  if (isLoading) {
     return (
       <main className="min-h-screen bg-[#030303] text-stone-300 font-serif flex items-center justify-center">
         <div className="text-center">
@@ -235,13 +233,12 @@ export default function GameStateDirector() {
             </div>
             
             <div className="pl-4 border-l border-neutral-800">
-               <UserButton 
-                 appearance={{
-                   elements: {
-                     userButtonAvatarBox: "w-8 h-8 rounded-sm border border-neutral-700 shadow-md hover:border-red-800 transition-colors"
-                   }
-                 }}
-               />
+               <button
+                 onClick={logout}
+                 className="text-[10px] font-mono uppercase tracking-widest text-stone-500 hover:text-red-500 border border-neutral-800 hover:border-red-900 px-3 py-1.5 transition-all"
+               >
+                 Sign Out
+               </button>
             </div>
           </div>
         </nav>

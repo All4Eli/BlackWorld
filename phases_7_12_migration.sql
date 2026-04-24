@@ -1,3 +1,16 @@
+-- ╔══════════════════════════════════════════════════════════════════════╗
+-- ║  ⚠️  DEPRECATED — DO NOT EXECUTE THIS FILE                          ║
+-- ║                                                                      ║
+-- ║  This file uses players(id) as the FK target, which is INCOMPATIBLE  ║
+-- ║  with the production schema in rebuild_database.js that uses          ║
+-- ║  players(clerk_user_id).                                              ║
+-- ║                                                                      ║
+-- ║  All tables defined here already exist in rebuild_database.js with    ║
+-- ║  the correct FK pattern. Running this file WILL cause errors.         ║
+-- ║                                                                      ║
+-- ║  Flagged in Phase 1 Audit (CRIT-1) — April 2026                      ║
+-- ╚══════════════════════════════════════════════════════════════════════╝
+
 -- PHASE 7: PVP
 CREATE TABLE IF NOT EXISTS pvp_challenges (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -1,85 +1,69 @@
-import { supabase } from '@/lib/supabase';
-import { auth } from '@clerk/nextjs/server';
+// ═══════════════════════════════════════════════════════════════════
+// POST /api/bank — Deposit or withdraw gold
+// ═══════════════════════════════════════════════════════════════════
+// Client sends intent: { action: "deposit"|"withdraw", amount: 100 }
+// Server validates gold limits and applies atomically.
+// ═══════════════════════════════════════════════════════════════════
+
 import { NextResponse } from 'next/server';
+import { withMiddleware } from '@/lib/middleware';
+import * as HeroDal from '@/lib/db/dal/hero';
 
-export async function POST(request) {
-    const { userId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+/**
+ * POST /api/bank
+ *
+ * Body: { action: "deposit" | "withdraw", amount: number }
+ *
+ * Uses HeroDal.bankTransfer which executes the transfer transactionally
+ * and validates balances securely on the server.
+ */
+async function handlePost(request, { userId }) {
+  try {
+    const body = await request.json();
+    const { action, amount } = body;
+    const transferAmount = parseInt(amount, 10);
 
-    try {
-        const { amount, action } = await request.json();
-        const val = parseInt(amount);
-
-        if (!val || val <= 0 || !Number.isInteger(val)) {
-            return NextResponse.json({ error: 'Invalid amount.' }, { status: 400 });
-        }
-
-        if (action !== 'deposit' && action !== 'withdraw') {
-            return NextResponse.json({ error: 'Invalid action. Must be deposit or withdraw.' }, { status: 400 });
-        }
-
-        // Fetch current state
-        const { data: player, error: fetchError } = await supabase
-            .from('players')
-            .select('hero_data, bank_balance')
-            .eq('clerk_user_id', userId)
-            .single();
-
-        if (fetchError || !player) {
-            return NextResponse.json({ error: 'Player not found.' }, { status: 404 });
-        }
-
-        let hero = player.hero_data || {};
-        const currentGold = hero.gold || 0;
-        const bankedGold = player.bank_balance || 0;
-
-        if (action === 'deposit') {
-            if (currentGold < val) {
-                return NextResponse.json({ error: 'Not enough gold on person.' }, { status: 400 });
-            }
-            hero.gold = currentGold - val;
-
-            const { error: updateError } = await supabase
-                .from('players')
-                .update({ 
-                    hero_data: hero, 
-                    bank_balance: bankedGold + val 
-                })
-                .eq('clerk_user_id', userId);
-
-            if (updateError) throw updateError;
-
-            hero.bankedGold = bankedGold + val;
-
-            return NextResponse.json({
-                success: true,
-                updatedHero: hero
-            });
-        } else {
-            // withdraw
-            if (bankedGold < val) {
-                return NextResponse.json({ error: 'Not enough gold in vault.' }, { status: 400 });
-            }
-            hero.gold = currentGold + val;
-
-            const { error: updateError } = await supabase
-                .from('players')
-                .update({ 
-                    hero_data: hero, 
-                    bank_balance: bankedGold - val 
-                })
-                .eq('clerk_user_id', userId);
-
-            if (updateError) throw updateError;
-
-            hero.bankedGold = bankedGold - val;
-
-            return NextResponse.json({
-                success: true,
-                updatedHero: hero
-            });
-        }
-    } catch (err) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+    if (isNaN(transferAmount) || transferAmount <= 0) {
+      return NextResponse.json(
+        { error: 'BAD_REQUEST', message: 'Invalid transfer amount.' },
+        { status: 400 }
+      );
     }
+
+    if (action !== 'deposit' && action !== 'withdraw') {
+      return NextResponse.json(
+        { error: 'BAD_REQUEST', message: 'Action must be deposit or withdraw.' },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } = await HeroDal.bankTransfer(userId, action, transferAmount);
+
+    if (error) {
+      const msg = error.message;
+      let status = 400;
+      if (msg.includes('Not enough')) status = 403;
+
+      return NextResponse.json({ error: 'TRANSFER_FAILED', message: msg }, { status });
+    }
+
+    return NextResponse.json({
+      success: true,
+      action,
+      amount: transferAmount,
+      gold: data.gold,
+      bankBalance: data.bank_balance,
+    });
+  } catch (err) {
+    console.error('[POST /api/bank]', err);
+    return NextResponse.json(
+      { error: 'INTERNAL_ERROR', message: err.message },
+      { status: 500 }
+    );
+  }
 }
+
+export const POST = withMiddleware(handlePost, {
+  rateLimit: 'bank',
+  idempotency: true, // Crucial to prevent accidental double-deposit/withdraw
+});

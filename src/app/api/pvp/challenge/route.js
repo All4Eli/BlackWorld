@@ -1,5 +1,5 @@
-import { supabase } from '@/lib/supabase';
-import { auth } from '@clerk/nextjs/server';
+import { HeroStats, Composite, PvP } from '@/lib/dal';
+import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { calcPlayerStats, rollDamage, isHitDodged } from '@/lib/combat';
 import { incrementQuestProgress } from '@/lib/quests';
@@ -14,57 +14,44 @@ export async function POST(request) {
         if (!targetPlayerId) return NextResponse.json({ error: 'No target specified.' }, { status: 400 });
 
         // Fetch attacker
-        const { data: attackerRecord, error: aError } = await supabase
-            .from('players')
-            .select('id, hero_data')
-            .eq('clerk_user_id', userId)
-            .single();
+        const { data: attacker, error: aError } = await Composite.getFullPlayer(userId);
+        if (aError || !attacker || !attacker.stats) throw new Error('Attacker not found.');
+        if (attacker.clerk_user_id === targetPlayerId) throw new Error('You cannot duel yourself.');
 
-        if (aError || !attackerRecord) throw new Error('Attacker not found.');
-        if (attackerRecord.id === targetPlayerId) throw new Error('You cannot duel yourself.');
+        let attackerData = attacker.stats.hero_data || {};
+        if (attacker.stats.hp <= 0) return NextResponse.json({ error: 'You are dead.' }, { status: 400 });
 
-        let attackerHero = attackerRecord.hero_data || {};
-        if (attackerHero.hp <= 0) return NextResponse.json({ error: 'You are dead.' }, { status: 400 });
-
-        if (!attackerHero.player_resources) attackerHero.player_resources = {};
-        const check = validateAndConsume(attackerHero, attackerHero.player_resources, 5, 'resolve');
-        if (!check.success) {
-            return NextResponse.json({ error: 'Not enough Resolve.' }, { status: 400 });
+        if (attacker.stats.essence < 10) {
+            return NextResponse.json({ error: 'Not enough Essence (requires 10).' }, { status: 400 });
         }
-        
-        attackerHero.player_resources.resolve_current = check.new_current;
-        attackerHero.player_resources.resolve_last_update = check.new_last_update;
 
         // Fetch defender
-        const { data: defenderRecord, error: dError } = await supabase
-            .from('players')
-            .select('id, username, hero_data')
-            .eq('id', targetPlayerId)
-            .single();
+        const { data: defender, error: dError } = await Composite.getFullPlayer(targetPlayerId);
+        if (dError || !defender || !defender.stats) throw new Error('Defender not found.');
 
-        if (dError || !defenderRecord) throw new Error('Defender not found.');
-
-        let defenderHero = defenderRecord.hero_data || {};
+        let defenderData = defender.stats.hero_data || {};
         
-        const aStats = calcPlayerStats(attackerHero);
-        const dStats = calcPlayerStats(defenderHero);
+        const aStats = calcPlayerStats(attackerData);
+        const dStats = calcPlayerStats(defenderData);
         
-        let aHp = attackerHero.hp;
-        let dHp = defenderHero.hp || dStats.maxHp;
+        let aHp = attacker.stats.hp;
+        let dHp = defender.stats.hp || dStats.maxHp;
 
         // Auto-resolve loop
         let win = false;
         let maxRounds = 50;
         let combatLogs = [];
+        let roundsDone = 0;
 
         for (let i = 0; i < maxRounds; i++) {
+            roundsDone++;
             // Attacker phase
             if (!isHitDodged(dStats.dodgeChance)) {
                 const dmg = rollDamage(aStats.baseDamageMin, aStats.baseDamageMax);
                 dHp -= Math.max(1, dmg - dStats.damageReduction);
-                combatLogs.push(`You strike ${defenderRecord.username} for ${dmg}.`);
+                combatLogs.push(`You strike ${defender.username} for ${dmg}.`);
             } else {
-                combatLogs.push(`${defenderRecord.username} dodged your strike!`);
+                combatLogs.push(`${defender.username} dodged your strike!`);
             }
             if (dHp <= 0) { win = true; break; }
 
@@ -72,48 +59,69 @@ export async function POST(request) {
             if (!isHitDodged(aStats.dodgeChance)) {
                 const dmg = rollDamage(dStats.baseDamageMin, dStats.baseDamageMax);
                 aHp -= Math.max(1, dmg - aStats.damageReduction);
-                combatLogs.push(`${defenderRecord.username} strikes you for ${dmg}.`);
+                combatLogs.push(`${defender.username} strikes you for ${dmg}.`);
             } else {
-                combatLogs.push(`You dodged ${defenderRecord.username}'s strike!`);
+                combatLogs.push(`You dodged ${defender.username}'s strike!`);
             }
             if (aHp <= 0) { win = false; break; }
         }
 
-        // Apply results to attacker only (since offline defender doesn't lose HP strictly in this module design)
+        // Fetch Elo
+        const { data: aPvpStats } = await PvP.getStats(userId);
+        const { data: dPvpStats } = await PvP.getStats(targetPlayerId);
+        const aElo = aPvpStats?.elo_rating || 1000;
+        const dElo = dPvpStats?.elo_rating || 1000;
+
+        // Apply results to attacker only (offline defender doesn't lose HP in this phase)
         let goldGained = 0;
         let expGained = 0;
         let eloChange = 0;
+
+        const updates = { essence: attacker.stats.essence - 10 };
 
         if (win) {
             goldGained = Math.floor(Math.random() * 50) + 10;
             expGained = 50;
             eloChange = 15;
-            attackerHero.gold = (attackerHero.gold || 0) + goldGained;
-            attackerHero.xp = (attackerHero.xp || 0) + expGained;
-            attackerHero.kills = (attackerHero.kills || 0) + 1;
-            incrementQuestProgress(attackerHero, 'SLAY_MONSTERS', 1); // Counts as a kill
+            updates.gold = (attacker.stats.gold || 0) + goldGained;
+            updates.xp = (attacker.stats.xp || 0) + expGained;
+            updates.kills = (attacker.stats.kills || 0) + 1;
+            incrementQuestProgress(attackerData, 'SLAY_MONSTERS', 1); // Counts as a kill
+            updates.hero_data = attackerData;
+            updates.hp = Math.max(1, aHp);
         } else {
-            attackerHero.hp = 0;
+            updates.hp = 0;
             eloChange = -15;
-            // penalty handled by deathscreen UI
         }
 
-        // Mutate attacker JSONB
-        await supabase
-            .from('players')
-            .update({ hero_data: attackerHero })
-            .eq('id', attackerRecord.id);
+        await HeroStats.update(userId, updates);
+        
+        await PvP.updateElo(userId, Math.max(0, aElo + eloChange), win);
+        await PvP.recordMatch(
+            userId, 
+            targetPlayerId, 
+            win ? userId : targetPlayerId, 
+            aElo, 
+            dElo, 
+            eloChange, 
+            roundsDone
+        );
 
-        // Mutate attacker PVP stats
-        const { data: currentStats } = await supabase.from('pvp_stats').select('*').eq('player_id', attackerRecord.id).single();
-        if (currentStats) {
-           await supabase.from('pvp_stats').update({
-               elo_rating: Math.max(0, currentStats.elo_rating + eloChange),
-               arena_wins: win ? currentStats.arena_wins + 1 : currentStats.arena_wins,
-               arena_losses: !win ? currentStats.arena_losses + 1 : currentStats.arena_losses,
-               total_gold_won: win ? currentStats.total_gold_won + goldGained : currentStats.total_gold_won
-           }).eq('player_id', attackerRecord.id);
-        }
+        // Rebuild frontend payload
+        const updatedHero = {
+            ...attackerData,
+            str: attacker.stats.str,
+            def: attacker.stats.def,
+            dex: attacker.stats.dex,
+            int: attacker.stats.int,
+            vit: attacker.stats.vit,
+            unspentStatPoints: attacker.stats.unspent_points,
+            level: attacker.stats.level,
+            xp: updates.xp ?? attacker.stats.xp,
+            gold: updates.gold ?? attacker.stats.gold,
+            hp: updates.hp,
+            max_hp: attacker.stats.max_hp
+        };
 
         return NextResponse.json({
             success: true,
@@ -121,10 +129,11 @@ export async function POST(request) {
             goldGained,
             expGained,
             combatLogs,
-            updatedHero: attackerHero
+            updatedHero
         });
 
     } catch (err) {
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }
+

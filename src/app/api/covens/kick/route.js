@@ -1,5 +1,5 @@
-import { supabase } from '@/lib/supabase';
-import { auth } from '@clerk/nextjs/server';
+import { Covens } from '@/lib/dal';
+import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
 export async function POST(request) {
@@ -14,59 +14,39 @@ export async function POST(request) {
         }
 
         // 1. Fetch initiator's coven details
-        const { data: initiatorPlayer } = await supabase
-            .from('players')
-            .select('coven_id')
-            .eq('clerk_user_id', userId)
-            .single();
+        const { data: currentCoven } = await Covens.getPlayerCoven(userId);
 
-        if (!initiatorPlayer || !initiatorPlayer.coven_id) {
+        if (!currentCoven) {
             return NextResponse.json({ error: 'You are not in a coven.' }, { status: 403 });
         }
 
-        const covenId = initiatorPlayer.coven_id;
-
-        // 2. Fetch Coven rules
-        const { data: coven, error: covenError } = await supabase
-             .from('covens')
-             .select('id, leader_id, officers, member_count')
-             .eq('id', covenId)
-             .single();
-
-        if (covenError) throw new Error('Coven read failed.');
-
-        const isLeader = coven.leader_id === userId;
-        const isOfficer = coven.officers && coven.officers.includes(userId);
+        const isLeader = currentCoven.role === 'Leader' || currentCoven.leader_id === userId;
+        const isOfficer = currentCoven.role === 'Officer' || currentCoven.role === 'Elder';
 
         if (!isLeader && !isOfficer) {
              return NextResponse.json({ error: 'Insufficient permissions to kick members.' }, { status: 403 });
         }
 
-        // 3. Prevent kicking the leader
-        if (targetUserId === coven.leader_id) {
-             return NextResponse.json({ error: 'Cannot kick the Coven leader.' }, { status: 403 });
+        // 2. Fetch target's coven to ensure they belong to the same coven
+        const { data: targetCoven } = await Covens.getPlayerCoven(targetUserId);
+        
+        if (!targetCoven || targetCoven.id !== currentCoven.id) {
+             return NextResponse.json({ error: 'Target member is not in your coven.' }, { status: 404 });
         }
 
-        // 4. Wipe target user's coven metadata
-        const { error: resetError } = await supabase
-             .from('players')
-             .update({
-                 coven_id: null,
-                 coven_role: 'Unpledged',
-                 coven_name: null,
-                 coven_tag: null
-             })
-             .eq('clerk_user_id', targetUserId)
-             .eq('coven_id', covenId); // Ensure they were actually in THIS coven
+        // 3. Prevent kicking the leader
+        if (targetUserId === currentCoven.leader_id) {
+             return NextResponse.json({ error: 'Cannot kick the Coven leader.' }, { status: 403 });
+        }
+        
+        // 4. Officers cannot kick other Officers
+        if (!isLeader && (targetCoven.role === 'Officer' || targetCoven.role === 'Elder')) {
+             return NextResponse.json({ error: 'Only the Leader can kick Officers.' }, { status: 403 });
+        }
 
-        if (resetError) throw resetError;
-
-        // 5. Decrement coven roster count
-        await supabase
-             .from('covens')
-             .update({ member_count: Math.max(0, coven.member_count - 1) })
-             .eq('id', covenId);
-
+        // 5. Remove member using DAL
+        const { error: removeError } = await Covens.removeMember(currentCoven.id, targetUserId);
+        if (removeError) throw removeError;
 
         return NextResponse.json({ success: true, message: 'Member exiled successfully.' });
 
@@ -74,3 +54,4 @@ export async function POST(request) {
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }
+

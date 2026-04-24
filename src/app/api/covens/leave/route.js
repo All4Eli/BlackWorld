@@ -1,5 +1,5 @@
-import { supabase } from '@/lib/supabase';
-import { auth } from '@clerk/nextjs/server';
+import { Covens, Composite } from '@/lib/dal';
+import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
 export async function POST(request) {
@@ -7,56 +7,35 @@ export async function POST(request) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-      // 1. Fetch Player's Current Coven ID
-      const { data: player, error: playerError } = await supabase
-        .from('players')
-        .select('coven_id')
-        .eq('clerk_user_id', userId)
-        .single();
-        
-      if (playerError || !player?.coven_id) throw new Error('Not in a coven.');
+      // 1. Fetch Player's Current Coven
+      const { data: currentCoven } = await Covens.getPlayerCoven(userId);
+      if (!currentCoven) throw new Error('Not in a coven.');
 
-      const covenId = player.coven_id;
-
-      // 2. Fetch Coven Details
-      const { data: coven } = await supabase
-        .from('covens')
-        .select('id, member_count')
-        .eq('id', covenId)
-        .single();
-
-      // 3. Update the Player (clear coven fields)
-      const { error: updateError } = await supabase
-        .from('players')
-        .update({
-           coven_id: null,
-           coven_name: null,
-           coven_tag: null,
-           coven_role: 'Unpledged'
-        })
-        .eq('clerk_user_id', userId);
-
-      if (updateError) throw updateError;
-
-      // 4. Atomically decrement Coven Member Count
-      if (coven) {
-          await supabase.rpc('decrement_member_count', { coven_uuid: coven.id });
+      if (currentCoven.role === 'Leader') {
+          // Additional checks or block leader from leaving directly without transferring 
+          return NextResponse.json({ error: 'Leaders cannot leave. Disband or transfer leadership first.' }, { status: 400 });
       }
 
-      // Fetch the mutated player row for authoritative response
-      const { data: updatedPlayer } = await supabase
-         .from('players')
-         .select('*')
-         .eq('clerk_user_id', userId)
-         .single();
+      // 2. Remove member
+      const { error: removeError } = await Covens.removeMember(currentCoven.id, userId);
+
+      if (removeError) throw removeError;
+
+      // 3. Fetch the mutated player row for authoritative response
+      const { data: composite, error: fetchError } = await Composite.getFullPlayer(userId);
+      if (fetchError || !composite) throw new Error('Failed to fetch updated player data.');
          
       const payload = {
-         ...(updatedPlayer?.hero_data || {}),
-         coven_id: updatedPlayer?.coven_id,
-         coven_name: updatedPlayer?.coven_name,
-         coven_tag: updatedPlayer?.coven_tag,
-         coven_role: updatedPlayer?.coven_role,
-         bankedGold: updatedPlayer?.bank_balance
+         ...(composite.stats?.hero_data || {}),
+         coven_id: null,
+         coven_name: null,
+         coven_tag: null,
+         coven_role: 'Unpledged',
+         bankedGold: composite.stats?.bank_balance,
+         gold: composite.stats?.gold,
+         hp: composite.stats?.hp,
+         max_hp: composite.stats?.max_hp,
+         level: composite.stats?.level
       };
 
       return NextResponse.json({ success: true, updatedHero: payload });
@@ -64,3 +43,4 @@ export async function POST(request) {
       return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+

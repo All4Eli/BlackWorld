@@ -1,5 +1,5 @@
-import { supabase } from '@/lib/supabase';
-import { auth } from '@clerk/nextjs/server';
+import { Composite, sql } from '@/lib/dal';
+import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
 export async function POST(request) {
@@ -9,45 +9,34 @@ export async function POST(request) {
     try {
         const { flag } = await request.json();
 
-        // Fetch user ID
-        const { data: player, error: pError } = await supabase
-            .from('players')
-            .select('id')
-            .eq('clerk_user_id', userId)
-            .single();
+        const { data: composite, error: fetchError } = await Composite.getFullPlayer(userId);
+        if (fetchError || !composite) throw new Error('Player not found.');
 
-        if (pError || !player) throw new Error('Player not found.');
-
-        // Upsert into pvp_stats
-        const { error: upsertError } = await supabase
-            .from('pvp_stats')
-            .upsert({ player_id: player.id, pvp_flag: flag }, { onConflict: 'player_id' });
+        // Upsert into pvp_stats to update is_active flag
+        const { error: upsertError } = await sql(
+            `INSERT INTO pvp_stats (player_id, is_active) 
+             VALUES ($1, $2)
+             ON CONFLICT (player_id) DO UPDATE SET is_active = EXCLUDED.is_active`,
+            [userId, flag]
+        );
 
         if (upsertError) throw upsertError;
 
-        // Also update players table for ease
-        const { data: updatedPlayer, error: pUpdateError } = await supabase
-            .from('players')
-            .update({ pvp_flag: flag })
-            .eq('id', player.id)
-            .select('*')
-            .single();
-
-        if (pUpdateError) throw pUpdateError;
-
-        const payload = {
-           ...(updatedPlayer?.hero_data || {}),
-           coven_id: updatedPlayer?.coven_id,
-           coven_name: updatedPlayer?.coven_name,
-           coven_tag: updatedPlayer?.coven_tag,
-           coven_role: updatedPlayer?.coven_role,
-           bankedGold: updatedPlayer?.bank_balance,
-           pvp_flag: updatedPlayer?.pvp_flag
+        // Rebuild legacy frontend payload
+        const updatedHero = {
+            ...(composite.stats?.hero_data || {}),
+            coven_id: composite.coven?.id,
+            coven_name: composite.coven?.name,
+            coven_tag: composite.coven?.tag,
+            coven_role: composite.coven?.role,
+            bankedGold: composite.stats?.bank_balance,
+            pvp_flag: flag
         };
 
-        return NextResponse.json({ success: true, flag, updatedHero: payload });
+        return NextResponse.json({ success: true, flag, updatedHero });
 
     } catch (err) {
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }
+

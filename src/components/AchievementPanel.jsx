@@ -34,13 +34,51 @@ export default function AchievementPanel({ hero, updateHero }) {
                     // Add hardcoded logical dictionary for our custom backend triggers if they aren't in DB yet
                     const fullDict = [
                         ...dict,
-                        { id: 'lvl_5', name: 'Apprentice', description: 'Reach Level 5.', points: 10 },
-                        { id: 'lvl_10', name: 'Adept', description: 'Reach Level 10.', points: 20 },
-                        { id: 'lvl_25', name: 'Master', description: 'Reach Level 25.', points: 50 },
-                        { id: 'gold_1k', name: 'Hoarder', description: 'Accumulate 1,000 Gold in the vault.', points: 10 },
-                        { id: 'gold_10k', name: 'Baron', description: 'Accumulate 10,000 Gold in the vault.', points: 50 },
-                        { id: 'kills_10', name: 'First Blood', description: 'Slay 10 enemies.', points: 10 },
-                        { id: 'kills_100', name: 'Slayer', description: 'Slay 100 enemies.', points: 50 }
+                        // Level Milestones
+                        { id: 'lvl_5', name: 'Apprentice', description: 'Reach Level 5.', points: 10, category: 'combat', icon: '⚔' },
+                        { id: 'lvl_10', name: 'Adept', description: 'Reach Level 10.', points: 20, category: 'combat', icon: '⚔' },
+                        { id: 'lvl_15', name: 'Veteran', description: 'Reach Level 15.', points: 30, category: 'combat', icon: '⚔' },
+                        { id: 'lvl_25', name: 'Master', description: 'Reach Level 25.', points: 50, category: 'combat', icon: '⚔' },
+                        { id: 'lvl_35', name: 'Grand Master', description: 'Reach Level 35.', points: 75, category: 'combat', icon: '⚔' },
+                        { id: 'lvl_50', name: 'Transcendent', description: 'Reach Level 50.', points: 100, category: 'combat', icon: '⚔' },
+                        // Combat
+                        { id: 'kills_10', name: 'First Blood', description: 'Slay 10 enemies.', points: 10, category: 'combat', icon: '☠' },
+                        { id: 'kills_50', name: 'Bloodied', description: 'Slay 50 enemies.', points: 25, category: 'combat', icon: '☠' },
+                        { id: 'kills_100', name: 'Slayer', description: 'Slay 100 enemies.', points: 50, category: 'combat', icon: '☠' },
+                        { id: 'kills_500', name: 'Executioner', description: 'Slay 500 enemies.', points: 100, category: 'combat', icon: '☠' },
+                        { id: 'kills_1000', name: 'Genocide', description: 'Slay 1,000 enemies.', points: 200, category: 'combat', icon: '☠' },
+                        { id: 'first_death', name: 'Taste of Death', description: 'Die for the first time.', points: 5, category: 'combat', icon: '💀' },
+                        { id: 'boss_slayer', name: 'Boss Slayer', description: 'Defeat a boss enemy.', points: 15, category: 'combat', icon: '♛' },
+                        { id: 'boss_hunter', name: 'Boss Hunter', description: 'Defeat 10 boss enemies.', points: 50, category: 'combat', icon: '♛' },
+                        { id: 'boss_legend', name: 'Boss Legend', description: 'Defeat 50 boss enemies.', points: 100, category: 'combat', icon: '♛' },
+                        // Economy
+                        { id: 'gold_1k', name: 'Hoarder', description: 'Bank 1,000 gold.', points: 10, category: 'economy', icon: '💰' },
+                        { id: 'gold_10k', name: 'Baron', description: 'Bank 10,000 gold.', points: 50, category: 'economy', icon: '💰' },
+                        { id: 'gold_50k', name: 'Magnate', description: 'Bank 50,000 gold.', points: 75, category: 'economy', icon: '💰' },
+                        { id: 'gold_100k', name: 'Sovereign of Wealth', description: 'Bank 100,000 gold.', points: 100, category: 'economy', icon: '💰' },
+                        { id: 'carried_gold_10k', name: 'Heavy Purse', description: 'Carry 10,000 gold at once.', points: 25, category: 'economy', icon: '💰' },
+                        { id: 'blood_stones_100', name: 'Blood Collector', description: 'Accumulate 100 Blood Stones.', points: 30, category: 'economy', icon: '🩸' },
+                        // Exploration
+                        { id: 'explorer_3', name: 'Wanderer', description: 'Explore 3 different zones.', points: 15, category: 'exploration', icon: '🗺' },
+                        { id: 'explorer_6', name: 'Pathfinder', description: 'Explore 6 different zones.', points: 30, category: 'exploration', icon: '🗺' },
+                        { id: 'explorer_8', name: 'Cartographer', description: 'Explore all 8 zones.', points: 50, category: 'exploration', icon: '🗺' },
+                        // PvP
+                        { id: 'pvp_first_win', name: 'Arena Debut', description: 'Win your first PvP duel.', points: 10, category: 'pvp', icon: '⚔' },
+                        { id: 'pvp_10_wins', name: 'Gladiator', description: 'Win 10 PvP duels.', points: 25, category: 'pvp', icon: '⚔' },
+                        { id: 'pvp_50_wins', name: 'Champion', description: 'Win 50 PvP duels.', points: 75, category: 'pvp', icon: '⚔' },
+                        { id: 'pvp_100_wins', name: 'Warlord', description: 'Win 100 PvP duels.', points: 150, category: 'pvp', icon: '⚔' },
+                        { id: 'pvp_survivor', name: 'Survivor', description: 'Positive W/L ratio after 20+ duels.', points: 50, category: 'pvp', icon: '⚔' },
+                        // Social
+                        { id: 'joined_coven', name: 'Brotherhood', description: 'Join a coven.', points: 15, category: 'social', icon: '⛨' },
+                        // Quests
+                        { id: 'quests_5', name: 'Errand Runner', description: 'Complete 5 quests.', points: 15, category: 'exploration', icon: '📜' },
+                        { id: 'quests_20', name: 'Quest Master', description: 'Complete 20 quests.', points: 50, category: 'exploration', icon: '📜' },
+                        // Crafting
+                        { id: 'crafter_1', name: 'Apprentice Smith', description: 'Craft your first item.', points: 10, category: 'crafting', icon: '🔨' },
+                        { id: 'crafter_10', name: 'Master Artisan', description: 'Craft 10 items.', points: 30, category: 'crafting', icon: '🔨' },
+                        // Dungeons
+                        { id: 'dungeon_1', name: 'Delver', description: 'Clear a dungeon.', points: 15, category: 'exploration', icon: '🏰' },
+                        { id: 'dungeon_10', name: 'Dungeon Master', description: 'Clear 10 dungeons.', points: 50, category: 'exploration', icon: '🏰' },
                     ];
 
                     // Merge uniqueness
@@ -62,8 +100,21 @@ export default function AchievementPanel({ hero, updateHero }) {
         syncAchvs();
     }, []);
 
+    const [filter, setFilter] = useState('all');
     const totalPts = hero.achievement_points || 0;
     const progressCount = achievements.filter(a => a.isUnlocked).length;
+    
+    const categories = [
+      { id: 'all', label: 'All', icon: '✦' },
+      { id: 'combat', label: 'Combat', icon: '⚔' },
+      { id: 'economy', label: 'Economy', icon: '💰' },
+      { id: 'exploration', label: 'Explore', icon: '🗺' },
+      { id: 'pvp', label: 'PvP', icon: '⚔' },
+      { id: 'social', label: 'Social', icon: '⛨' },
+      { id: 'crafting', label: 'Craft', icon: '🔨' },
+    ];
+
+    const filtered = filter === 'all' ? achievements : achievements.filter(a => a.category === filter);
 
     return (
         <div className="w-full max-w-5xl mx-auto flex flex-col gap-6 animate-in slide-in-from-right-4 duration-500 pb-10">
@@ -95,13 +146,29 @@ export default function AchievementPanel({ hero, updateHero }) {
                                     <div className="text-[10px] text-stone-600 font-mono mt-1">{progressCount} / {achievements.length} Unlocked</div>
                                 </div>
                             </div>
+
+                            {/* Category Filters */}
+                            <div className="flex flex-wrap gap-2">
+                              {categories.map(c => (
+                                <button key={c.id} onClick={() => setFilter(c.id)}
+                                  className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-widest border transition-colors ${
+                                    filter === c.id
+                                      ? 'border-yellow-900/50 bg-yellow-950/20 text-yellow-500'
+                                      : 'border-neutral-800 text-stone-600 hover:text-stone-400 hover:border-neutral-700'
+                                  }`}>
+                                  {c.icon} {c.label}
+                                </button>
+                              ))}
+                            </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {achievements.map(a => (
+                                {filtered.map(a => (
                                     <div key={a.id} className={`border p-4 flex flex-col justify-between transition-colors ${a.isUnlocked ? 'border-yellow-900/30 bg-yellow-950/10 shadow-[0_0_15px_rgba(202,138,4,0.02)]' : 'border-neutral-900 bg-black opacity-60 grayscale'}`}>
                                         <div>
                                             <div className="flex justify-between items-start">
-                                                <h3 className={`font-bold font-serif uppercase tracking-widest ${a.isUnlocked ? 'text-yellow-500' : 'text-stone-500'}`}>{a.name}</h3>
+                                                <h3 className={`font-bold font-serif uppercase tracking-widest ${a.isUnlocked ? 'text-yellow-500' : 'text-stone-500'}`}>
+                                                  {a.icon && <span className="mr-2">{a.icon}</span>}{a.name}
+                                                </h3>
                                                 <span className={`text-[9px] font-mono px-2 uppercase ${a.isUnlocked ? 'text-yellow-400 border border-yellow-900/50' : 'text-stone-600 border border-stone-800'}`}>{a.points} PTS</span>
                                             </div>
                                             <p className="text-stone-500 text-xs mt-2 font-mono h-8">{a.description}</p>

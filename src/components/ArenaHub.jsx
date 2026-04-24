@@ -3,6 +3,89 @@ import { useState, useEffect } from 'react';
 import { calcPlayerStats } from '@/lib/combat';
 import { validateAndConsume } from '@/lib/resources';
 
+const RANK_COLORS = {
+  Bronze: 'text-amber-700', Silver: 'text-stone-400', Gold: 'text-yellow-500',
+  Platinum: 'text-cyan-400', Diamond: 'text-purple-400', Champion: 'text-red-500',
+};
+
+function SeasonRankings() {
+  const [season, setSeason] = useState(null);
+  const [rankings, setRankings] = useState([]);
+  const [myStats, setMyStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/pvp/season')
+      .then(r => r.json())
+      .then(data => {
+        setSeason(data.season);
+        setRankings(data.rankings || []);
+        setMyStats(data.myStats);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="text-stone-600 font-mono text-xs text-center py-10 uppercase tracking-widest animate-pulse">Loading season data...</div>;
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Season Banner */}
+      {season && (
+        <div className="bg-red-950/20 border border-red-900/30 p-4 flex justify-between items-center rounded">
+          <div>
+            <div className="text-red-500 font-serif text-lg uppercase tracking-widest">{season.name}</div>
+            <div className="text-stone-600 text-[10px] font-mono uppercase tracking-widest mt-1">
+              Season {season.season_number} • {season.daysRemaining} days remaining
+            </div>
+          </div>
+          {myStats && (
+            <div className="text-right">
+              <div className={`font-bold text-lg ${RANK_COLORS[myStats.rank_tier] || 'text-stone-400'}`}>{myStats.rank_tier}</div>
+              <div className="text-stone-500 text-[10px] font-mono">{myStats.elo} ELO • {myStats.wins}W / {myStats.losses}L</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Rankings */}
+      <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-12 gap-4 pb-2 border-b border-neutral-800 text-[10px] text-stone-600 font-mono uppercase tracking-widest">
+          <div className="col-span-1">#</div>
+          <div className="col-span-4">Player</div>
+          <div className="col-span-2 text-center">Rank</div>
+          <div className="col-span-2 text-center">Record</div>
+          <div className="col-span-3 text-right">ELO</div>
+        </div>
+        {rankings.length === 0 ? (
+          <div className="text-center text-stone-600 font-mono text-xs py-8 italic">No combatants this season.</div>
+        ) : (
+          rankings.map((r, i) => (
+            <div key={r.player_id} className={`grid grid-cols-12 gap-4 py-3 px-2 font-mono items-center text-sm transition-colors ${
+              i === 0 ? 'bg-red-950/20 border border-red-900/30' : 'bg-[#020202] border border-neutral-900 hover:border-neutral-700'
+            }`}>
+              <div className="col-span-1 text-stone-500 font-bold">{i + 1}</div>
+              <div className="col-span-4">
+                <span className={`font-bold uppercase tracking-wider ${i === 0 ? 'text-red-400' : 'text-stone-300'}`}>{r.username}</span>
+                <span className="text-stone-600 text-[10px] ml-2">Lv.{r.level}</span>
+              </div>
+              <div className={`col-span-2 text-center text-xs font-bold ${RANK_COLORS[r.rank_tier] || 'text-stone-400'}`}>
+                {r.rank_tier}
+              </div>
+              <div className="col-span-2 text-center text-stone-500 text-xs">
+                <span className="text-green-500">{r.wins}</span>-<span className="text-red-500">{r.losses}</span>
+              </div>
+              <div className="col-span-3 text-right">
+                <span className={`text-lg font-black ${i === 0 ? 'text-red-500' : 'text-stone-300'}`}>{r.elo}</span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ArenaHub({ hero, updateHero, onBack }) {
     const [tab, setTab] = useState('CHALLENGE');
     const [players, setPlayers] = useState([]);
@@ -142,9 +225,7 @@ export default function ArenaHub({ hero, updateHero, onBack }) {
                     )}
 
                     {tab === 'LEADERBOARD' && (
-                        <div className="flex flex-col gap-2">
-                             <div className="text-center font-mono text-stone-600 py-10 uppercase tracking-widest text-xs">Ladder is recalibrating...</div>
-                        </div>
+                        <SeasonRankings />
                     )}
                 </div>
             </div>

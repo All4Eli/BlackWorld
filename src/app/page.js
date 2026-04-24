@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePlayerData } from '@/hooks/usePlayerData';
 import { getDailyQuests, calcCombatStats } from '@/lib/gameData';
 import { calculateSkillBonuses } from '@/lib/skillTree';
@@ -11,6 +11,7 @@ import CombatEngine from '@/components/CombatEngine';
 import DeathScreen from '@/components/DeathScreen';
 import MailboxModal from '@/components/MailboxModal';
 import NotificationsDropdown from '@/components/NotificationsDropdown';
+import TutorialOverlay from '@/components/TutorialOverlay';
 
 export default function GameStateDirector() {
   const { saveData, setSaveData, isLoading, isSignedIn, logout } = usePlayerData();
@@ -19,6 +20,7 @@ export default function GameStateDirector() {
   // UI State Mode
   const [showMailbox, setShowMailbox] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -109,6 +111,16 @@ export default function GameStateDirector() {
       }
     });
   };
+
+  // Check if tutorial should show for new players
+  useEffect(() => {
+    if (saveData?.heroData && typeof window !== 'undefined') {
+      const tutorialDone = localStorage.getItem('bw_tutorial_done');
+      if (!tutorialDone) {
+        setShowTutorial(true);
+      }
+    }
+  }, [saveData?.heroData]);
 
   const updateHero = (newHeroData) => {
     setSaveData(prev => ({ ...prev, heroData: newHeroData }));
@@ -253,6 +265,12 @@ export default function GameStateDirector() {
         
         {/* Modals placed outside main flow layout but within the page */}
         {showMailbox && <MailboxModal onClose={() => setShowMailbox(false)} messages={messages} onRefresh={fetchMessages} />}
+        {showTutorial && (
+          <TutorialOverlay onComplete={() => {
+            setShowTutorial(false);
+            localStorage.setItem('bw_tutorial_done', 'true');
+          }} />
+        )}
       </div>
     </main>
   );

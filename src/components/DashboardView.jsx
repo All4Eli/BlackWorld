@@ -293,6 +293,11 @@ export default function DashboardView({ hero, updateHero }) {
           </div>
         </div>
       )}
+
+      {/* Daily Login Calendar */}
+      <section className="lg:col-span-3 mt-4">
+        <DailyLoginCalendar hero={hero} updateHero={updateHero} />
+      </section>
     </div>
   );
 }

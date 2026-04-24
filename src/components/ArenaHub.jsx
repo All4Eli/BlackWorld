@@ -6,6 +6,7 @@ import { validateAndConsume } from '@/lib/resources';
 const RANK_COLORS = {
   Bronze: 'text-amber-700', Silver: 'text-stone-400', Gold: 'text-yellow-500',
   Platinum: 'text-cyan-400', Diamond: 'text-purple-400', Champion: 'text-red-500',
+  Sovereign: 'text-white',
 };
 
 function SeasonRankings() {

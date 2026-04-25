@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { validateAndConsume } from '@/lib/resources';
+import { usePlayer } from '@/context/PlayerContext';
 
 const ENHANCEMENT_TABLE = {
   1:  { success: 1.00, break: 0.00, gold: 100,    stones: 1 },
@@ -32,22 +32,44 @@ const getScaledValues = (level) => ({
     stones: 20 + (level - 20) * 2
 });
 
-export default function EnhancementForge({ hero, updateHero }) {
+// CONTEXT MIGRATED: hero/updateHero from usePlayer(), inventory from API
+export default function EnhancementForge() {
+    const { hero, updateHero } = usePlayer();
     const [selectedItem, setSelectedItem] = useState(null);
     const [protection, setProtection] = useState(null);
-    
-    // Natively sync to player inventory
-    let inventory = hero?.artifacts || [];
+    const [inventory, setInventory] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    // Fetch equippable items from normalized inventory
+    useEffect(() => {
+        const fetchInventory = async () => {
+            setLoading(true);
+            try {
+                const res = await fetch('/api/inventory');
+                if (!res.ok) return;
+                const data = await res.json();
+                // Only show equippable items (not materials/consumables)
+                const equippable = new Set(['WEAPON', 'ARMOR', 'ACCESSORY']);
+                setInventory((data.items || []).filter(i =>
+                    equippable.has(i.item_type) && !i.is_locked
+                ));
+            } catch (err) {
+                console.error('[EnhancementForge] Failed to load inventory:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchInventory();
+    }, []);
 
     const [protections, setProtections] = useState([
         { id: 'prot-1', name: 'Minor Safeguard Scroll', type: 'chance_boost', value: 0.1 }
     ]);
     const [pityCount, setPityCount] = useState(0);
 
-    const level = selectedItem?.level || 0;
+    const level = selectedItem?.enhancement || 0;
     const tableInfo = ENHANCEMENT_TABLE[level + 1] || getScaledValues(level + 1);
     
-    // Calculate Pity Bonus (+5% per fail, max +50%)
     const pityBonus = Math.min(pityCount * 0.05, 0.50);
     const modifiedSuccess = Math.min(tableInfo.success + pityBonus, 1.0);
 
@@ -55,7 +77,7 @@ export default function EnhancementForge({ hero, updateHero }) {
         if(!prot) return baseBreak;
         if(prot.type === 'chance_boost') return Math.max(0, baseBreak - prot.value);
         if(prot.type === 'full') return 0;
-        return baseBreak; // downgrade still checks break but alters outcome
+        return baseBreak;
     }
 
     const attemptEnhancement = async () => {
@@ -66,7 +88,7 @@ export default function EnhancementForge({ hero, updateHero }) {
                method: 'POST',
                headers: { 'Content-Type': 'application/json' },
                body: JSON.stringify({ 
-                   artifactId: selectedItem.id, 
+                   inventoryId: selectedItem.inventory_id, 
                    targetLevel: level + 1,
                    protectionId: protection?.id || null 
                })
@@ -77,15 +99,25 @@ export default function EnhancementForge({ hero, updateHero }) {
                 return alert(data.error);
             }
             
-            let newHero = data.updatedHero;
+            if (data.updatedHero) updateHero(data.updatedHero);
+
+            // Sync inventory from server response (authoritative)
+            // This handles all cases: destroyed items disappear,
+            // downgraded items show correct level, etc.
+            if (data.inventory) {
+                const equippable = new Set(['WEAPON', 'ARMOR', 'ACCESSORY']);
+                setInventory(data.inventory.filter(i =>
+                    equippable.has(i.item_type) && !i.is_locked
+                ));
+            }
             
             if (data.outcome === 'SUCCESS') {
                 alert("Enhancement SUCCESS!");
-                setSelectedItem({ ...selectedItem, level: selectedItem.level + 1 });
+                setSelectedItem({ ...selectedItem, enhancement: (selectedItem.enhancement || 0) + 1 });
                 setPityCount(0);
             } else if (data.outcome === 'DOWNGRADE') {
                 alert(`Enhancement FAILED! Item Downgraded by ${data.levelsLost} levels.`);
-                setSelectedItem({ ...selectedItem, level: Math.max(0, selectedItem.level - data.levelsLost) });
+                setSelectedItem({ ...selectedItem, enhancement: Math.max(0, (selectedItem.enhancement || 0) - data.levelsLost) });
             } else if (data.outcome === 'PROTECTED') {
                 alert("Enhancement FAILED! Protected from breaking.");
             } else if (data.outcome === 'DESTROYED') {
@@ -95,9 +127,7 @@ export default function EnhancementForge({ hero, updateHero }) {
                 alert("Enhancement FAILED! Materials lost, item safe.");
                 setPityCount(c => c + 1);
             }
-            updateHero(newHero);
 
-            // Consume protection
             if (protection) {
                 setProtections(protections.filter(p => p.id !== protection.id));
                 setProtection(null);
@@ -112,15 +142,18 @@ export default function EnhancementForge({ hero, updateHero }) {
             <div className="border border-neutral-800 bg-black p-4">
                 <h3 className="font-serif text-stone-500 uppercase tracking-widest text-sm mb-4">Your Arsenal</h3>
                 <div className="space-y-2">
-                    {inventory.map(item => (
-                        <div key={item.id} 
+                    {loading ? (
+                        <div className="text-stone-600 text-xs text-center py-6 animate-pulse">Loading items...</div>
+                    ) : inventory.length === 0 ? (
+                        <div className="text-stone-600 text-xs text-center py-6">No items to enhance.</div>
+                    ) : inventory.map(item => (
+                        <div key={item.inventory_id} 
                              onClick={() => setSelectedItem(item)}
-                             className={`p-3 border cursor-pointer ${selectedItem?.id === item.id ? 'border-orange-700 bg-orange-950/20' : 'border-neutral-800 hover:border-neutral-700'}`}>
-                            <div className="font-bold text-stone-300">+{item.level} {item.name}</div>
-                            <div className="text-xs text-stone-500 font-mono">Power: {Math.floor(item.base_power * Math.pow(1.1, item.level))}</div>
+                             className={`p-3 border cursor-pointer ${selectedItem?.inventory_id === item.inventory_id ? 'border-orange-700 bg-orange-950/20' : 'border-neutral-800 hover:border-neutral-700'}`}>
+                            <div className="font-bold text-stone-300">+{item.enhancement || 0} {item.custom_name || item.item_name}</div>
+                            <div className="text-xs text-stone-500 font-mono">{item.item_tier} {item.item_type}</div>
                         </div>
                     ))}
-                    {inventory.length === 0 && <div className="text-stone-600 text-xs text-center py-6">No items to enhance.</div>}
                 </div>
             </div>
 
@@ -128,8 +161,8 @@ export default function EnhancementForge({ hero, updateHero }) {
                 {selectedItem ? (
                     <>
                         <div className="text-center">
-                            <h2 className="font-serif text-2xl text-orange-600 mb-1">+{selectedItem.level} {selectedItem.name}</h2>
-                            <div className="font-mono text-xs text-stone-500 mb-6">Target: +{selectedItem.level + 1}</div>
+                            <h2 className="font-serif text-2xl text-orange-600 mb-1">+{selectedItem.enhancement || 0} {selectedItem.custom_name || selectedItem.item_name}</h2>
+                            <div className="font-mono text-xs text-stone-500 mb-6">Target: +{(selectedItem.enhancement || 0) + 1}</div>
 
                             <div className="grid grid-cols-2 gap-4 mb-6">
                                 <div className="p-4 border border-red-900/30 bg-black">
@@ -169,7 +202,7 @@ export default function EnhancementForge({ hero, updateHero }) {
                         <div className="space-y-4">
                             <div className="flex justify-between items-center text-xs font-mono text-stone-500">
                                 <span>Cost:</span>
-                                <span className={hero.gold >= tableInfo.gold ? 'text-yellow-600' : 'text-red-500'}>
+                                <span className={(hero?.gold || 0) >= tableInfo.gold ? 'text-yellow-600' : 'text-red-500'}>
                                     {tableInfo.gold.toLocaleString()}g
                                 </span>
                             </div>

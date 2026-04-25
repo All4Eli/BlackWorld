@@ -404,6 +404,22 @@ export async function equipItem(playerId, inventoryId, slot) {
 
     const item = itemRows[0];
 
+    // 2b. Verify item is not locked (equipped, listed on auction, or in trade)
+    if (item.is_locked) {
+      throw new Error(`${item.item_name} is currently locked (equipped or in trade). Unequip or cancel the listing first.`);
+    }
+
+    // 2c. Check for active auction listings — prevents equipping items on sale
+    const { rows: auctionRows } = await client.query(
+      `SELECT id FROM auctions
+       WHERE inventory_id = $1 AND seller_id = $2 AND status = 'active'
+       LIMIT 1`,
+      [inventoryId, playerId]
+    );
+    if (auctionRows.length > 0) {
+      throw new Error(`${item.item_name} is currently listed on the Auction House. Cancel the listing first.`);
+    }
+
     // 3. Verify the item's catalog slot is compatible with the target slot
     if (!item.item_slot) {
       throw new Error(`${item.item_name} cannot be equipped (no slot defined)`);

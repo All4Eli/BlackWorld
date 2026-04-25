@@ -53,7 +53,7 @@ export async function createCoven(userId, name, tag, description = '') {
         // 5. Add Creator as LEADER
         await client.query(
             `INSERT INTO coven_members (coven_id, player_id, role, contribution)
-             VALUES ($1, $2, 'LEADER', 0)`,
+             VALUES ($1, $2, 'leader', 0)`,
             [newCovenId, userId]
         );
 
@@ -104,7 +104,7 @@ export async function joinCoven(userId, covenId) {
 
         const { rows: newMember } = await client.query(
             `INSERT INTO coven_members (coven_id, player_id, role, contribution)
-             VALUES ($1, $2, 'MEMBER', 0) RETURNING *`,
+             VALUES ($1, $2, 'member', 0) RETURNING *`,
             [covenId, userId]
         );
 
@@ -194,7 +194,7 @@ export async function withdrawFromTreasury(userId, amount) {
         const { coven_id: covenId, role } = memberInfo[0];
 
         // 2. Validate Role
-        if (role !== 'LEADER' && role !== 'OFFICER') {
+        if (role !== 'leader' && role !== 'officer') {
             throw new Error("Unauthorized: Only Leaders and Officers can withdraw from the treasury.");
         }
 

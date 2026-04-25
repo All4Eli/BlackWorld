@@ -91,6 +91,7 @@ export async function GET() {
       xp: stats.xp,
       gold: stats.gold,
       bankBalance: stats.bank_balance,
+      bloodStones: stats.blood_stones,
       kills: stats.kills,
       deaths: stats.deaths,
       // Attributes
@@ -120,6 +121,14 @@ export async function GET() {
       // Daily
       loginStreak: stats.login_streak,
       lastDailyClaim: stats.last_daily_claim,
+      // Achievement/progression counters
+      pvpWins: stats.pvp_wins,
+      pvpLosses: stats.pvp_losses,
+      bossKills: stats.boss_kills,
+      questsCompleted: stats.quests_completed,
+      itemsCrafted: stats.items_crafted,
+      dungeonClears: stats.dungeon_clears,
+      zonesExplored: stats.zones_explored,
     },
     equipment: (equipment || []).map(e => ({
       slot: e.slot,

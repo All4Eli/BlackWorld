@@ -1,5 +1,6 @@
 'use client';
 import { calculateCurrentResource, calculateMaxResource } from '@/lib/resources';
+import { IconBloodStone } from './icons/GameIcons';
 
 export default function MobileResourceStrip({ hero, onRefillClick }) {
     if (!hero) return null;
@@ -32,7 +33,7 @@ export default function MobileResourceStrip({ hero, onRefillClick }) {
             </div>
             
             <div className="flex items-center gap-2 px-3 py-1 bg-black border border-red-900/30 rounded-sm whitespace-nowrap ml-auto">
-                <span className="text-[#cf2a2a] text-sm leading-none">✧</span>
+                <IconBloodStone size={14} className="text-[#cf2a2a]" />
                 <span className="text-stone-300 font-mono text-xs uppercase tracking-widest font-bold">{bloodStones.toLocaleString()}</span>
             </div>
         </div>

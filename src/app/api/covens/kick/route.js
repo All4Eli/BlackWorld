@@ -1,57 +1,68 @@
-import { Covens } from '@/lib/dal';
-import { auth } from '@/lib/auth';
+// ═══════════════════════════════════════════════════════════════════
+// POST /api/covens/kick — Remove a member from your Coven
+// ═══════════════════════════════════════════════════════════════════
+
 import { NextResponse } from 'next/server';
+import { withMiddleware } from '@/lib/middleware';
+import { sqlOne } from '@/lib/db/pool';
 
-export async function POST(request) {
-    const { userId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+async function handlePost(request, { userId }) {
+  const { targetUserId } = await request.json();
 
-    try {
-        const { targetUserId } = await request.json();
-        
-        if (!targetUserId) {
-            return NextResponse.json({ error: 'Missing target player ID.' }, { status: 400 });
-        }
+  if (!targetUserId) {
+    return NextResponse.json({ error: 'Missing target player ID.' }, { status: 400 });
+  }
 
-        // 1. Fetch initiator's coven details
-        const { data: currentCoven } = await Covens.getPlayerCoven(userId);
+  // 1. Fetch initiator's coven membership
+  const { data: myMembership } = await sqlOne(
+    `SELECT cm.coven_id, cm.role, c.leader_id
+     FROM coven_members cm
+     JOIN covens c ON c.id = cm.coven_id
+     WHERE cm.player_id = $1`,
+    [userId]
+  );
 
-        if (!currentCoven) {
-            return NextResponse.json({ error: 'You are not in a coven.' }, { status: 403 });
-        }
+  if (!myMembership) {
+    return NextResponse.json({ error: 'You are not in a coven.' }, { status: 403 });
+  }
 
-        const isLeader = currentCoven.role === 'Leader' || currentCoven.leader_id === userId;
-        const isOfficer = currentCoven.role === 'Officer' || currentCoven.role === 'Elder';
+  const isLeader = myMembership.role === 'leader' || myMembership.leader_id === userId;
+  const isOfficer = myMembership.role === 'officer';
 
-        if (!isLeader && !isOfficer) {
-             return NextResponse.json({ error: 'Insufficient permissions to kick members.' }, { status: 403 });
-        }
+  if (!isLeader && !isOfficer) {
+    return NextResponse.json({ error: 'Insufficient permissions to kick members.' }, { status: 403 });
+  }
 
-        // 2. Fetch target's coven to ensure they belong to the same coven
-        const { data: targetCoven } = await Covens.getPlayerCoven(targetUserId);
-        
-        if (!targetCoven || targetCoven.id !== currentCoven.id) {
-             return NextResponse.json({ error: 'Target member is not in your coven.' }, { status: 404 });
-        }
+  // 2. Fetch target's membership
+  const { data: targetMembership } = await sqlOne(
+    `SELECT coven_id, role FROM coven_members WHERE player_id = $1 AND coven_id = $2`,
+    [targetUserId, myMembership.coven_id]
+  );
 
-        // 3. Prevent kicking the leader
-        if (targetUserId === currentCoven.leader_id) {
-             return NextResponse.json({ error: 'Cannot kick the Coven leader.' }, { status: 403 });
-        }
-        
-        // 4. Officers cannot kick other Officers
-        if (!isLeader && (targetCoven.role === 'Officer' || targetCoven.role === 'Elder')) {
-             return NextResponse.json({ error: 'Only the Leader can kick Officers.' }, { status: 403 });
-        }
+  if (!targetMembership) {
+    return NextResponse.json({ error: 'Target member is not in your coven.' }, { status: 404 });
+  }
 
-        // 5. Remove member using DAL
-        const { error: removeError } = await Covens.removeMember(currentCoven.id, targetUserId);
-        if (removeError) throw removeError;
+  // 3. Prevent kicking the leader
+  if (targetUserId === myMembership.leader_id) {
+    return NextResponse.json({ error: 'Cannot kick the Coven leader.' }, { status: 403 });
+  }
 
-        return NextResponse.json({ success: true, message: 'Member exiled successfully.' });
+  // 4. Officers cannot kick other Officers
+  if (!isLeader && targetMembership.role === 'officer') {
+    return NextResponse.json({ error: 'Only the Leader can kick Officers.' }, { status: 403 });
+  }
 
-    } catch (err) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
-    }
+  // 5. Remove member
+  await sqlOne(
+    `DELETE FROM coven_members WHERE coven_id = $1 AND player_id = $2 RETURNING player_id`,
+    [myMembership.coven_id, targetUserId]
+  );
+
+  return NextResponse.json({ success: true, message: 'Member exiled successfully.' });
 }
 
+export const POST = withMiddleware(handlePost, {
+  rateLimit: 'quest',
+  idempotency: true,
+});

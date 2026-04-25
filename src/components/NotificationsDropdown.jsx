@@ -50,7 +50,7 @@ export default function NotificationsDropdown({ notifications = [], onClose, onM
           notifications.map(n => (
             <div key={n.id} className={`p-4 border-b border-neutral-900/50 flex gap-3 ${!n.is_read ? 'bg-red-950/10' : 'bg-black'}`}>
               <div className="mt-1">
-                 {n.type === 'MAIL' ? '✉' : '⚠'}
+                 {n.type === 'MAIL' ? '>>' : '!!'}
               </div>
               <div className="flex-1 font-mono">
                  <div className={`text-xs leading-relaxed mb-1 ${!n.is_read ? 'text-stone-300' : 'text-stone-500'}`}>

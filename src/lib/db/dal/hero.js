@@ -25,11 +25,14 @@ const HERO_SELECT_COLUMNS = `
   hp, max_hp, mana, max_mana,
   base_dmg, flasks, max_flasks,
   essence, max_essence, essence_regen_at,
-  bank_balance,
+  bank_balance, blood_stones,
   skill_points, skill_points_unspent,
   learned_tomes,
   daily_quests, accepted_quests, daily_quest_date,
   login_streak, last_daily_claim,
+  pvp_wins, pvp_losses, boss_kills,
+  quests_completed, items_crafted,
+  dungeon_clears, zones_explored,
   created_at, updated_at
 `;
 
@@ -44,11 +47,14 @@ const UPDATABLE_COLUMNS = new Set([
   'hp', 'max_hp', 'mana', 'max_mana',
   'base_dmg', 'flasks', 'max_flasks',
   'essence', 'max_essence', 'essence_regen_at',
-  'bank_balance',
+  'bank_balance', 'blood_stones',
   'skill_points', 'skill_points_unspent',
   'learned_tomes',
   'daily_quests', 'accepted_quests', 'daily_quest_date',
   'login_streak', 'last_daily_claim',
+  'pvp_wins', 'pvp_losses', 'boss_kills',
+  'quests_completed', 'items_crafted',
+  'dungeon_clears', 'zones_explored',
 ]);
 
 
@@ -258,8 +264,11 @@ export function increment(playerId, deltas) {
     'str', 'def', 'dex', 'int', 'vit', 'unspent_points',
     'hp', 'max_hp', 'mana', 'max_mana',
     'base_dmg', 'flasks', 'max_flasks',
-    'essence', 'max_essence', 'bank_balance',
+    'essence', 'max_essence', 'bank_balance', 'blood_stones',
     'skill_points_unspent', 'login_streak',
+    'pvp_wins', 'pvp_losses', 'boss_kills',
+    'quests_completed', 'items_crafted',
+    'dungeon_clears', 'zones_explored',
   ]);
 
   const keys = Object.keys(deltas).filter(k => NUMERIC_COLUMNS.has(k));

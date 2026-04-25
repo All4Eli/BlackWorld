@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { usePlayer } from '@/context/PlayerContext';
 import { calculateEssence } from '@/lib/gameData';
 import DashboardView from './DashboardView';
 import ExplorationEngine from './ExplorationEngine';
@@ -10,6 +11,7 @@ import SkillTreePanel from './SkillTreePanel';
 import QuestLog from './QuestLog';
 import AchievementPanel from './AchievementPanel';
 import WorldEventBanner from './WorldEventBanner';
+import { GameIcon } from './icons/GameIcons';
 import BlackWorldSidebar from './BlackWorldSidebar';
 import GlobalChatWidget from './GlobalChatWidget';
 import GatheringView from './GatheringView';
@@ -24,13 +26,50 @@ function SoundToggle() {
       onClick={sound.toggleMute}
       className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-mono text-stone-600 hover:text-stone-400 transition-colors"
     >
-      <span>{sound.muted ? '🔇' : '🔊'}</span>
+      <span className={`w-2 h-2 rounded-full ${sound.muted ? 'bg-red-800' : 'bg-emerald-700'}`} />
       {sound.muted ? 'Unmute' : 'Mute'}
     </button>
   );
 }
 
-export default function GameShell({ hero, updateHero, onFindCombat }) {
+// ── BEFORE (Prop Drilling): ─────────────────────────────────────
+//   export default function GameShell({ hero, updateHero, onFindCombat })
+//
+//   hero and updateHero were passed as props from page.js.
+//   This means:
+//     1. GameShell re-renders EVERY time page.js state changes
+//        (because it received a new prop reference)
+//     2. Every child of GameShell also re-renders (cascading)
+//     3. If we wanted hero data in a deeply nested component,
+//        we'd have to thread it through every intermediate parent
+//
+// ── AFTER (Context Subscription): ───────────────────────────────
+//   export default function GameShell({ onFindCombat })
+//
+//   hero and updateHero are consumed from PlayerContext.
+//   onFindCombat STAYS as a prop because it triggers a page-level
+//   stage transition (EXPLORATION → COMBAT), which is NOT player
+//   data — it's navigation/routing logic owned by page.js.
+//
+export default function GameShell({ onFindCombat }) {
+
+  // ── Subscribe to PlayerContext ──────────────────────────────
+  //
+  // usePlayer() calls useContext(PlayerContext) under the hood.
+  // This does two things:
+  //   1. Returns the current { hero, updateHero } from the nearest
+  //      <PlayerProvider> ancestor
+  //   2. SUBSCRIBES this component: whenever PlayerProvider's value
+  //      changes, React will re-render GameShell automatically
+  //
+  // DESTRUCTURING: { hero, updateHero } = usePlayer()
+  //   This is JavaScript "destructuring assignment." It's equivalent to:
+  //     const playerContext = usePlayer();
+  //     const hero = playerContext.hero;
+  //     const updateHero = playerContext.updateHero;
+  //   But written in one line.
+  const { hero, updateHero } = usePlayer();
+
   const [activeTab, setActiveTab] = useState('DASHBOARD');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [refillModal, setRefillModal] = useState(null);
@@ -87,22 +126,22 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
       window.history.pushState({}, '', newUrl);
   };
 
-  const unspentPoints = hero?.skillPointsUnspent ?? 0;
+  const unspentPoints = hero?.skill_points_unspent ?? hero?.skillPointsUnspent ?? 0;
   const claimableQuests = hero?.daily_quests?.some(q => q.progress >= q.target && !q.claimed) ?? false;
 
   const mainTabs = [
-    { id: 'DASHBOARD', label: 'Home', icon: '⌂' },
-    { id: 'TOWN', label: 'City', icon: '♜' },
-    { id: 'EXPLORE', label: 'Explore', icon: '⛫' },
-    { id: 'CONTRACTS', label: 'Quests', icon: '⚑', alert: claimableQuests },
-    { id: 'GATHERING', label: 'Gathering', icon: '⛏' }
+    { id: 'DASHBOARD', label: 'Home', iconKey: 'home' },
+    { id: 'TOWN', label: 'City', iconKey: 'city' },
+    { id: 'EXPLORE', label: 'Explore', iconKey: 'explore' },
+    { id: 'CONTRACTS', label: 'Quests', iconKey: 'quest', alert: claimableQuests },
+    { id: 'GATHERING', label: 'Gathering', iconKey: 'gathering' }
   ];
 
   const charTabs = [
-    { id: 'ARSENAL', label: 'Arsenal', icon: '⚔' },
-    { id: 'SKILLS', label: 'Skills', icon: '✧', alert: unspentPoints > 0 },
-    { id: 'ACHIEVEMENTS', label: 'Legacy', icon: '♆' },
-    { id: 'SHOP', label: 'Blood Shop', icon: '✧' }
+    { id: 'ARSENAL', label: 'Arsenal', iconKey: 'arsenal' },
+    { id: 'SKILLS', label: 'Skills', iconKey: 'skills', alert: unspentPoints > 0 },
+    { id: 'ACHIEVEMENTS', label: 'Legacy', iconKey: 'legacy' },
+    { id: 'SHOP', label: 'Blood Shop', iconKey: 'shop' }
   ];
 
   const activeTabData = [...mainTabs, ...charTabs].find(t => t.id === activeTab);
@@ -111,6 +150,7 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
     const active = activeTab === tab.id;
     return (
       <button
+        id={`nav-${tab.id.toLowerCase()}`}
         onClick={() => {
           handleTabChange(tab.id);
           if (isMobile) setMobileMenuOpen(false);
@@ -121,7 +161,7 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
             : 'text-stone-500 hover:text-stone-300 hover:bg-white/5'
         } ${!isMobile && 'rounded-r-md'}`}
       >
-        <span className="text-lg opacity-80">{tab.icon}</span>
+        <GameIcon name={tab.iconKey} size={18} className="opacity-80" />
         {tab.label}
         {tab.alert && (
            <span className="absolute w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)] top-1/2 -translate-y-1/2 right-4" />
@@ -138,17 +178,18 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
       {/* MOBILE NAV (Top bar with Hamburger Menu, hidden on md+) */}
       <div className="md:hidden relative mb-6 z-40">
         <button 
+          id="mobile-menu-toggle"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="w-full flex items-center justify-between bg-[#050505] border border-neutral-800 p-4 font-mono uppercase tracking-[0.2em] text-sm text-stone-300 active:bg-neutral-900 transition-colors"
         >
           <div className="flex items-center gap-3">
-            <span className="text-xl opacity-80">{activeTabData?.icon || '⌂'}</span>
+            <GameIcon name={activeTabData?.iconKey || 'home'} size={20} className="opacity-80" />
             {activeTabData?.label || 'Menu'}
             {(unspentPoints > 0 || claimableQuests) && !mobileMenuOpen && (
               <span className="w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)] ml-2" />
             )}
           </div>
-          <span className="text-xl text-stone-500 font-bold">{mobileMenuOpen ? '✕' : '☰'}</span>
+          <span className="text-xl text-stone-500 font-bold font-mono">{mobileMenuOpen ? '[X]' : '[=]'}</span>
         </button>
 
         {mobileMenuOpen && (
@@ -170,7 +211,7 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
       </div>
 
       {/* DESKTOP NAV (Left Sidebar, visible on md+) */}
-      <aside className="hidden xl:flex flex-col w-[260px] pr-6 border-r border-neutral-900/50 mr-8 flex-shrink-0">
+      <aside className="hidden md:flex flex-col w-[260px] pr-6 border-r border-neutral-900/50 mr-8 flex-shrink-0">
          <div className="mb-6">
             <BlackWorldSidebar hero={hero} onNavigate={(tab) => {
                setActiveTab(tab);
@@ -202,15 +243,24 @@ export default function GameShell({ hero, updateHero, onFindCombat }) {
 
       {/* View Rendering Container */}
       <main className="flex-1 overflow-x-hidden min-w-0">
-        {activeTab === 'DASHBOARD' && <DashboardView hero={hero} updateHero={updateHero} />}
-        {activeTab === 'TOWN' && <TownView hero={hero} updateHero={updateHero} />}
-        {activeTab === 'EXPLORE' && <ExplorationEngine hero={hero} updateHero={updateHero} onFindCombat={onFindCombat} />}
-        {activeTab === 'ARSENAL' && <ArsenalView hero={hero} updateHero={updateHero} />}
-        {activeTab === 'SKILLS' && <SkillTreePanel hero={hero} updateHero={updateHero} inline={true} />}
-        {activeTab === 'CONTRACTS' && <QuestLog hero={hero} updateHero={updateHero} onBack={() => setActiveTab('DASHBOARD')} />}
-        {activeTab === 'ACHIEVEMENTS' && <AchievementPanel hero={hero} updateHero={updateHero} />}
-        {activeTab === 'GATHERING' && <GatheringView hero={hero} updateHero={updateHero} onBack={() => setActiveTab('DASHBOARD')} />}
-        {activeTab === 'SHOP' && <BloodStoneShop hero={hero} updateHero={updateHero} />}
+        {/* ── ALL VIEWS MIGRATED TO PlayerContext ──────────────────
+            Every component below now calls usePlayer() internally
+            to get hero and updateHero. NO hero props are passed.
+
+            Props that REMAIN are:
+              - onFindCombat: stage transition (page.js-level)
+              - onBack: navigation callback (GameShell-level)
+              - inline: UI layout flag (boolean, not data)
+        */}
+        {activeTab === 'DASHBOARD' && <DashboardView />}
+        {activeTab === 'TOWN' && <TownView />}
+        {activeTab === 'EXPLORE' && <ExplorationEngine onFindCombat={onFindCombat} />}
+        {activeTab === 'ARSENAL' && <ArsenalView />}
+        {activeTab === 'SKILLS' && <SkillTreePanel inline={true} />}
+        {activeTab === 'CONTRACTS' && <QuestLog onBack={() => setActiveTab('DASHBOARD')} />}
+        {activeTab === 'ACHIEVEMENTS' && <AchievementPanel />}
+        {activeTab === 'GATHERING' && <GatheringView onBack={() => setActiveTab('DASHBOARD')} />}
+        {activeTab === 'SHOP' && <BloodStoneShop />}
       </main>
 
       {refillModal && (

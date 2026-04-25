@@ -1,7 +1,15 @@
 'use client';
 import { SKILL_TREE, calculateSkillBonuses } from '@/lib/skillTree';
+import { usePlayer } from '@/context/PlayerContext';
 
-export default function SkillTreePanel({ hero, updateHero, onClose, inline = false }) {
+// CONTEXT MIGRATED: hero/updateHero now from usePlayer().
+// onClose and inline stay as props — they control UI behavior,
+// not player data. `inline` is a boolean that determines whether
+// the panel renders full-screen or embedded in the layout.
+// `inline = false` is a JavaScript "default parameter" — if the
+// caller doesn't pass `inline`, it defaults to false.
+export default function SkillTreePanel({ onClose, inline = false }) {
+  const { hero, updateHero } = usePlayer();
   const skillPoints = hero.skillPoints || {};
   const availablePoints = hero.skillPointsUnspent || hero.unspentSkillPoints || 0;
   const bonuses = calculateSkillBonuses(skillPoints);
@@ -112,7 +120,7 @@ export default function SkillTreePanel({ hero, updateHero, onClose, inline = fal
                         </button>
                       )}
                       {isMaxed && (
-                        <div className="text-[10px] text-emerald-700 font-mono uppercase tracking-widest text-center py-1">✓ Mastered</div>
+                        <div className="text-[10px] text-emerald-700 font-mono uppercase tracking-widest text-center py-1">[OK] Mastered</div>
                       )}
                     </div>
                   );

@@ -34,7 +34,10 @@ export async function getOrStartCombat(userId, zoneId) {
     // Fetch player to get max HP for the new session
     const { data: hero } = await HeroDal.getHeroStats(userId);
     const { data: equipment } = await InventoryDal.getEquipment(userId);
-    const compiled = compileHeroStats(hero, equipment || []);
+    // Compute skill bonuses so initial max HP accounts for iron_flesh etc.
+    const { calculateSkillBonuses } = await import('@/lib/skillTree');
+    const skillBonuses = calculateSkillBonuses(hero?.skill_points || {});
+    const compiled = compileHeroStats(hero, equipment || [], skillBonuses);
 
     const { data: newSession } = await sqlOne(
         `INSERT INTO combat_sessions (player_id, monster_id, zone_id, player_hp, monster_hp)
@@ -80,14 +83,34 @@ export async function processTurn(userId, action) {
             [userId]
         );
 
-        const compiledHero = compileHeroStats(heroStats, eqRows);
+        // ── Wire skill tree data from the DB into combat stats ────
+        //
+        // heroStats.skill_points is a JSONB column that looks like:
+        //   { "iron_flesh": 5, "berserker": 3, "serrated_blades": 1, ... }
+        //
+        // calculateSkillBonuses() iterates the SKILL_TREE definition,
+        // checks each skill's rank in this object, and sums the effects.
+        // It returns: { maxHp, baseDmg, critChance, lifesteal, ... }
+        //
+        // We import it at the top of this file.
+        const { calculateSkillBonuses } = await import('@/lib/skillTree');
+        const skillPoints = heroStats.skill_points || {};
+        const skillBonuses = calculateSkillBonuses(skillPoints);
 
-        // Need to add fake ability checks since skills aren't fully stored yet
-        // In GDD phase 4 they are just placeholders
-        compiledHero.hasSerratedBlades = false; 
-        compiledHero.hasBloodAegis = false;
-        compiledHero.hasUndying = false;
-        compiledHero.lifesteal = 0;
+        // Re-compile with skill bonuses included (3rd argument)
+        const compiledHero = compileHeroStats(heroStats, eqRows, skillBonuses);
+
+        // Overlay skill-tree-driven boolean flags for the combat engine.
+        // These are checked by resolveCombatTurn() for special mechanics.
+        //
+        // !! (double NOT) converts a truthy number (e.g., 1) into a
+        // real boolean (true). Without it, the value is the rank integer.
+        compiledHero.hasSerratedBlades = !!(skillPoints.serrated_blades);
+        compiledHero.hasBloodAegis     = !!(skillPoints.blood_aegis);
+        compiledHero.hasUndying        = !!(skillPoints.undying);
+        compiledHero.hasThorns         = !!(skillPoints.thorns);
+        compiledHero.killHeal          = skillBonuses.killHeal || 0;
+        compiledHero.enemyVuln         = skillBonuses.enemyVuln || 0;
 
         // Fetch static monster data
         const { rows: monsterRows } = await client.query(`SELECT * FROM monsters WHERE id = $1`, [combatSession.monster_id]);

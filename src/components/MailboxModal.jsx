@@ -39,7 +39,7 @@ export default function MailboxModal({ onClose, messages, onRefresh }) {
           <h2 className="font-serif text-xl uppercase tracking-widest text-stone-200">
             {composeMode ? 'Compose Mail' : activeMessage ? 'Read Scroll' : 'Inbox'}
           </h2>
-          <button onClick={onClose} className="text-stone-500 hover:text-red-500 transition-colors">✕</button>
+          <button onClick={onClose} className="text-stone-500 hover:text-red-500 transition-colors">[X]</button>
         </div>
 
         <div className="flex flex-1 overflow-hidden">

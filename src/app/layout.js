@@ -42,7 +42,7 @@ export const metadata = {
   manifest: "/manifest.json",
   other: {
     "theme-color": "#030303",
-    "apple-mobile-web-app-capable": "yes",
+    "mobile-web-app-capable": "yes",
     "apple-mobile-web-app-status-bar-style": "black-translucent",
   },
 };

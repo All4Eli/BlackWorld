@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { IconBloodStone } from './icons/GameIcons';
 
 export default function ResourceRefillModal({ hero, type, requiredCost, costReason, onRefillStones, onClose }) {
     if (!type) return null; // Not open if type is null
@@ -21,7 +22,7 @@ export default function ResourceRefillModal({ hero, type, requiredCost, costReas
             <div className="bg-[#050505] border border-red-900/50 p-8 max-w-md w-full animate-in zoom-in-95 duration-200">
                 <div className="flex justify-between items-start mb-6">
                     <h2 className="font-serif text-2xl tracking-widest uppercase text-stone-200">Replenish {type}</h2>
-                    <button onClick={onClose} className="text-stone-600 hover:text-stone-300">✕</button>
+                    <button onClick={onClose} className="text-stone-600 hover:text-stone-300">[X]</button>
                 </div>
                 
                 {isDeficit && (
@@ -42,7 +43,7 @@ export default function ResourceRefillModal({ hero, type, requiredCost, costReas
                             <div className="text-[10px] text-stone-600 font-mono">Restores 100% instantly.</div>
                         </div>
                         <button onClick={() => onRefillStones(type, stoneCost)} className="px-5 py-2 bg-neutral-900 border border-[#cf2a2a]/30 text-[#cf2a2a] hover:bg-[#cf2a2a] hover:text-black font-mono text-xs uppercase tracking-widest transition-colors flex items-center gap-2">
-                            <span>✧</span> {stoneCost}
+                            <IconBloodStone size={12} /> {stoneCost}
                         </button>
                     </div>
 

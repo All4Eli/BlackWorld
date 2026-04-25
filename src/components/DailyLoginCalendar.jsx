@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { GameIcon } from './icons/GameIcons';
 
 export default function DailyLoginCalendar({ hero, updateHero }) {
     const [claimedToday, setClaimedToday] = useState(false);
@@ -26,11 +27,11 @@ export default function DailyLoginCalendar({ hero, updateHero }) {
     const days = Array.from({ length: 30 }, (_, i) => i + 1);
 
     const getRewardForDay = (day) => {
-        if (day % 7 === 0) return { label: 'Weekly Bonus', icon: '✧', highlight: true };
-        if (day === 30) return { label: 'Grand Prize', icon: '🏆', highlight: true };
-        if (day % 3 === 0) return { label: 'Blood Stones', icon: '✧', highlight: false };
-        if (day % 2 === 0) return { label: 'Gold', icon: '¤', highlight: false };
-        return { label: 'Supplies', icon: '🎒', highlight: false };
+        if (day % 7 === 0) return { label: 'Weekly Bonus', iconKey: 'bloodstone', highlight: true };
+        if (day === 30) return { label: 'Grand Prize', iconKey: 'trophy', highlight: true };
+        if (day % 3 === 0) return { label: 'Blood Stones', iconKey: 'bloodstone', highlight: false };
+        if (day % 2 === 0) return { label: 'Gold', iconKey: 'gold', highlight: false };
+        return { label: 'Supplies', iconKey: 'bag', highlight: false };
     };
 
     return (
@@ -58,8 +59,8 @@ export default function DailyLoginCalendar({ hero, updateHero }) {
                             ${status === 'locked' ? 'border-neutral-800 bg-black opacity-80' : ''}
                         `}>
                             <div className="text-[8px] sm:text-[10px] font-mono text-stone-500 w-full text-left">D{day}</div>
-                            <div className={`text-xl sm:text-2xl ${reward.highlight ? 'text-orange-500' : 'text-stone-400'}`}>
-                                {status === 'claimed' ? '✓' : reward.icon}
+                            <div className={`text-xl sm:text-2xl flex justify-center ${reward.highlight ? 'text-orange-500' : 'text-stone-400'}`}>
+                                {status === 'claimed' ? '[OK]' : <GameIcon name={reward.iconKey} size={20} />}
                             </div>
                             <div className="text-[8px] font-mono text-stone-600 uppercase hidden sm:block truncate w-full">{reward.label}</div>
                             

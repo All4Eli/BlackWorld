@@ -1,6 +1,23 @@
-import { supabase } from '@/lib/supabase';
+// ═══════════════════════════════════════════════════════════════════
+// POST /api/explore/zone — Set the player's active exploration zone
+// ═══════════════════════════════════════════════════════════════════
+//
+// NORMALIZED: The active zone is now stored as a discrete column
+// (or passed client-side). No hero_data JSONB read/write.
+//
+// DATA FLOW:
+//   Client sends: { zoneId: "ashen_wastes" }
+//   DB:           SELECT level, visited_zones FROM hero_stats
+//   Validation:   hero.level >= zone.levelReq
+//   DB (if new):  UPDATE hero_stats SET zones_explored = zones_explored + 1,
+//                   visited_zones = visited_zones || '["zoneId"]'
+//   Response:     { success, zone: { ...zoneData } }
+//   UI:           ExplorationEngine stores activeZone in local state
+// ═══════════════════════════════════════════════════════════════════
+
 import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
+import { sqlOne, sql } from '@/lib/db/pool';
 
 export async function POST(request) {
     const { userId } = await auth();
@@ -13,17 +30,17 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Zone ID is required.' }, { status: 400 });
         }
 
-        const { data: player, error: playerError } = await supabase
-            .from('players')
-            .select('hero_data')
-            .eq('clerk_user_id', userId)
-            .single();
+        // ── Read level + visited_zones from normalized columns ──────
+        const { data: hero, error: heroErr } = await sqlOne(
+          `SELECT level, visited_zones FROM hero_stats WHERE player_id = $1`,
+          [userId]
+        );
 
-        if (playerError || !player) throw new Error('Player not found.');
+        if (heroErr || !hero) {
+            return NextResponse.json({ error: 'Player not found.' }, { status: 404 });
+        }
 
-        let hero = player.hero_data || {};
-        
-        // Lookup the zone payload 
+        // Lookup the zone from game data catalog
         const { ZONES } = await import('@/lib/gameData');
         const activeZone = ZONES.find(z => z.id === zoneId);
 
@@ -34,21 +51,38 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Level too low for this zone.' }, { status: 400 });
         }
 
-        hero.activeZone = activeZone;
+        // ── Track zone exploration for achievements ─────────────────
+        //
+        // visited_zones is a JSONB array like ["ashen_wastes", "shadow_vale"].
+        // We only increment zones_explored when a zone is visited for the
+        // FIRST TIME. The @> operator checks if the array already contains
+        // the zoneId. If not, we append it and increment the counter.
+        //
+        const visitedZones = hero.visited_zones || [];
+        const isFirstVisit = !visitedZones.includes(zoneId);
 
-        const { error: updateError } = await supabase
-            .from('players')
-            .update({ hero_data: hero })
-            .eq('clerk_user_id', userId);
-
-        if (updateError) throw updateError;
+        if (isFirstVisit) {
+          await sql(
+            `UPDATE hero_stats
+             SET zones_explored = zones_explored + 1,
+                 visited_zones = visited_zones || $1::jsonb
+             WHERE player_id = $2`,
+            [JSON.stringify([zoneId]), userId]
+          );
+        }
 
         return NextResponse.json({
             success: true,
-            updatedHero: hero
+            zone: activeZone,
+            // updatedHero returns the zone for the client shallow merge
+            updatedHero: {
+                activeZone,
+                ...(isFirstVisit ? { zonesExplored: visitedZones.length + 1 } : {}),
+            },
         });
 
     } catch (err) {
+        console.error('[EXPLORE/ZONE]', err.message);
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }

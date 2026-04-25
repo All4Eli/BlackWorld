@@ -53,15 +53,19 @@ export async function purchasePremiumItem(playerId, itemKey) {
             throw new Error(`Insufficient Blood Stones. Requires ${item.cost}, but you have ${stones}.`);
         }
 
-        // 3. Deduct Currency
-        await client.query(
-            'UPDATE hero_stats SET blood_stones = blood_stones - $1 WHERE player_id = $2',
+        // 3. Deduct Currency atomically — GREATEST prevents going below zero,
+        //    RETURNING gives us the actual DB balance (not stale JS calc)
+        const { rows: deductedRows } = await client.query(
+            `UPDATE hero_stats 
+             SET blood_stones = GREATEST(0, blood_stones - $1)
+             WHERE player_id = $2
+             RETURNING blood_stones`,
             [item.cost, playerId]
         );
+        const newBalance = deductedRows[0].blood_stones;
 
         // 4. Grant specific effects
         let effectMessage = `You purchased ${item.name}.`;
-        const newBalance = stones - item.cost;
 
         switch (itemKey) {
             case 'scroll_of_protection':
@@ -119,6 +123,13 @@ export async function purchasePremiumItem(playerId, itemKey) {
                 if (parseInt(countRows[0]?.cnt || 0) >= 5) {
                     throw new Error('Maximum inventory expansions reached (5).');
                 }
+                // Actually apply the expansion: +10 max_inventory_slots
+                await client.query(
+                    `UPDATE hero_stats 
+                     SET max_inventory_slots = COALESCE(max_inventory_slots, 50) + 10
+                     WHERE player_id = $1`,
+                    [playerId]
+                );
                 effectMessage = '+10 inventory slots permanently added!';
                 break;
             }
@@ -155,10 +166,29 @@ export async function purchasePremiumItem(playerId, itemKey) {
         }
 
         // 5. Log to blood_stone_transactions
+        //
+        // Schema columns: player_id, amount, balance_after, transaction_type, reference_id, description
+        // transaction_type must be one of: 'purchase', 'daily_login', 'achievement',
+        //   'battle_pass', 'event_reward', 'quest_reward', 'pvp_season', 'compensation',
+        //   'enhancement_protection', 'cosmetic_purchase', 'battle_pass_purchase',
+        //   'inventory_expansion', 'crafting_boost', 'name_change', 'refund'
+        //
+        // We map the itemKey to the most appropriate transaction_type.
+        const txTypeMap = {
+          protection_scroll: 'enhancement_protection',
+          scroll_of_protection: 'enhancement_protection',
+          inventory_expansion: 'inventory_expansion',
+          name_color_crimson: 'cosmetic_purchase',
+          name_color_amber: 'cosmetic_purchase',
+          name_color_void: 'cosmetic_purchase',
+          reset_attributes: 'name_change',
+        };
+        const txType = txTypeMap[itemKey] || 'purchase';
+
         await client.query(
-            `INSERT INTO blood_stone_transactions (player_id, amount, balance_after, source, description)
-             VALUES ($1, $2, $3, 'spent', $4)`,
-            [playerId, -item.cost, newBalance, `Purchased ${item.name}`]
+            `INSERT INTO blood_stone_transactions (player_id, amount, balance_after, transaction_type, description)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [playerId, -item.cost, newBalance, txType, `Purchased ${item.name}`]
         );
 
         return { data: { success: true, message: effectMessage, newBalance } };
@@ -171,13 +201,13 @@ export async function purchasePremiumItem(playerId, itemKey) {
 export async function creditBloodStones(playerId, amount, source, description, client = null) {
     const query = async (c) => {
         const { rows } = await c.query(
-            `UPDATE hero_stats SET blood_stones = blood_stones + $2, blood_stones_earned = blood_stones_earned + $2
+            `UPDATE hero_stats SET blood_stones = COALESCE(blood_stones, 0) + $2
              WHERE player_id = $1 RETURNING blood_stones`,
             [playerId, amount]
         );
         const balance = rows[0]?.blood_stones || amount;
         await c.query(
-            `INSERT INTO blood_stone_transactions (player_id, amount, balance_after, source, description)
+            `INSERT INTO blood_stone_transactions (player_id, amount, balance_after, transaction_type, description)
              VALUES ($1, $2, $3, $4, $5)`,
             [playerId, amount, balance, source, description]
         );
@@ -193,22 +223,35 @@ export async function creditBloodStones(playerId, amount, source, description, c
  */
 export async function getBloodStoneInfo(playerId) {
     const { sql, sqlOne } = await import('@/lib/db/pool');
-    const { data: hero } = await sqlOne('SELECT blood_stones, blood_stones_earned FROM hero_stats WHERE player_id = $1', [playerId]);
+    const { data: hero } = await sqlOne('SELECT COALESCE(blood_stones, 0) AS blood_stones FROM hero_stats WHERE player_id = $1', [playerId]);
     const { data: history } = await sql(
         'SELECT * FROM blood_stone_transactions WHERE player_id = $1 ORDER BY created_at DESC LIMIT 20',
         [playerId]
     );
-    const { data: player } = await sqlOne(
-        'SELECT donator_status, donator_expires_at, subscription_status FROM players WHERE clerk_user_id = $1',
-        [playerId]
-    );
+
+    // Donator/subscription columns may not exist on all deployments.
+    // Gracefully degrade if the query fails.
+    let donator = false;
+    let donatorExpires = null;
+    let subscriptionActive = false;
+    try {
+      const { data: player } = await sqlOne(
+          'SELECT donator_status, donator_expires_at, subscription_status FROM players WHERE clerk_user_id = $1',
+          [playerId]
+      );
+      donator = player?.donator_status || false;
+      donatorExpires = player?.donator_expires_at;
+      subscriptionActive = player?.subscription_status === 'active';
+    } catch {
+      // Columns not yet deployed — degrade gracefully
+    }
 
     return {
         balance: hero?.blood_stones || 0,
-        totalEarned: hero?.blood_stones_earned || 0,
+        totalEarned: 0,
         history: history || [],
-        donator: player?.donator_status || false,
-        donatorExpires: player?.donator_expires_at,
-        subscriptionActive: player?.subscription_status === 'active',
+        donator,
+        donatorExpires,
+        subscriptionActive,
     };
 }

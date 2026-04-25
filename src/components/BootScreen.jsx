@@ -53,12 +53,12 @@ export default function BootScreen({ onStart }) {
         <div className="flex gap-4 text-xs font-bold uppercase tracking-widest">
           {!mode && (
             <>
-              <button onClick={() => setMode('login')} className="text-stone-400 hover:text-white transition-colors">Log In</button>
-              <button onClick={() => setMode('register')} className="bg-red-950/40 text-red-500 border border-red-900 hover:bg-red-900 hover:text-white px-6 py-2 transition-all">Sign Up Free</button>
+              <button id="btn-login" onClick={() => setMode('login')} className="text-stone-400 hover:text-white transition-colors">Log In</button>
+              <button id="btn-register" onClick={() => setMode('register')} className="bg-red-950/40 text-red-500 border border-red-900 hover:bg-red-900 hover:text-white px-6 py-2 transition-all">Sign Up Free</button>
             </>
           )}
           {mode && (
-            <button onClick={() => { setMode(null); setError(''); }} className="text-stone-500 hover:text-white transition-colors">✕ Close</button>
+            <button onClick={() => { setMode(null); setError(''); }} className="text-stone-500 hover:text-white transition-colors font-mono">[X] Close</button>
           )}
         </div>
       </nav>
@@ -79,7 +79,7 @@ export default function BootScreen({ onStart }) {
               </p>
             </div>
 
-            <button onClick={() => setMode('register')} className="group relative bg-red-700 text-black font-black px-16 py-6 tracking-[0.2em] uppercase text-sm hover:scale-105 transition-all shadow-[0_0_40px_rgba(185,28,28,0.4)] overflow-hidden">
+            <button id="btn-play-free" onClick={() => setMode('register')} className="group relative bg-red-700 text-black font-black px-16 py-6 tracking-[0.2em] uppercase text-sm hover:scale-105 transition-all shadow-[0_0_40px_rgba(185,28,28,0.4)] overflow-hidden">
               <span className="relative z-10">Play For Free</span>
               <div className="absolute inset-0 bg-white/20 translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
             </button>
@@ -159,6 +159,7 @@ export default function BootScreen({ onStart }) {
                 )}
 
                 <button
+                  id="btn-auth-submit"
                   type="submit"
                   disabled={loading}
                   className="w-full bg-red-700 text-black font-black py-4 uppercase tracking-[0.15em] text-sm hover:bg-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(185,28,28,0.3)]"

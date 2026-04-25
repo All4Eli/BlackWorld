@@ -23,9 +23,78 @@ export function usePlayerData() {
 
         if (player) {
           setIsSignedIn(true);
+
+          // The API now returns normalized data (player.stats, player.equipment, etc.)
+          // instead of the legacy player.hero_data JSONB blob.
+          // Map the normalized response into the heroData shape the client components expect.
+          const stats = player.stats || {};
+          const heroData = {
+            name: player.username,
+            hp: stats.hp,
+            maxHp: stats.maxHp,
+            mana: stats.mana,
+            maxMana: stats.maxMana,
+            dmg: stats.baseDmg,
+            baseDmg: stats.baseDmg,
+            gold: stats.gold,
+            bankedGold: stats.bankBalance,
+            bloodStones: stats.bloodStones || 0,
+            level: stats.level,
+            xp: stats.xp,
+            flasks: stats.flasks,
+            maxFlasks: stats.maxFlasks,
+            kills: stats.kills,
+            deaths: stats.deaths,
+            artifacts: [],
+            equipped: {},
+            essence: stats.essence,
+            maxEssence: stats.maxEssence,
+            essence_last_regen: stats.essenceRegenAt,
+            skillPoints: stats.skillPoints || {},
+            skillPointsUnspent: stats.skillPointsUnspent || 0,
+            learnedTomes: stats.learnedTomes || [],
+            // Attributes
+            str: stats.str,
+            def: stats.def,
+            dex: stats.dex,
+            int: stats.int,
+            vit: stats.vit,
+            unspentPoints: stats.unspentPoints || 0,
+            // Daily
+            loginStreak: stats.loginStreak,
+            lastDailyClaim: stats.lastDailyClaim,
+            // Achievement / progression counters
+            pvpWins: stats.pvpWins || 0,
+            pvpLosses: stats.pvpLosses || 0,
+            bossKills: stats.bossKills || 0,
+            questsCompleted: stats.questsCompleted || 0,
+            itemsCrafted: stats.itemsCrafted || 0,
+            dungeonClears: stats.dungeonClears || 0,
+            zonesExplored: stats.zonesExplored || 0,
+            // Equipment (map to slot-based object)
+            ...((player.equipment || []).length > 0 ? {
+              equipped: (player.equipment || []).reduce((acc, e) => {
+                acc[e.slot] = {
+                  inventoryId: e.inventoryId,
+                  key: e.itemKey,
+                  name: e.itemName,
+                  type: e.itemType,
+                  tier: e.itemTier,
+                  enhancement: e.enhancement,
+                  baseStats: e.baseStats,
+                  rolledStats: e.rolledStats,
+                };
+                return acc;
+              }, {})
+            } : {}),
+            // Coven
+            coven: player.coven || null,
+            inventoryCount: player.inventoryCount || 0,
+          };
+
           setSaveData({
             stage: player.stage || 'BOOT',
-            heroData: player.hero_data || null
+            heroData,
           });
         }
       } catch (err) {

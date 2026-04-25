@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { IconLegacy, IconGold, IconSword } from './icons/GameIcons';
 
 export default function LeaderboardHub({ onBack }) {
     const [tab, setTab] = useState('ANCIENTS');
@@ -36,19 +37,19 @@ export default function LeaderboardHub({ onBack }) {
                         onClick={() => setTab('ANCIENTS')}
                         className={`flex-1 py-4 uppercase tracking-[0.2em] font-serif text-lg transition-colors ${tab === 'ANCIENTS' ? 'bg-stone-900 text-stone-200 border-b-2 border-stone-400' : 'bg-black text-stone-500 hover:bg-neutral-900'}`}
                     >
-                        ☗ The Ancients
+                        <span className="inline-flex items-center gap-2"><IconLegacy size={18} /> The Ancients</span>
                     </button>
                     <button 
                         onClick={() => setTab('BARONS')}
                         className={`flex-1 py-4 uppercase tracking-[0.2em] font-serif text-lg transition-colors ${tab === 'BARONS' ? 'bg-stone-900 text-yellow-500 border-b-2 border-yellow-600' : 'bg-black text-stone-500 hover:bg-neutral-900'}`}
                     >
-                        ¤ Wealth Barons
+                        <span className="inline-flex items-center gap-2"><IconGold size={18} /> Wealth Barons</span>
                     </button>
                     <button 
                         onClick={() => setTab('CHAMPIONS')}
                         className={`flex-1 py-4 uppercase tracking-[0.2em] font-serif text-lg transition-colors ${tab === 'CHAMPIONS' ? 'bg-red-950/20 text-red-500 border-b-2 border-red-700' : 'bg-black text-stone-500 hover:bg-neutral-900'}`}
                     >
-                        ⚔ Blood Champions
+                        <span className="inline-flex items-center gap-2"><IconSword size={18} /> Blood Champions</span>
                     </button>
                 </div>
 

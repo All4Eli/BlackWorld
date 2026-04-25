@@ -1,8 +1,12 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { usePlayer } from '@/context/PlayerContext';
 import { BLOOD_STONE_PACKS, DARK_PACT, BS_SHOP_ITEMS } from '@/lib/packs';
+import { IconGem, IconBlood, IconBag, IconPotion, IconFlame, IconSkills, IconShield, GameIcon, IconBloodStone } from './icons/GameIcons';
 
-export default function BloodStoneShop({ hero, updateHero }) {
+// CONTEXT MIGRATED: hero/updateHero now from usePlayer().
+export default function BloodStoneShop() {
+  const { hero, updateHero } = usePlayer();
   const [tab, setTab] = useState('packs');
   const [loading, setLoading] = useState(null);
   const [shopData, setShopData] = useState(null);
@@ -15,7 +19,7 @@ export default function BloodStoneShop({ hero, updateHero }) {
       .catch(() => {});
   }, []);
 
-  const balance = hero?.blood_stones ?? shopData?.bloodStones ?? 0;
+  const balance = hero?.bloodStones ?? shopData?.bloodStones ?? 0;
   const isDonator = shopData?.donator || false;
   const isSubscribed = shopData?.subscriptionActive || false;
 
@@ -64,9 +68,11 @@ export default function BloodStoneShop({ hero, updateHero }) {
       });
       const data = await res.json();
       if (data.success) {
-        setMessage({ type: 'success', text: data.message });
-        if (data.updatedHero) updateHero(data.updatedHero);
-        // Refresh shop data
+        setMessage({ type: 'success', text: data.purchasedItem || 'Purchase complete!' });
+        // API returns flat { newBalance, cost, grantedItem } — no updatedHero wrapper
+        // Update bloodStones in PlayerContext immediately
+        updateHero({ bloodStones: data.newBalance });
+        // If the purchase granted gold or essence, refresh full shop data
         const refreshed = await fetch('/api/shop/premium').then(r => r.json());
         setShopData(refreshed);
       } else {
@@ -79,9 +85,9 @@ export default function BloodStoneShop({ hero, updateHero }) {
   };
 
   const tabs = [
-    { id: 'packs', label: 'Blood Stone Packs', icon: '💎' },
-    { id: 'subscription', label: 'Dark Pact', icon: '🩸' },
-    { id: 'shop', label: 'Blood Stone Shop', icon: '🛒' },
+    { id: 'packs', label: 'Blood Stone Packs', icon: <IconGem size={14} /> },
+    { id: 'subscription', label: 'Dark Pact', icon: <IconBlood size={14} /> },
+    { id: 'shop', label: 'Blood Stone Shop', icon: <IconBag size={14} /> },
   ];
 
   return (
@@ -95,7 +101,7 @@ export default function BloodStoneShop({ hero, updateHero }) {
           </p>
         </div>
         <div className="flex items-center gap-3 bg-red-950/30 border border-red-900/30 px-4 py-2 rounded-md">
-          <span className="text-xl">💎</span>
+          <IconGem size={22} className="text-red-400" />
           <div>
             <p className="text-xs text-stone-500 font-mono uppercase tracking-widest">Blood Stones</p>
             <p className="text-lg font-bold text-red-400">{balance.toLocaleString()}</p>
@@ -106,9 +112,9 @@ export default function BloodStoneShop({ hero, updateHero }) {
       {/* Donator Badge */}
       {isDonator && (
         <div className="flex items-center gap-2 bg-amber-950/20 border border-amber-900/30 px-4 py-2 rounded-md">
-          <span className="text-amber-400">✦</span>
+          <IconBloodStone size={16} className="text-amber-400" />
           <span className="text-amber-300 text-xs font-mono uppercase tracking-widest">
-            {isSubscribed ? '✦✦ Dark Pact Active' : '✦ Donator Active'}
+            {isSubscribed ? 'Dark Pact Active' : 'Donator Active'}
           </span>
           {shopData?.donatorExpires && (
             <span className="text-stone-500 text-xs ml-auto">
@@ -156,7 +162,7 @@ export default function BloodStoneShop({ hero, updateHero }) {
               className="bg-[#0a0a0a] border border-neutral-800 rounded-lg p-5 flex flex-col gap-3
                          hover:border-red-900/50 hover:shadow-[0_0_30px_rgba(153,27,27,0.1)] transition-all"
             >
-              <div className="text-3xl text-center">{pack.icon}</div>
+              <div className="text-3xl text-center"><GameIcon name={({'shard':'gem','ember':'flame','abyss':'portal','sovereign':'crown'})[pack.key] || 'gem'} size={36} /></div>
               <h3 className="text-stone-200 font-serif text-center tracking-wide">{pack.name}</h3>
               <div className="text-center">
                 <span className="text-2xl font-bold" style={{ color: pack.color }}>{pack.displayPrice}</span>
@@ -196,7 +202,7 @@ export default function BloodStoneShop({ hero, updateHero }) {
           <div className="bg-[#0a0a0a] border border-red-900/30 rounded-lg p-6 space-y-6
                           shadow-[0_0_40px_rgba(153,27,27,0.15)]">
             <div className="text-center space-y-2">
-              <div className="text-5xl">🩸</div>
+              <div className="text-5xl"><IconBlood size={48} className="text-red-500 mx-auto" /></div>
               <h3 className="text-2xl font-serif text-red-400 tracking-wide">THE DARK PACT</h3>
               <p className="text-stone-500 text-xs font-mono uppercase tracking-widest">
                 The ultimate commitment to power
@@ -220,7 +226,7 @@ export default function BloodStoneShop({ hero, updateHero }) {
             <div className="space-y-2">
               {DARK_PACT.perks.map((perk, i) => (
                 <div key={i} className="flex items-start gap-3 py-2 border-b border-neutral-900 last:border-0">
-                  <span className="text-red-700 mt-0.5">✦</span>
+                  <IconBloodStone size={14} className="text-red-700 mt-0.5" />
                   <div>
                     <div className="text-stone-300 text-xs font-mono uppercase tracking-widest">{perk.name}</div>
                     <div className="text-stone-500 text-[11px]">{perk.desc}</div>
@@ -262,7 +268,7 @@ export default function BloodStoneShop({ hero, updateHero }) {
             return (
               <div key={category}>
                 <h3 className="text-xs font-mono uppercase tracking-widest text-stone-500 mb-3 px-1">
-                  {category === 'utility' ? '⚗️ Utility' : category === 'booster' ? '🚀 Boosters' : category === 'cosmetic' ? '🎨 Cosmetics' : '🔒 Permanent'}
+                  {category === 'utility' ? 'Utility' : category === 'booster' ? 'Boosters' : category === 'cosmetic' ? 'Cosmetics' : 'Permanent'}
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {items.map(item => (
@@ -271,14 +277,12 @@ export default function BloodStoneShop({ hero, updateHero }) {
                       className="bg-[#0a0a0a] border border-neutral-800 rounded-lg p-4 flex items-start gap-3
                                  hover:border-red-900/40 transition-all"
                     >
-                      <div className="text-2xl flex-shrink-0">{item.icon}</div>
+                      <div className="text-2xl flex-shrink-0"><GameIcon name={({'protection_scroll':'scroll','essence_refill':'potion','inventory_expansion':'bag','loot_charm':'clover','xp_incense':'candle','flask_restock':'flask'})[item.key] || 'bloodstone'} size={26} /></div>
                       <div className="flex-1 min-w-0">
                         <div className="text-stone-200 text-sm font-mono">{item.name}</div>
                         <div className="text-stone-500 text-[11px] mt-0.5">{item.desc}</div>
                         <div className="flex items-center justify-between mt-3">
-                          <span className="text-red-400 font-mono text-sm font-bold">
-                            💎 {item.cost}
-                          </span>
+                          <span className="text-red-400 font-mono text-sm font-bold inline-flex items-center gap-1"><IconGem size={12} /> {item.cost}</span>
                           <button
                             onClick={() => handleShopPurchase(item.key)}
                             disabled={loading === item.key || balance < item.cost}

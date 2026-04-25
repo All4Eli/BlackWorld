@@ -10,9 +10,29 @@ import ArenaHub from './ArenaHub';
 import QuestLog from './QuestLog';
 import CraftingStation from './CraftingStation';
 import LeaderboardHub from './LeaderboardHub';
+import HallOfLegendsView from './HallOfLegendsView';
 import BloodStoneShop from './BloodStoneShop';
+import MonumentView from './MonumentView';
 
-export default function TownView({ hero, updateHero }) {
+// ── CONTEXT MIGRATION ──────────────────────────────────────────
+// TownView PREVIOUSLY received { hero, updateHero } from GameShell
+// and blindly forwarded them to all 11 sub-views.
+//
+// PROBLEM: TownView doesn't USE hero — it only passes it through.
+//   But React doesn't know that. When updateHero() fires inside
+//   a sub-view (e.g., HealerView heals the player), this happened:
+//     1. page.js state changes → re-renders
+//     2. GameShell receives new hero prop → re-renders
+//     3. TownView receives new hero prop → re-renders (WASTED)
+//     4. All 11 sub-views receive new hero prop → 11 re-renders
+//
+// FIX: TownView accepts NO hero props. Each sub-view calls
+//   usePlayer() internally. TownView is now a pure navigation
+//   shell — it only manages which sub-view is active.
+//   When hero data changes, ONLY the sub-view that subscribes
+//   to PlayerContext re-renders. TownView skips the re-render.
+//
+export default function TownView() {
   const [activeLocation, setActiveLocation] = useState(null);
   const categories = [
     {
@@ -49,22 +69,26 @@ export default function TownView({ hero, updateHero }) {
     {
       title: 'Hall of Legends',
       locations: [
-        { id: 'leaderboard', name: 'The Monuments', description: 'Gaze upon the server rankings and living legends.', status: null },
+        { id: 'monuments', name: 'The Monuments', description: 'Contribute resources to build server-wide structures for permanent buffs.', status: null },
+        { id: 'leaderboard', name: 'Leaderboards', description: 'Gaze upon the server rankings and living legends.', status: null },
+        { id: 'politics', name: 'The Sovereign Throne', description: 'Cast Obsidian Ballots and crown the ruler of BlackWorld.', status: null },
       ]
     }
   ];
 
-  if (activeLocation === 'healer') return <HealerView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
-  if (activeLocation === 'bank') return <BankView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
-  if (activeLocation === 'casino') return <CasinoView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
-  if (activeLocation === 'shop') return <ItemShopView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
-  if (activeLocation === 'covens') return <CovenView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
-  if (activeLocation === 'auction') return <AuctionView hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
-  if (activeLocation === 'arena') return <ArenaHub hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
-  if (activeLocation === 'quests') return <QuestLog hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
-  if (activeLocation === 'forge') return <CraftingStation hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
-  if (activeLocation === 'leaderboard') return <LeaderboardHub hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
-  if (activeLocation === 'premium') return <BloodStoneShop hero={hero} updateHero={updateHero} onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'healer') return <HealerView onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'bank') return <BankView onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'casino') return <CasinoView onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'shop') return <ItemShopView onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'covens') return <CovenView onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'auction') return <AuctionView onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'arena') return <ArenaHub onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'quests') return <QuestLog onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'forge') return <CraftingStation onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'leaderboard') return <LeaderboardHub onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'monuments') return <MonumentView onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'premium') return <BloodStoneShop onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'politics') return <HallOfLegendsView onBack={() => setActiveLocation(null)} />;
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col gap-8 animate-in slide-in-from-bottom-4 duration-700">

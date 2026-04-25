@@ -1,7 +1,10 @@
 'use client';
 import { useState } from 'react';
+import { usePlayer } from '@/context/PlayerContext';
 
-export default function BankView({ hero, updateHero, onBack }) {
+// CONTEXT MIGRATED: hero/updateHero now from usePlayer(), onBack stays as prop.
+export default function BankView({ onBack }) {
+  const { hero, updateHero } = usePlayer();
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -28,7 +31,7 @@ export default function BankView({ hero, updateHero, onBack }) {
         return;
       }
       
-      updateHero(data.updatedHero);
+      updateHero({ gold: data.gold, bankedGold: data.bankBalance });
       setAmount('');
     } catch (err) {
       setError('Connection failed.');

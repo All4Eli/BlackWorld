@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { calculateSkillBonuses } from '@/lib/skillTree';
 import { calcCombatStats } from '@/lib/gameData';
 import DeathScreen from './DeathScreen';
+import { IconSkull, IconSword, IconCross } from './icons/GameIcons';
 
 export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) {
   // We use internal state for combat logic, but initialize strictly from the unified heroDef
@@ -74,23 +75,23 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
         const data = await response.json();
 
         if (!response.ok) {
-            addLog(`✖ [ERROR]: ${data.error}`);
+            addLog(`[X] [ERROR]: ${data.error}`);
             setIsPlayerTurn(true);
             return;
         }
 
         if (data.win) {
-            addLog(`💥 [STRIKE]: You devastate ${enemy.name}!`);
+            addLog(`[STRIKE]: You devastate ${enemy.name}!`);
             setEnemy(prev => ({ ...prev, hp: 0 }));
-            addLog(`🏆 [SLAIN]: The ${enemy.name} has fallen.`);
+            addLog(`[SLAIN]: The ${enemy.name} has fallen.`);
             addLog(`+ ${data.expGained} EXP | + ${data.goldGained} Gold`);
             
             setTimeout(() => {
                 onVictory(data.updatedHero);
             }, 3000);
         } else {
-            addLog(`⚠️ ${enemy.name} overpowered you!`);
-            addLog("🛑 [PERISHED]: The dark consumes you...");
+            addLog(`[WARNING] ${enemy.name} overpowered you!`);
+            addLog("[PERISHED]: The dark consumes you...");
             setHero(prev => ({ ...prev, hp: 0 }));
         }
 
@@ -103,14 +104,14 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
   const handleFlask = () => {
      if (hero.hp <= 0 || enemy.hp <= 0 || !isPlayerTurn) return;
      if (hero.flasks <= 0) {
-        addLog("🚫 [EMPTY]: You reach for a Flask, but have none left.");
+        addLog("[EMPTY]: You reach for a Flask, but have none left.");
         return;
      }
 
      const flaskHeal = 60 + c.flaskBonus;
      setIsPlayerTurn(false);
      setHero(prev => ({ ...prev, hp: Math.min(c.maxHp, prev.hp + flaskHeal), flasks: prev.flasks - 1 }));
-     addLog(`♦ [CRIMSON FLASK]: Restored ${flaskHeal} HP.`);
+     addLog(`[CRIMSON FLASK]: Restored ${flaskHeal} HP.`);
 
     setTimeout(() => {
       const rawDmg = Math.floor(Math.random() * 5) + enemy.attackDamage;
@@ -121,9 +122,9 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
         if (newHp <= 0) died = true;
         return { ...prev, hp: newHp };
       });
-      addLog(`⚠️ ${enemy.name} strikes during recovery for ${reduced} damage!`);
+      addLog(`[WARNING] ${enemy.name} strikes during recovery for ${reduced} damage!`);
       if (died) {
-        addLog("🛑 [PERISHED]: The dark consumes you...");
+        addLog(">> [PERISHED]: The dark consumes you...");
       } else {
         setIsPlayerTurn(true);
       }
@@ -179,7 +180,7 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
           <div className="bg-[#050505] border border-red-900/20 p-6 shadow-[0_0_15px_rgba(153,27,27,0.1)]">
             <div className="flex items-center gap-4 mb-6 pb-4 border-b border-red-900/20">
               <div className="w-12 h-12 bg-red-950/40 border border-red-800/50 flex items-center justify-center text-red-500">
-                 <span className="text-2xl font-serif">†</span>
+                 <IconCross size={24} className="text-red-500" />
               </div>
               <div>
                 <h2 className="text-xl font-bold uppercase tracking-wider text-stone-200">{hero.name}</h2>
@@ -298,7 +299,7 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
             </div>
           ) : (
             <div className="h-full border border-neutral-900 border-dashed flex flex-col items-center justify-center p-6 text-center bg-black">
-               <span className="text-4xl mb-4 text-red-900 font-serif">☠</span>
+               <IconSkull size={36} className="mb-4 text-red-900" />
                <p className="text-stone-700 font-mono text-xs uppercase tracking-widest">The area is silent...</p>
             </div>
           )}

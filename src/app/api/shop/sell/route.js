@@ -30,9 +30,9 @@ async function handlePost(request, { userId }) {
       );
     }
 
-    if (quantity < 1) {
+    if (quantity < 1 || quantity > 9999) {
       return NextResponse.json(
-        { error: 'BAD_REQUEST', message: 'Quantity must be at least 1.' },
+        { error: 'BAD_REQUEST', message: 'Quantity must be between 1 and 9999.' },
         { status: 400 }
       );
     }
@@ -49,10 +49,15 @@ async function handlePost(request, { userId }) {
       return NextResponse.json({ error: 'SELL_FAILED', message: msg }, { status });
     }
 
+    // Fetch fresh inventory so UI can sync after the sold item is removed
+    const { data: inventoryData } = await InventoryDal.getCharacterInventory(userId);
+
     return NextResponse.json({
       success: true,
       goldEarned: data.goldEarned,
       goldTotal: data.goldTotal,
+      updatedHero: { gold: data.goldTotal },
+      inventory: inventoryData || [],
     });
   } catch (err) {
     console.error('[POST /api/shop/sell]', err);

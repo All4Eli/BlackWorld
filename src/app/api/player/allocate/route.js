@@ -51,15 +51,21 @@ async function handlePost(request, { userId }) {
       return NextResponse.json({ error: 'ALLOCATE_FAILED', message: msg }, { status });
     }
 
+    // Map the raw DB row (snake_case) → camelCase for PlayerContext.
+    // HeroDal.allocatePoints returns RETURNING * from hero_stats,
+    // which has snake_case columns. Sending the raw row would pollute
+    // the context with both `max_hp` AND `maxHp` coexisting.
     return NextResponse.json({
       success: true,
-      stats: {
+      updatedHero: {
         str: data.str,
         def: data.def,
         dex: data.dex,
         int: data.int,
         vit: data.vit,
         unspentPoints: data.unspent_points,
+        maxHp: data.max_hp,
+        maxMana: data.max_mana,
       },
     });
   } catch (err) {

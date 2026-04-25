@@ -1,6 +1,7 @@
 import React from 'react';
 import { calcCombatStats } from '@/lib/gameData';
 import { calculateSkillBonuses } from '@/lib/skillTree';
+import { IconBloodStone } from './icons/GameIcons';
 
 export default function BlackWorldSidebar({ hero, onNavigate }) {
   if (!hero) return null;
@@ -11,8 +12,8 @@ export default function BlackWorldSidebar({ hero, onNavigate }) {
   const maxHp = stats.maxHp;
   const hpPercent = Math.min(100, Math.max(0, (hp / maxHp) * 100));
 
-  const maxEnergy = 150; // Typically bounded or grown later
-  const energy = hero.player_resources?.vitae_current ?? maxEnergy;
+  const maxEnergy = hero.max_essence || 100;
+  const energy = hero.essence ?? maxEnergy;
   const energyPercent = Math.min(100, Math.max(0, (energy / maxEnergy) * 100));
   
   return (
@@ -28,13 +29,13 @@ export default function BlackWorldSidebar({ hero, onNavigate }) {
           </div>
 
           <div className="flex justify-between items-center">
-             <span className="text-stone-600">Energy</span>
-             <span className="text-blue-500 font-bold">{energy} / {maxEnergy}</span>
+             <span className="text-stone-600">Essence</span>
+             <span className="text-orange-600 font-bold">{energy} / {maxEnergy}</span>
           </div>
 
           <div className="flex justify-between items-center">
-             <span className="text-stone-600">Essence</span>
-             <span className="text-orange-600 font-bold">♦ {(hero.blood_stones || 0).toLocaleString()}</span>
+             <span className="text-stone-600">Blood Stones</span>
+             <span className="text-red-500 font-bold inline-flex items-center gap-1"><IconBloodStone size={10} /> {(hero.blood_stones || 0).toLocaleString()}</span>
           </div>
 
           <div className="flex justify-between items-center">
@@ -47,8 +48,8 @@ export default function BlackWorldSidebar({ hero, onNavigate }) {
               <div className="flex justify-between items-center">
                  <span className="text-stone-600">Stat Pts</span>
                  <div className="flex items-center gap-2">
-                   <span className="text-stone-300 font-bold">{hero.unspentStatPoints || 0}</span>
-                   {(hero.unspentStatPoints > 0) && (
+                   <span className="text-stone-300 font-bold">{hero.unspent_points || hero.unspentStatPoints || 0}</span>
+                   {((hero.unspent_points || hero.unspentStatPoints) > 0) && (
                       <span onClick={() => onNavigate('DASHBOARD')} className="text-red-600 cursor-pointer hover:text-red-400 transition-colors">[USE]</span>
                    )}
                  </div>
@@ -57,8 +58,8 @@ export default function BlackWorldSidebar({ hero, onNavigate }) {
               <div className="flex justify-between items-center">
                  <span className="text-stone-600">Skill Pts</span>
                  <div className="flex items-center gap-2">
-                   <span className="text-stone-300 font-bold">{hero.skillPointsUnspent || 0}</span>
-                   {(hero.skillPointsUnspent > 0) && (
+                   <span className="text-stone-300 font-bold">{hero.skill_points_unspent || hero.skillPointsUnspent || 0}</span>
+                   {((hero.skill_points_unspent || hero.skillPointsUnspent) > 0) && (
                       <span onClick={() => onNavigate('SKILLS')} className="text-red-600 cursor-pointer hover:text-red-400 transition-colors">[USE]</span>
                    )}
                  </div>

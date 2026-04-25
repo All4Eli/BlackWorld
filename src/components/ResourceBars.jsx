@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { calculateCurrentResource, calculateMaxResource } from '@/lib/resources';
+import { IconBloodStone } from './icons/GameIcons';
 
 export default function ResourceBars({ hero, onRefillClick }) {
     const [now, setNow] = useState(Date.now());
@@ -35,7 +36,7 @@ export default function ResourceBars({ hero, onRefillClick }) {
     };
 
     return (
-        <div className="flex flex-col gap-3 p-4 bg-black border border-neutral-900 rounded-sm">
+        <div className="flex flex-col gap-3 p-4 bg-black border border-neutral-900">
             {bars.map(b => {
                 const pct = Math.min(100, Math.max(0, (b.obj.current / b.obj.max) * 100));
                 const isCrit = pct <= 20 && b.obj.current > 0;
@@ -64,7 +65,7 @@ export default function ResourceBars({ hero, onRefillClick }) {
                 <div className="px-3 py-[6px] relative z-10 flex justify-between items-center text-[10px] font-mono tracking-widest uppercase mb-[2px]">
                     <span className="text-red-500 font-bold pointer-events-none drop-shadow-md">Blood Stones</span>
                     <div className="flex items-center gap-1 font-bold text-stone-300">
-                        <span className="text-[#cf2a2a] text-[9px] mb-px">✧</span>
+                        <IconBloodStone size={11} className="text-[#cf2a2a]" />
                         {hero?.blood_stones?.toLocaleString() || 0}
                     </div>
                 </div>

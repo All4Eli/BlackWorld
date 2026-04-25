@@ -39,7 +39,10 @@ export default function CraftingStation({ onBack }) {
         try {
             const response = await fetch('/api/crafting/forge', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-idempotency-key': `craft-${recipe.id}-${Date.now()}`,
+                },
                 body: JSON.stringify({ recipeId: recipe.id })
             });
             const data = await response.json();

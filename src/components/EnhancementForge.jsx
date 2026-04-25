@@ -86,7 +86,10 @@ export default function EnhancementForge() {
         try {
             const res = await fetch('/api/forge/enhance', {
                method: 'POST',
-               headers: { 'Content-Type': 'application/json' },
+               headers: {
+                 'Content-Type': 'application/json',
+                 'x-idempotency-key': `enhance-${selectedItem.inventory_id}-${level + 1}-${Date.now()}`,
+               },
                body: JSON.stringify({ 
                    inventoryId: selectedItem.inventory_id, 
                    targetLevel: level + 1,

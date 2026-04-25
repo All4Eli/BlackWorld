@@ -71,7 +71,10 @@ export default function ItemShopView({ onBack }) {
     try {
       const res = await fetch('/api/shop', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-idempotency-key': `shop-buy-${item.item_key}-${Date.now()}`,
+        },
         // Server expects { itemKey, quantity } — NOT { itemId, itemCost }
         body: JSON.stringify({ itemKey: item.item_key, quantity: 1 })
       });
@@ -111,7 +114,10 @@ export default function ItemShopView({ onBack }) {
     try {
       const res = await fetch('/api/shop/sell', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-idempotency-key': `shop-sell-${item.inventory_id}-${Date.now()}`,
+        },
         // Server expects { inventoryId, quantity }
         body: JSON.stringify({ inventoryId: item.inventory_id, quantity: 1 })
       });

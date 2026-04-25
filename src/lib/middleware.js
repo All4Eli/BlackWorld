@@ -320,30 +320,39 @@ export function withMiddleware(handler, options = {}) {
     }
 
     // ── 3. Idempotency Check ───────────────────────────────────
-    const idempotencyKey = idempotency
+    //
+    // If the client sends an X-Idempotency-Key header, we check for
+    // a cached response (replay protection). If the client doesn't
+    // send one, we auto-generate a UUID so the response is still
+    // recorded for audit — but no replay protection is possible.
+    //
+    // This is the Stripe model: idempotency keys are recommended
+    // but not required. Blocking all requests without one caused
+    // every frontend component to break if it forgot the header.
+    let idempotencyKey = idempotency
       ? request.headers.get('x-idempotency-key')
       : null;
 
     if (idempotency) {
       if (!idempotencyKey) {
-        return errorResponse(
-          'MISSING_IDEMPOTENCY_KEY',
-          'Economic actions require an X-Idempotency-Key header.',
-          400
-        );
-      }
-
-      try {
-        const cached = await checkIdempotency(idempotencyKey);
-        if (cached) {
-          // Return the cached response from the original request
-          const res = NextResponse.json(cached.response, { status: 200 });
-          res.headers.set('X-Idempotent-Replayed', 'true');
-          return res;
+        // Auto-generate a one-time key for audit purposes.
+        // No replay protection (client didn't send a key to reuse),
+        // but the response is still recorded in idempotency_keys.
+        idempotencyKey = crypto.randomUUID();
+      } else {
+        // Client provided a key — check for cached (replayed) response
+        try {
+          const cached = await checkIdempotency(idempotencyKey);
+          if (cached) {
+            // Return the cached response from the original request
+            const res = NextResponse.json(cached.response, { status: 200 });
+            res.headers.set('X-Idempotent-Replayed', 'true');
+            return res;
+          }
+        } catch (err) {
+          console.error('[IDEMPOTENCY CHECK ERROR]', err.message);
+          // Fail open — let the request through
         }
-      } catch (err) {
-        console.error('[IDEMPOTENCY CHECK ERROR]', err.message);
-        // Fail open — let the request through
       }
     }
 

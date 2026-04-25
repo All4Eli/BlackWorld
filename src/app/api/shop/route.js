@@ -30,7 +30,7 @@ export async function GET(request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const npcKey = searchParams.get('npcKey') || 'shadow_merchant';
+  const npcKey = searchParams.get('npcKey') || 'merchant_kael';
 
   // Fetch player level for filtering
   const { data: hero } = await HeroDal.getHeroStats(userId);

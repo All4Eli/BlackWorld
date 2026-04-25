@@ -72,15 +72,11 @@ import * as InventoryDal from '@/lib/db/dal/inventory';
 //   are required because JS would otherwise interpret the { as a
 //   block statement, not an object return.
 function buildEquipmentArray(equipment) {
-  // Array.map() iterates over every element `eq` in the array and
-  // returns a new array of transformed objects. The arrow function
-  // `eq => ({ ... })` wraps the return value in parens to tell JS
-  // "this curly brace is an object literal, not a code block."
+  // Pass both stat sources separately — compileHeroStats now
+  // does ADDITIVE aggregation (base_stats + rolled_stats), not
+  // preferring one over the other.
   return (equipment || []).map(eq => ({
-    // rolled_stats: per-item randomized stats (set when the item drops)
-    // base_stats: catalog-defined base stats for this item type
-    // We prefer rolled_stats over base_stats when both exist.
-    rolled_stats: eq.rolled_stats || eq.base_stats || {},
+    rolled_stats: eq.rolled_stats || {},
     base_stats: eq.base_stats || {},
   }));
 }
@@ -344,11 +340,14 @@ async function handlePost(request, { userId }) {
       // means a 15% chance of the condition being true.
       const aCrit = (Math.random() * 100) <= aStats.critChance;
       const aGross = aCrit ? Math.floor(aDmgRaw * 1.5) : aDmgRaw;
-      // Net damage = gross - defender's damage reduction, minimum 1
-      const aNet = Math.max(1, aGross - dStats.dmgReduct);
+      // Net damage = gross - defender's damage reduction
+      // UNCAPPED: 0 damage is valid — a tank can fully mitigate weak attacks
+      const aNet = Math.max(0, aGross - dStats.dmgReduct);
       dHp -= aNet;
       combatLogs.push(
-        `You struck ${defenderName} for ${aNet}${aCrit ? ' (CRIT!)' : ''}`
+        aNet > 0
+          ? `You struck ${defenderName} for ${aNet}${aCrit ? ' (CRIT!)' : ''}`
+          : `Your attack was fully absorbed by ${defenderName}'s defense.`
       );
 
       if (dHp <= 0) { win = true; break; }
@@ -357,10 +356,12 @@ async function handlePost(request, { userId }) {
       const dDmgRaw = Math.floor(dStats.attackDmg * (0.8 + Math.random() * 0.4));
       const dCrit = (Math.random() * 100) <= dStats.critChance;
       const dGross = dCrit ? Math.floor(dDmgRaw * 1.5) : dDmgRaw;
-      const dNet = Math.max(1, dGross - aStats.dmgReduct);
+      const dNet = Math.max(0, dGross - aStats.dmgReduct);
       aHp -= dNet;
       combatLogs.push(
-        `${defenderName} strikes you for ${dNet}${dCrit ? ' (CRIT!)' : ''}`
+        dNet > 0
+          ? `${defenderName} strikes you for ${dNet}${dCrit ? ' (CRIT!)' : ''}`
+          : `${defenderName}'s attack was fully absorbed by your defense.`
       );
 
       if (aHp <= 0) { win = false; break; }

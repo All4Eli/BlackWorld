@@ -7,7 +7,7 @@ import { usePlayer } from '@/context/PlayerContext';
 // ═══════════════════════════════════════════════════════════════════
 //
 // BUY TAB:
-//   GET  /api/shop?npcKey=shadow_merchant → shop items
+//   GET  /api/shop?npcKey=merchant_kael → shop items
 //   POST /api/shop  body: { itemKey, quantity }
 //
 // SELL TAB:
@@ -34,7 +34,7 @@ export default function ItemShopView({ onBack }) {
     const fetchShop = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/shop?npcKey=shadow_merchant`);
+        const res = await fetch(`/api/shop?npcKey=merchant_kael`);
         const data = await res.json();
         if (data.items) setShopItems(data.items);
       } catch (err) {

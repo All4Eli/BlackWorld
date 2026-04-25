@@ -85,17 +85,24 @@ export function compileHeroStats(heroStats, equipment, skillBonuses = {}) {
   let gearParams = { dmg: 0, def: 0, hp: 0, crit: 0, maxMana: 0, magicDmg: 0, lifesteal: 0 };
 
   for (const eq of (equipment || [])) {
-    // Prefer rolled_stats (item-specific randomized stats) over
-    // base_stats (catalog defaults). This supports the enhancement
-    // system where items gain better stats through forging.
-    const stats = eq.rolled_stats || eq.base_stats || {};
-    gearParams.dmg      += (stats.dmg || 0);
-    gearParams.def      += (stats.def || 0);
-    gearParams.hp       += (stats.hp || 0);
-    gearParams.crit     += (stats.crit || 0);
-    gearParams.maxMana  += (stats.mana || stats.maxMana || 0);
-    gearParams.magicDmg += (stats.magicDmg || 0);
-    gearParams.lifesteal += (stats.lifesteal || 0);
+    // ADDITIVE aggregation: both rolled_stats AND base_stats contribute.
+    // rolled_stats are per-item randomized stats (set when item drops).
+    // base_stats are catalog-defined base stats for the item type.
+    // Both should ADD to the total, not one replacing the other.
+    //
+    // PREVIOUS BUG: `const stats = eq.rolled_stats || eq.base_stats || {}`
+    //   → This picked ONE source, discarding base_stats if rolled_stats existed.
+    //   → An item with rolled_stats: { dmg: 5 } and base_stats: { dmg: 10 }
+    //     would contribute only 5 instead of 15.
+    const bs = eq.base_stats || {};
+    const rs = eq.rolled_stats || {};
+    gearParams.dmg      += (bs.dmg || 0) + (rs.dmg || 0);
+    gearParams.def      += (bs.def || 0) + (rs.def || 0);
+    gearParams.hp       += (bs.hp || 0) + (rs.hp || 0);
+    gearParams.crit     += (bs.crit || 0) + (rs.crit || 0);
+    gearParams.maxMana  += (bs.mana || bs.maxMana || 0) + (rs.mana || rs.maxMana || 0);
+    gearParams.magicDmg += (bs.magicDmg || 0) + (rs.magicDmg || 0);
+    gearParams.lifesteal += (bs.lifesteal || 0) + (rs.lifesteal || 0);
   }
 
   // ── Step B: Resolve tome bonuses ────────────────────────────
@@ -317,8 +324,9 @@ export function resolveCombatTurn(combatSession, hero, monster, action) {
       grossDmg = Math.floor(grossDmg * (1 + hero.enemyVuln / 100));
     }
 
-    // Net damage = gross minus monster's defense, minimum 1
-    let netDmg = Math.max(1, Math.floor(grossDmg - (monster.stats.def || 0)));
+    // Net damage = gross minus monster's defense
+    // UNCAPPED: 0 damage is valid when player defense is weaker than monster's
+    let netDmg = Math.max(0, Math.floor(grossDmg - (monster.stats.def || 0)));
     monsterHp = Math.max(0, monsterHp - netDmg);
 
     log.push({
@@ -380,7 +388,9 @@ export function resolveCombatTurn(combatSession, hero, monster, action) {
       });
     }
 
-    let netDmg = Math.max(1, Math.floor(mDmg - hero.dmgReduct));
+    // Net damage = monster's gross minus player's damage reduction
+    // UNCAPPED: 0 damage is valid — high defense tanks can fully absorb
+    let netDmg = Math.max(0, Math.floor(mDmg - hero.dmgReduct));
 
     // ── Blood Aegis (Skill Tree: Keystone) ──────────────────────
     //

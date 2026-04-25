@@ -131,7 +131,7 @@ export async function POST(request) {
              } else {
                  if (!isHitDodged(pStats.dodgeChance)) {
                      const eDmg = rollDamage(eStats.damageMin, eStats.damageMax);
-                     pHp -= Math.max(1, eDmg - (pStats.damageReduction || 0));
+                     pHp -= Math.max(0, eDmg - (pStats.damageReduction || 0));
                      delayedLogs.push(`👹 [ENEMY TURN]: Hit you for ${eDmg} damage!`);
                  } else {
                      delayedLogs.push(`≈ [EVADE]: You dodged the enemy's attack!`);
@@ -163,8 +163,9 @@ export async function POST(request) {
 
             if (!isHitDodged(pStats.dodgeChance)) {
                 const dmg = rollDamage(eStats.damageMin, eStats.damageMax);
-                pHp -= Math.max(1, dmg - (pStats.damageReduction || 0));
-                delayedLogs.push(`♦ [WOUNDED]: Hit while drinking for ${dmg}!`);
+                const netDmg = Math.max(0, dmg - (pStats.damageReduction || 0));
+                pHp -= netDmg;
+                delayedLogs.push(netDmg > 0 ? `♦ [WOUNDED]: Hit while drinking for ${netDmg}!` : `⛨ [ABSORBED]: Your defense fully blocked the hit!`);
             } else {
                 delayedLogs.push(`≈ [EVADE]: Dodged while drinking!`);
             }
@@ -189,8 +190,9 @@ export async function POST(request) {
                 initialLogs.push(`✧ [ARCANA]: ${magicalDmg} magical damage!`);
                 if (eHp > 0) {
                      const dmg = rollDamage(eStats.damageMin, eStats.damageMax);
-                     pHp -= Math.max(1, dmg - (pStats.damageReduction || 0));
-                     delayedLogs.push(`♦ [WOUNDED]: Enemy retaliates for ${dmg}!`);
+                     const retNet = Math.max(0, dmg - (pStats.damageReduction || 0));
+                     pHp -= retNet;
+                     delayedLogs.push(retNet > 0 ? `♦ [WOUNDED]: Enemy retaliates for ${retNet}!` : `⛨ [ABSORBED]: Your defense blocks the retaliation!`);
                 }
             } else if (spell.type === 'EVADE') {
                 delayedLogs.push(`≈ [SHADOW]: The enemy strikes empty air!`);
@@ -205,8 +207,9 @@ export async function POST(request) {
                 initialLogs.push(`✖ [TRAPPED]: Failed to escape!`);
                 if (!isHitDodged(pStats.dodgeChance)) {
                     const dmg = rollDamage(eStats.damageMin, eStats.damageMax);
-                    pHp -= Math.max(1, dmg - (pStats.damageReduction || 0));
-                    delayedLogs.push(`♦ [WOUNDED]: Hit for ${dmg}!`);
+                    const fleeNet = Math.max(0, dmg - (pStats.damageReduction || 0));
+                    pHp -= fleeNet;
+                    delayedLogs.push(fleeNet > 0 ? `♦ [WOUNDED]: Hit for ${fleeNet}!` : `⛨ [ABSORBED]: Your armor blocks the pursuit strike!`);
                 } else {
                     delayedLogs.push(`≈ [EVADE]: Dodged the pursuit!`);
                 }

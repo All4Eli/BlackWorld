@@ -81,6 +81,9 @@ export async function POST(request) {
              updates.level = currentLevel;
              updates.unspent_points = unspentPoints;
              updates.skill_points_unspent = skillPointsUnspent;
+             // Recalculate derived stats (formula: 100 + vit*5 + level*5)
+             updates.max_hp = 100 + ((stats.vit || 5) * 5) + (currentLevel * 5);
+             updates.max_mana = 50 + ((stats.int || 5) * 3);
              modified = true;
         }
 
@@ -105,6 +108,8 @@ export async function POST(request) {
             xp: updates.xp ?? stats.xp,
             essence: newEssence,
             maxEssence: stats.max_essence,
+            maxHp: updates.max_hp ?? stats.max_hp,
+            maxMana: updates.max_mana ?? stats.max_mana,
             essence_last_regen: newRegenAt,
             unspentPoints: updates.unspent_points ?? stats.unspent_points,
             skillPointsUnspent: updates.skill_points_unspent ?? stats.skill_points_unspent,

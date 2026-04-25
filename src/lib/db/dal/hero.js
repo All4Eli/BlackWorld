@@ -379,11 +379,28 @@ export async function allocatePoints(playerId, allocation) {
       }
     }
 
+    // ── Recalculate derived stats in SQL ────────────────────────
+    //
+    // max_hp and max_mana are derived from base stats + level.
+    // They MUST be recalculated after ANY stat change, otherwise
+    // the healer will heal to a stale max_hp value.
+    //
+    // Formula (matches gameData.calcCombatStats):
+    //   max_hp   = 100 + (vit × 5) + (level × 5)
+    //   max_mana = 50  + (int × 3)
+    //
+    // NOTE: Gear and skill bonuses are NOT baked into these columns.
+    // They're computed at runtime by compileHeroStats() / calcCombatStats()
+    // and added on top. These columns represent the BASE pool only,
+    // which is what the healer heals to.
+    setClauses.push(`max_hp = 100 + ("vit" * 5) + ("level" * 5)`);
+    setClauses.push(`max_mana = 50 + ("int" * 3)`);
+
     values.push(playerId);
 
     const result = await client.query(
       `UPDATE hero_stats
-       SET ${setClauses.join(', ')}
+       SET ${setClauses.join(', ')}, updated_at = NOW()
        WHERE player_id = $${paramIdx}
        RETURNING ${HERO_SELECT_COLUMNS}`,
       values

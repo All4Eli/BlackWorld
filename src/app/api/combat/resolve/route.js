@@ -148,6 +148,9 @@ export async function POST(request) {
                 updates.xp = currentXp;
                 updates.unspent_points = unspentPoints;
                 updates.skill_points_unspent = skillPointsUnspent;
+                // Recalculate derived stats (formula: 100 + vit*5 + level*5)
+                updates.max_hp = 100 + (stats.vit * 5) + (currentLevel * 5);
+                updates.max_mana = 50 + (stats.int * 3);
             }
 
             // ── Loot via normalized inventory table ────────────────
@@ -184,7 +187,7 @@ export async function POST(request) {
             droppedLoot,
             updatedHero: {
                 hp: updates.hp,
-                maxHp: stats.max_hp,
+                maxHp: updates.max_hp ?? stats.max_hp,
                 gold: updates.gold ?? stats.gold,
                 xp: updates.xp ?? stats.xp,
                 level: updates.level ?? stats.level,

@@ -301,12 +301,19 @@ export async function POST(request) {
         // Every field is a discrete column. No JSON.stringify().
         // The WHERE clause ensures we only update the correct player.
         // Persist ALL mutable combat state (including mana consumed by SKILL actions)
+        //
+        // max_hp and max_mana are recalculated from base stats using
+        // the game formula, ensuring level-ups immediately increase
+        // the player's HP/mana pool. Without this, the healer would
+        // heal to a stale max_hp value.
         await sql(
           `UPDATE hero_stats SET
             hp = $1, gold = $2, xp = $3, level = $4,
             kills = $5, deaths = $6, flasks = $7,
             unspent_points = $8, skill_points_unspent = $9,
             mana = $10, essence = $11,
+            max_hp = 100 + ("vit" * 5) + ($4 * 5),
+            max_mana = 50 + ("int" * 3),
             updated_at = NOW()
           WHERE player_id = $12`,
           [hero.hp, hero.gold, hero.xp, hero.level,
@@ -321,6 +328,10 @@ export async function POST(request) {
         // The client's updateHero() now does a SHALLOW MERGE,
         // so we only need to send the fields that changed.
         // This is lighter than sending the entire hero object.
+        // Recalculate derived stats for the response (matches the SQL formula)
+        const newMaxHp = 100 + (heroRow.vit * 5) + (hero.level * 5);
+        const newMaxMana = 50 + (heroRow.int * 3);
+
         return NextResponse.json({
             success: true, win, combatEnded,
             newEnemyHp: Math.max(0, eHp),
@@ -331,7 +342,7 @@ export async function POST(request) {
             initialLogs, delayedLogs,
             updatedHero: {
                 hp: hero.hp,
-                maxHp: hero.max_hp,
+                maxHp: newMaxHp,
                 gold: hero.gold,
                 xp: hero.xp,
                 level: hero.level,
@@ -339,7 +350,7 @@ export async function POST(request) {
                 deaths: hero.deaths,
                 flasks: hero.flasks,
                 mana: hero.mana ?? heroRow.mana,
-                maxMana: heroRow.max_mana,
+                maxMana: newMaxMana,
                 unspentPoints: hero.unspentStatPoints,
                 skillPointsUnspent: hero.skillPointsUnspent,
             }

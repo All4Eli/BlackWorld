@@ -1,47 +1,48 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { GameIcon } from './icons/GameIcons';
 
 const TUTORIAL_STEPS = [
   {
     title: 'Welcome to BlackWorld',
     body: 'You have descended into a brutal dark fantasy realm. Survive, grow powerful, and dominate.',
-    icon: '†',
+    iconKey: 'cross',
     tip: 'Your character is permanent — death costs gold, not your soul.',
   },
   {
     title: 'The Dashboard',
     body: 'This is your command center. View stats, allocate attribute points, and manage your equipment.',
-    icon: '⌂',
+    iconKey: 'home',
     tip: 'Level up to earn attribute points. Invest wisely — there are no resets.',
   },
   {
     title: 'Exploration & Combat',
     body: 'Visit zones, encounter monsters, and fight for gold and XP. Each zone has unique enemies and loot.',
-    icon: '⛫',
+    iconKey: 'explore',
     tip: 'Combat costs Blood Essence. It regenerates over time — manage it carefully.',
   },
   {
     title: 'The City of the Damned',
     body: 'Visit the Merchant, Healer, Casino, Arena, and more. The city is your hub between expeditions.',
-    icon: '♜',
+    iconKey: 'city',
     tip: 'Bank your gold! Death takes 50% of carried gold but your bank is safe.',
   },
   {
     title: 'Blood Covens',
     body: 'Join a player guild for social gameplay. Found your own coven for 1,000 gold.',
-    icon: '⚑',
+    iconKey: 'quest',
     tip: 'Coven members share a treasury and can participate in wars together.',
   },
   {
     title: 'The Arena & PvP',
     body: 'Challenge other players to duels. Win ELO, climb the seasonal ladder, and earn titles.',
-    icon: '⚔',
+    iconKey: 'arsenal',
     tip: 'Enable your PvP flag to appear on the challenger board.',
   },
   {
     title: 'Premium — Blood Stones',
     body: 'Blood Stones unlock cosmetics, boosters, and convenience items. Earn them in-game or purchase packs.',
-    icon: '💎',
+    iconKey: 'gem',
     tip: 'The Dark Pact subscription gives 450 BS/month plus exclusive perks.',
   },
 ];
@@ -90,7 +91,7 @@ export default function TutorialOverlay({ onComplete }) {
         {/* Card */}
         <div className="bg-[#050505] border border-red-900/30 shadow-[0_0_60px_rgba(153,27,27,0.15)] p-8 md:p-10">
           {/* Icon */}
-          <div className="text-5xl text-red-700 text-center mb-4 font-serif">{current.icon}</div>
+          <div className="text-5xl text-red-700 text-center mb-4 flex justify-center"><GameIcon name={current.iconKey} size={48} /></div>
 
           {/* Title */}
           <h2 className="text-2xl font-black font-serif text-stone-200 text-center uppercase tracking-[0.2em] mb-3">

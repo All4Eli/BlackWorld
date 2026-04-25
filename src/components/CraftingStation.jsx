@@ -1,8 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { usePlayer } from '@/context/PlayerContext';
 import EnhancementForge from './EnhancementForge';
 
-export default function CraftingStation({ hero, updateHero, onBack }) {
+// CONTEXT MIGRATED: hero/updateHero now from usePlayer(), onBack stays as prop.
+export default function CraftingStation({ onBack }) {
+  const { hero, updateHero } = usePlayer();
     const [recipes, setRecipes] = useState([]);
     const [tab, setTab] = useState('FORGE');
     const [loading, setLoading] = useState(true);
@@ -27,6 +30,8 @@ export default function CraftingStation({ hero, updateHero, onBack }) {
         fetchRecipes();
     }, []);
 
+    const [craftMsg, setCraftMsg] = useState(null);
+
     const craftItem = async (recipe) => {
         if (hero.gold < recipe.gold_cost) return alert("Not enough gold to forge.");
         
@@ -40,19 +45,24 @@ export default function CraftingStation({ hero, updateHero, onBack }) {
             const data = await response.json();
             
             if (!response.ok) {
-                return alert(`✖ Forge Error: ${data.error}`);
+                setCraftMsg(`[X] Forge Error: ${data.error}`);
+                setTimeout(() => setCraftMsg(null), 4000);
+                return;
             }
 
-            updateHero(data.updatedHero);
+            // Merge updated gold + stats into PlayerContext
+            if (data.updatedHero) updateHero(data.updatedHero);
 
             if (data.forgeSuccess) {
-                alert(`🔥 Forged: ${recipe.name}!`);
+                setCraftMsg(`[FORGED]: ${recipe.name}!`);
             } else {
-                alert(`☠ The forge consumed the materials... (${(recipe.success_chance * 100).toFixed(0)}% success chance)`);
+                setCraftMsg(`[FAILED] The forge consumed the materials... (${(recipe.success_chance * 100).toFixed(0)}% success chance)`);
             }
+            setTimeout(() => setCraftMsg(null), 4000);
 
         } catch (err) {
-            alert(`System fault: ${err.message}`);
+            setCraftMsg(`System fault: ${err.message}`);
+            setTimeout(() => setCraftMsg(null), 4000);
         } finally {
             setCrafting(null);
         }
@@ -64,6 +74,14 @@ export default function CraftingStation({ hero, updateHero, onBack }) {
                 <button onClick={onBack} className="text-stone-500 hover:text-stone-300 font-mono text-xs uppercase tracking-widest">
                     ← Back to Market
                 </button>
+                {craftMsg && (
+                  <div className={`font-mono text-xs uppercase tracking-widest animate-pulse border px-4 py-2 ${craftMsg.includes('FORGED') ? 'text-green-500 border-green-900/30 bg-green-950/20' : 'text-red-500 border-red-900/30 bg-red-950/20'}`}>
+                    {craftMsg}
+                  </div>
+                )}
+                <div className="font-mono text-xs text-stone-500 uppercase tracking-widest">
+                   Gold: <span className="text-yellow-600 font-bold">{(hero?.gold || 0).toLocaleString()}g</span>
+                </div>
             </div>
 
             <div className="border border-red-950/40 bg-[#050505] shadow-[0_0_50px_rgba(255,100,0,0.02)]">
@@ -103,7 +121,7 @@ export default function CraftingStation({ hero, updateHero, onBack }) {
 
                      {tab === 'ENHANCE' && (
                           <div className="py-4">
-                              <EnhancementForge hero={hero} updateHero={updateHero} />
+                              <EnhancementForge />
                           </div>
                      )}
                 </div>

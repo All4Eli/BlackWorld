@@ -1,11 +1,30 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { calculateSkillBonuses } from '@/lib/skillTree';
 import { calcCombatStats, calculateXPRequirement } from '@/lib/gameData';
 import DailyLoginCalendar from './DailyLoginCalendar';
+import { IconCross } from './icons/GameIcons';
+import { usePlayer } from '@/context/PlayerContext';
 
-export default function DashboardView({ hero, updateHero }) {
-  const sb = calculateSkillBonuses(hero?.skillPoints || {});
+// ── BEFORE (Prop Drilling): ─────────────────────────────────────
+//   export default function DashboardView({ hero, updateHero })
+//   DashboardView needed its parent (GameShell) to pass hero data.
+//   If GameShell re-rendered for ANY reason (tab switch, online count
+//   change, mobile menu toggle), DashboardView would ALSO re-render
+//   because React re-renders children when parents re-render.
+//
+// ── AFTER (Context Subscription): ───────────────────────────────
+//   export default function DashboardView()
+//   DashboardView gets hero data from PlayerContext directly.
+//   It ONLY re-renders when the context value changes (i.e., when
+//   hero or updateHero actually changes), not when GameShell
+//   re-renders for unrelated reasons.
+//
+export default function DashboardView() {
+  // Subscribe to the player context.
+  // This replaces: function DashboardView({ hero, updateHero })
+  const { hero, updateHero } = usePlayer();
+  const sb = calculateSkillBonuses(hero?.skill_points || hero?.skillPoints || {});
   const c = calcCombatStats(hero, sb);
 
   const currentHp = hero?.hp ?? 0;
@@ -19,7 +38,7 @@ export default function DashboardView({ hero, updateHero }) {
   const dex = hero?.dex ?? 5;
   const int = hero?.int ?? 5;
   const vit = hero?.vit ?? 5;
-  const unspentStats = hero?.unspentStatPoints ?? 0;
+  const unspentStats = hero?.unspent_points ?? hero?.unspentStatPoints ?? 0;
 
   const getTierColor = (tier) => {
     switch (tier) {
@@ -44,34 +63,98 @@ export default function DashboardView({ hero, updateHero }) {
   const slotOrder = ['head', 'amulet', 'body', 'mainHand', 'offHand', 'ring1', 'ring2', 'boots'];
 
   const [modalSlot, setModalSlot] = useState(null);
+  const [modalInventory, setModalInventory] = useState([]);
+  const [modalLoading, setModalLoading] = useState(false);
 
-  const isCorrectSlotType = (artifact, slotId) => {
-    // Convert generalized types to specific slot IDs
+  // ── Fetch inventory when equipment modal opens ─────────────────
+  //
+  // OLD (BROKEN): Modal read from hero.artifacts (dead JSONB blob).
+  // NEW: Modal fetches from GET /api/inventory (normalized tables).
+  //
+  useEffect(() => {
+    if (!modalSlot) return;
+    setModalLoading(true);
+    fetch('/api/inventory')
+      .then(r => r.json())
+      .then(data => {
+        setModalInventory(data.items || []);
+        setModalLoading(false);
+      })
+      .catch(() => setModalLoading(false));
+  }, [modalSlot]);
+
+  const isCorrectSlotType = (item, slotId) => {
+    // Prioritize the item's catalog slot for precise filtering.
+    // item_slot is the canonical truth from the items table (mainHand, body, ring, etc.).
+    // Fall back to broad type mapping only if item_slot is missing (legacy items).
+    const slotMap = {
+      'mainHand': ['mainHand'],
+      'offHand': ['offHand'],
+      'body': ['body'],
+      'head': ['head'],
+      'boots': ['boots'],
+      'amulet': ['amulet'],
+      'ring': ['ring1', 'ring2'],
+    };
+
+    // If the item has a catalog slot, use it (precise)
+    if (item?.item_slot) {
+      const allowedSlots = slotMap[item.item_slot] || [];
+      return allowedSlots.includes(slotId);
+    }
+
+    // Fallback: broad type mapping for legacy items without item_slot
     const typeMap = {
       'WEAPON': ['mainHand', 'offHand'],
       'ARMOR': ['body', 'head', 'boots'],
-      'ACCESSORY': ['amulet', 'ring1', 'ring2']
+      'ACCESSORY': ['amulet', 'ring1', 'ring2'],
     };
-    const targetTypes = typeMap[artifact?.type] || [];
-    return targetTypes.includes(slotId);
+    const byType = typeMap[item?.item_type] || [];
+    return byType.includes(slotId);
   };
 
-  const handleEquip = async (artifactId) => {
+  // ── handleEquip — Equip or Unequip via normalized API ──────────
+  //
+  // OLD (BROKEN): Sent { artifactId, slotId }, expected data.updatedHero.
+  // NEW: Sends { inventoryId, slot } to match /api/equipment/equip,
+  //      and maps the returned equipment[] array into the slot-keyed
+  //      object shape that PlayerContext expects.
+  //
+  const handleEquip = async (inventoryId) => {
     try {
+      const body = inventoryId
+        ? { inventoryId, slot: modalSlot }
+        : { slot: modalSlot };  // No inventoryId = unequip
+
       const res = await fetch('/api/equipment/equip', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ artifactId, slotId: modalSlot })
+        body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (res.ok) {
-        updateHero(data.updatedHero);
-        setModalSlot(null);
-      } else {
-        alert(data.error);
+      if (!res.ok) throw new Error(data.message || data.error);
+
+      // Map the returned equipment[] array into a slot-keyed object
+      // so hero.equipped.mainHand, hero.equipped.body, etc. all update.
+      if (data.equipment) {
+        const equippedMap = data.equipment.reduce((acc, e) => {
+          acc[e.slot] = {
+            inventoryId: e.inventory_id,
+            key: e.item_key,
+            name: e.custom_name || e.item_name,
+            type: e.item_type,
+            tier: e.custom_tier || e.item_tier,
+            enhancement: e.enhancement,
+            baseStats: e.base_stats,
+            rolledStats: e.rolled_stats,
+          };
+          return acc;
+        }, {});
+        updateHero({ equipped: equippedMap });
       }
+      setModalSlot(null);
     } catch (err) {
-      console.error(err);
+      alert(`Equipment action failed: ${err.message}`);
     }
   };
 
@@ -81,7 +164,7 @@ export default function DashboardView({ hero, updateHero }) {
       const res = await fetch('/api/player/allocate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ statStr })
+        body: JSON.stringify({ [statStr]: 1 })
       });
       const data = await res.json();
       if (res.ok) {
@@ -100,7 +183,7 @@ export default function DashboardView({ hero, updateHero }) {
       {/* Primary Hero Plaque */}
       <section className="lg:col-span-1 border border-neutral-900 bg-[#050505] p-4 sm:p-8 shadow-[0_0_20px_rgba(0,0,0,0.8)] flex flex-col items-center text-center">
         <div className="w-24 h-24 bg-red-950/20 border border-red-900/50 flex flex-col items-center justify-center text-red-600 mb-6 shadow-inner">
-          <span className="text-4xl font-serif leading-none mt-2">†</span>
+          <IconCross size={36} className="text-red-600 mt-2" />
           <span className="text-[10px] font-mono mt-1 opacity-50">SOUL</span>
         </div>
 
@@ -233,17 +316,17 @@ export default function DashboardView({ hero, updateHero }) {
           <h3 className="font-serif text-center text-sm tracking-widest text-stone-500 uppercase mb-4 border-b border-neutral-900 pb-2">Equipment</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {slotOrder.map(slot => {
-              const item = hero?.equipment?.[slot];
+              const item = hero?.equipped?.[slot];
               return (
                 <button key={slot} onClick={() => setModalSlot(slot)} className="w-full aspect-square border border-neutral-900 bg-neutral-950 flex flex-col items-center justify-center p-2 group hover:border-[#cf2a2a] transition-all">
                   <div className="text-[10px] font-mono text-stone-600 uppercase tracking-widest mb-1 group-hover:text-[#cf2a2a]">{getSlotDisplay(slot)}</div>
                   {item ? (
                     <div className="text-center">
-                      <div className={`font-serif text-xs ${getTierColor(item.tier)}`}>+{item.level || 0}</div>
-                      <div className={`font-serif text-xs truncate w-full ${getTierColor(item.tier)}`}>{item.name.slice(0, 10)}..</div>
+                      <div className={`font-serif text-xs ${getTierColor(item.tier)}`}>+{item.enhancement || 0}</div>
+                      <div className={`font-serif text-xs truncate w-full ${getTierColor(item.tier)}`}>{(item.name || '').slice(0, 10)}..</div>
                     </div>
                   ) : (
-                    <div className="text-stone-800 text-2xl font-serif">†</div>
+                    <IconCross size={24} className="text-stone-800" />
                   )}
                 </button>
               )
@@ -261,7 +344,7 @@ export default function DashboardView({ hero, updateHero }) {
             <h3 className="text-2xl font-serif text-[#cf2a2a] mb-2 uppercase tracking-widest">{getSlotDisplay(modalSlot)} Armory</h3>
             <p className="text-xs font-mono text-stone-500 uppercase tracking-widest mb-6">Select an artifact to imbue your power.</p>
 
-            {hero?.equipment?.[modalSlot] && (
+            {hero?.equipped?.[modalSlot] && (
               <button
                 onClick={() => handleEquip(null)}
                 className="w-full border border-stone-800 bg-stone-950 p-4 hover:border-red-500 text-stone-400 hover:text-red-500 font-mono text-xs uppercase tracking-widest mb-4 transition-colors"
@@ -271,24 +354,38 @@ export default function DashboardView({ hero, updateHero }) {
             )}
 
             <div className="space-y-2">
-              {hero?.artifacts?.filter(a => isCorrectSlotType(a, modalSlot)).length === 0 ? (
-                <div className="text-stone-700 font-mono text-xs uppercase py-8">No compatible artifacts found in inventory.</div>
-              ) : (
-                hero?.artifacts?.filter(a => isCorrectSlotType(a, modalSlot)).map(artifact => (
-                  <div key={artifact.id} className="flex justify-between items-center border border-neutral-900 bg-black p-4 group hover:border-[#cf2a2a]/50">
-                    <div className="text-left">
-                      <div className={`font-serif text-sm tracking-widest ${getTierColor(artifact.tier)}`}>+{artifact.level || 0} {artifact.name}</div>
-                      <div className="text-[10px] text-stone-500 font-mono uppercase mt-1">Base Power: {artifact.stat || 0}</div>
-                    </div>
-                    <button
-                      onClick={() => handleEquip(artifact.id)}
-                      className="px-6 py-2 border border-[#cf2a2a]/50 bg-red-950/20 text-[#cf2a2a] font-mono text-xs uppercase hover:bg-[#cf2a2a] hover:text-white transition-colors"
-                    >
-                      Equip
-                    </button>
-                  </div>
-                ))
-              )}
+              {modalLoading ? (
+                <div className="text-stone-700 font-mono text-xs uppercase py-8 animate-pulse">Loading inventory...</div>
+              ) : (() => {
+                const compatible = modalInventory.filter(a => isCorrectSlotType(a, modalSlot) && !a.is_locked);
+                return compatible.length === 0 ? (
+                  <div className="text-stone-700 font-mono text-xs uppercase py-8">No compatible artifacts found in inventory.</div>
+                ) : (
+                  compatible.map(item => {
+                    const stats = item.base_stats || {};
+                    return (
+                      <div key={item.inventory_id} className="flex justify-between items-center border border-neutral-900 bg-black p-4 group hover:border-[#cf2a2a]/50">
+                        <div className="text-left">
+                          <div className={`font-serif text-sm tracking-widest ${getTierColor(item.custom_tier || item.item_tier)}`}>
+                            {item.enhancement > 0 && `+${item.enhancement} `}{item.custom_name || item.item_name}
+                          </div>
+                          <div className="text-[10px] text-stone-500 font-mono uppercase mt-1 flex gap-3">
+                            {stats.dmg > 0 && <span className="text-red-500">+{stats.dmg} DMG</span>}
+                            {stats.def > 0 && <span className="text-stone-400">+{stats.def} DEF</span>}
+                            {stats.hp > 0 && <span>+{stats.hp} HP</span>}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleEquip(item.inventory_id)}
+                          className="px-6 py-2 border border-[#cf2a2a]/50 bg-red-950/20 text-[#cf2a2a] font-mono text-xs uppercase hover:bg-[#cf2a2a] hover:text-white transition-colors"
+                        >
+                          Equip
+                        </button>
+                      </div>
+                    );
+                  })
+                );
+              })()}
             </div>
           </div>
         </div>

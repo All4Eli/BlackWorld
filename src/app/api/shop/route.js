@@ -116,6 +116,14 @@ async function handlePost(request, { userId }) {
       return NextResponse.json({ error: 'PURCHASE_FAILED', message: msg }, { status });
     }
 
+    // ── Fetch fresh inventory for UI sync ──────────────────────
+    //
+    // The frontend's ItemShopView needs the updated inventory list
+    // so the purchased item appears instantly without a page reload.
+    // We also return updatedHero with the new gold balance for
+    // shallow-merge into PlayerContext.
+    const { data: inventoryData } = await InventoryDal.getCharacterInventory(userId);
+
     return NextResponse.json({
       success: true,
       purchased: {
@@ -125,6 +133,8 @@ async function handlePost(request, { userId }) {
       },
       goldSpent: data.goldSpent,
       goldRemaining: data.goldRemaining,
+      updatedHero: { gold: data.goldRemaining },
+      inventory: inventoryData || [],
     });
   } catch (err) {
     console.error('[POST /api/shop]', err);

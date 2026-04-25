@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { usePlayerData } from '@/hooks/usePlayerData';
 import { getDailyQuests, calcCombatStats } from '@/lib/gameData';
+import { GameIcon } from '@/components/icons/GameIcons';
 import { calculateSkillBonuses } from '@/lib/skillTree';
 import { useSocial } from '@/hooks/useSocial';
 import BootScreen from '@/components/BootScreen';
@@ -12,6 +13,7 @@ import DeathScreen from '@/components/DeathScreen';
 import MailboxModal from '@/components/MailboxModal';
 import NotificationsDropdown from '@/components/NotificationsDropdown';
 import TutorialOverlay from '@/components/TutorialOverlay';
+import { PlayerProvider } from '@/context/PlayerContext';
 
 export default function GameStateDirector() {
   const { saveData, setSaveData, isLoading, isSignedIn, logout } = usePlayerData();
@@ -124,7 +126,11 @@ export default function GameStateDirector() {
   };
 
   const updateHero = (newHeroData) => {
-    setSaveData(prev => ({ ...prev, heroData: newHeroData }));
+    if (!newHeroData) return;
+    setSaveData(prev => ({
+      ...prev,
+      heroData: { ...(prev.heroData || {}), ...newHeroData },
+    }));
   };
 
   const handleEnterCombat = (combatConfig) => {
@@ -193,6 +199,7 @@ export default function GameStateDirector() {
           <div className="flex items-center gap-6">
             <div className="hidden md:flex relative group">
               <input 
+                id="search-player"
                 type="text" 
                 placeholder="Lookup Player/Coven" 
                 value={searchQuery}
@@ -200,7 +207,7 @@ export default function GameStateDirector() {
                 className="bg-black border border-neutral-800 focus:border-red-900 focus:outline-none text-stone-300 px-4 py-2 text-xs uppercase tracking-widest w-64 transition-all"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 group-focus-within:text-red-700">
-                {searching ? '...' : '⌕'}
+                {searching ? '...' : <GameIcon name="explore" size={14} />}
               </span>
               
               {/* Search Dropdown */}
@@ -224,14 +231,14 @@ export default function GameStateDirector() {
             </div>
 
             <div className="flex items-center gap-4 text-xl">
-               <button onClick={() => setShowMailbox(true)} className="text-stone-500 hover:text-stone-200 transition-colors relative">
-                 💬
+               <button id="btn-mailbox" onClick={() => setShowMailbox(true)} className="text-stone-500 hover:text-stone-200 transition-colors relative" title="Messages">
+                 <GameIcon name="mail" size={20} />
                  {unreadMessagesCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)]"></span>}
                </button>
                
                <div className="relative">
-                 <button onClick={() => setShowNotifications(true)} className="text-stone-500 hover:text-stone-200 transition-colors relative">
-                   ⚠
+                 <button id="btn-notifications" onClick={() => setShowNotifications(true)} className="text-stone-500 hover:text-stone-200 transition-colors relative" title="Notifications">
+                   <GameIcon name="alert" size={20} />
                    {unreadNotificationsCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)]"></span>}
                  </button>
                  {showNotifications && (
@@ -247,7 +254,8 @@ export default function GameStateDirector() {
             
             <div className="pl-4 border-l border-neutral-800">
                <button
-                 onClick={logout}
+                 id="btn-sign-out"
+                  onClick={logout}
                  className="text-[10px] font-mono uppercase tracking-widest text-stone-500 hover:text-red-500 border border-neutral-800 hover:border-red-900 px-3 py-1.5 transition-all"
                >
                  Sign Out
@@ -257,22 +265,51 @@ export default function GameStateDirector() {
         </nav>
       )}
 
-      <div className="w-full relative z-10 flex flex-col items-center justify-center flex-1">
-        {stage === 'BOOT' && <BootScreen onStart={handleStartBoot} />}
-        {stage === 'CREATOR' && <CharacterCreator onCreateCharacter={handleCreateCharacter} />}
-        {stage === 'EXPLORATION' && <GameShell hero={saveData.heroData} updateHero={updateHero} onFindCombat={handleEnterCombat} />}
-        {stage === 'COMBAT' && <CombatEngine heroDef={saveData.heroData} zone={saveData.combatZone} onVictory={handleVictory} onHeroDeath={handleDeath} />}
-        {stage === 'DEATH' && <DeathScreen onRestart={handleRestart} />}
-        
-        {/* Modals placed outside main flow layout but within the page */}
-        {showMailbox && <MailboxModal onClose={() => setShowMailbox(false)} messages={messages} onRefresh={fetchMessages} />}
-        {showTutorial && (
-          <TutorialOverlay onComplete={() => {
-            setShowTutorial(false);
-            localStorage.setItem('bw_tutorial_done', 'true');
-          }} />
-        )}
-      </div>
+      {/* ── PlayerProvider: Global Context Wrapper ──────────────────
+          Wraps the entire content area so ANY descendant component
+          can call usePlayer() to access hero data directly,
+          without receiving it as a prop from its parent.
+
+          Components that DON'T call usePlayer() (like BootScreen,
+          DeathScreen) are unaffected — they don't subscribe to
+          the context and won't re-render when hero changes.
+
+          hero and updateHero are passed IN to the Provider here
+          because page.js (GameStateDirector) still OWNS the state
+          via usePlayerData(). The Provider doesn't create state —
+          it broadcasts existing state to descendants.
+      */}
+      <PlayerProvider hero={saveData.heroData} updateHero={updateHero}>
+        <div className="w-full relative z-10 flex flex-col items-center justify-center flex-1">
+          {stage === 'BOOT' && <BootScreen onStart={handleStartBoot} />}
+          {stage === 'CREATOR' && <CharacterCreator onCreateCharacter={handleCreateCharacter} />}
+
+          {/* GameShell NO LONGER receives hero or updateHero as props.
+              It subscribes to PlayerContext via usePlayer() internally.
+              onFindCombat remains a prop because it triggers a STAGE
+              transition (EXPLORATION → COMBAT), which is page.js-level
+              concern, not player data. */}
+          {stage === 'EXPLORATION' && <GameShell onFindCombat={handleEnterCombat} />}
+
+          {/* CombatEngine still receives heroDef as a prop.
+              WHY? CombatEngine copies heroDef into its OWN local state
+              at combat start (useState(heroDef) on line 10 of CombatEngine).
+              This is a "snapshot" pattern — combat operates on a frozen
+              copy, not the live hero object. It will be migrated to
+              usePlayer() in a future pass. */}
+          {stage === 'COMBAT' && <CombatEngine heroDef={saveData.heroData} zone={saveData.combatZone} onVictory={handleVictory} onHeroDeath={handleDeath} />}
+          {stage === 'DEATH' && <DeathScreen onRestart={handleRestart} />}
+          
+          {/* Modals placed outside main flow layout but within the page */}
+          {showMailbox && <MailboxModal onClose={() => setShowMailbox(false)} messages={messages} onRefresh={fetchMessages} />}
+          {showTutorial && (
+            <TutorialOverlay onComplete={() => {
+              setShowTutorial(false);
+              localStorage.setItem('bw_tutorial_done', 'true');
+            }} />
+          )}
+        </div>
+      </PlayerProvider>
     </main>
   );
 }

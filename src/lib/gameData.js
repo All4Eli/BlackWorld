@@ -4,7 +4,7 @@ export const ZONES = [
     id: 'bone_crypts',
     name: 'The Bone Crypts',
     description: 'Shallow graves stretch endlessly. The dead here are restless.',
-    icon: '✟',
+    icon: 'cross',
     levelReq: 1,
     essenceCost: 8,
     enemies: [
@@ -26,7 +26,7 @@ export const ZONES = [
     id: 'ashen_wastes',
     name: 'The Ashen Wastes',
     description: 'A scorched plain where demons drag the damned into cinders.',
-    icon: '◬',
+    icon: 'flame',
     levelReq: 5,
     essenceCost: 12,
     enemies: [
@@ -49,7 +49,7 @@ export const ZONES = [
     id: 'hollow_cathedral',
     name: 'The Hollow Cathedral',
     description: 'God abandoned this place. What remains worships something far older.',
-    icon: '⛫',
+    icon: 'cathedral',
     levelReq: 10,
     essenceCost: 18,
     enemies: [
@@ -72,7 +72,7 @@ export const ZONES = [
     id: 'abyssal_rift',
     name: 'The Abyssal Rift',
     description: 'A tear in reality. Greater demons spill through, screaming.',
-    icon: '❂',
+    icon: 'portal',
     levelReq: 20,
     essenceCost: 25,
     enemies: [
@@ -95,7 +95,7 @@ export const ZONES = [
     id: 'throne_of_nothing',
     name: 'The Throne of Nothing',
     description: 'Where the world ends. The Sovereign sits and waits.',
-    icon: '☠',
+    icon: 'skull',
     levelReq: 35,
     essenceCost: 40,
     enemies: [
@@ -128,7 +128,7 @@ export function getDailyQuests() {
       target: 5,
       progress: 0,
       reward: { gold: 200, xp: 80 },
-      icon: '⚔',
+      icon: 'W',
     },
 
     {
@@ -183,19 +183,20 @@ export function calcCombatStats(hero, skillBonuses) {
 
   if (hero?.equipped) {
     Object.values(hero.equipped).forEach(item => {
-      if (!item || !item.stats) return;
-      gearHp += item.stats.hp || 0;
-      gearDmg += item.stats.dmg || 0;
-      gearDef += item.stats.def || 0;
-      gearCrit += item.stats.crit || 0;
-      gearMana += item.stats.maxMana || 0;
-      gearMagic += item.stats.magicDmg || 0;
-      gearLifesteal += item.stats.lifesteal || 0;
+      if (!item) return;
+      // Equipment stats come from the items catalog's base_stats column,
+      // mapped to `baseStats` by usePlayerData. Additional rolled_stats
+      // from the inventory instance are in `rolledStats`.
+      const bs = item.baseStats || {};
+      const rs = item.rolledStats || {};
+      gearHp += (bs.hp || 0) + (rs.hp || 0);
+      gearDmg += (bs.dmg || 0) + (rs.dmg || 0);
+      gearDef += (bs.def || 0) + (rs.def || 0);
+      gearCrit += (bs.crit || 0) + (rs.crit || 0);
+      gearMana += (bs.maxMana || 0) + (rs.maxMana || 0);
+      gearMagic += (bs.magicDmg || 0) + (rs.magicDmg || 0);
+      gearLifesteal += (bs.lifesteal || 0) + (rs.lifesteal || 0);
     });
-  } else {
-    // Legacy fallback
-    gearHp += hero?.equippedArmor?.stat || 0;
-    gearDmg += hero?.equippedWeapon?.stat || 0;
   }
 
   // Total Math (Base + Skil Tree + Gear)

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { calcPlayerStats } from '@/lib/combat';
+import { usePlayer } from '@/context/PlayerContext';
 import { validateAndConsume } from '@/lib/resources';
 
 const RANK_COLORS = {
@@ -87,7 +87,9 @@ function SeasonRankings() {
   );
 }
 
-export default function ArenaHub({ hero, updateHero, onBack }) {
+// CONTEXT MIGRATED: hero/updateHero now from usePlayer(), onBack stays as prop.
+export default function ArenaHub({ onBack }) {
+    const { hero, updateHero } = usePlayer();
     const [tab, setTab] = useState('CHALLENGE');
     const [players, setPlayers] = useState([]);
     const [pvpStats, setPvpStats] = useState(null);
@@ -167,13 +169,13 @@ export default function ArenaHub({ hero, updateHero, onBack }) {
                                     <div key={p.id} className="border border-neutral-800 bg-[#020202] p-4 flex justify-between items-center group hover:border-red-900/50 transition-colors">
                                         <div>
                                             <div className="font-bold text-stone-300 uppercase tracking-widest font-mono text-sm">{p.username}</div>
-                                            <div className="text-xs text-stone-600 font-mono mt-1">Level {p.level} • {p.pvp_stats?.[0]?.rank_tier || 'Unranked'} ({p.pvp_stats?.[0]?.elo_rating || 1000} ELO)</div>
+                                            <div className="text-xs text-stone-600 font-mono mt-1">Level {p.level} • {p.pvp_stats?.rank_tier || 'Unranked'} ({p.pvp_stats?.elo_rating || 1000} ELO)</div>
                                             <div className="text-[9px] text-red-900 uppercase tracking-widest mt-2">{p.pvp_flag ? 'PVP Flagged' : 'Protected'}</div>
                                         </div>
                                         <button 
                                             onClick={async () => {
-                                                const check = validateAndConsume(hero, hero?.player_resources, 5, 'resolve');
-                                                if (!check.success) return alert(`Not enough Resolve. Short ${check.deficit}.`);
+                                                const check = validateAndConsume(hero, hero?.player_resources, 10, 'essence');
+                                                if (!check.success) return alert(`Not enough Essence. Short ${check.deficit}.`);
                                                 
                                                 try {
                                                     const res = await fetch('/api/pvp/challenge', {
@@ -188,7 +190,7 @@ export default function ArenaHub({ hero, updateHero, onBack }) {
                                                     
                                                     const logStr = data.combatLogs.join('\n');
                                                     alert(data.win 
-                                                        ? `VICTORY!\n\n${logStr}\n\nYou won ${data.goldGained}g and ${data.expGained} XP!`
+                                                        ? `VICTORY!\n\n${logStr}\n\nYou won ${data.goldGained}g and ${data.xpGained} XP!`
                                                         : `DEFEAT!\n\n${logStr}\n\nYou were struck down.`);
                                                 } catch(err) {
                                                     alert(`[ERROR] ${err.message}`);
@@ -215,12 +217,12 @@ export default function ArenaHub({ hero, updateHero, onBack }) {
                                 <div className="text-xs text-stone-600 mt-1">{pvpStats?.rank_tier || 'Unranked'}</div>
                             </div>
                             <div className="border border-neutral-800 p-6 bg-[#020202]">
-                                <div className="text-stone-500 text-[10px] uppercase tracking-widest mb-2">Infamy Level</div>
-                                <div className="text-2xl font-bold text-red-800">{pvpStats?.infamy || 0}</div>
+                                <div className="text-stone-500 text-[10px] uppercase tracking-widest mb-2">Win Streak</div>
+                                <div className="text-2xl font-bold text-yellow-500">{pvpStats?.win_streak || 0}</div>
                             </div>
                             <div className="border border-neutral-800 p-6 bg-[#020202]">
-                                <div className="text-stone-500 text-[10px] uppercase tracking-widest mb-2">Gold Swept</div>
-                                <div className="text-2xl font-bold text-yellow-500">{pvpStats?.total_gold_won || 0}g</div>
+                                <div className="text-stone-500 text-[10px] uppercase tracking-widest mb-2">Best Streak</div>
+                                <div className="text-2xl font-bold text-red-800">{pvpStats?.best_streak || 0}</div>
                             </div>
                         </div>
                     )}

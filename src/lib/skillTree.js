@@ -4,7 +4,7 @@
 export const SKILL_TREE = {
   combat: {
     name: 'Combat',
-    icon: '⚔',
+    icon: 'W',
     description: 'Raw physical might and weapon mastery.',
     skills: [
       { id: 'iron_flesh', name: 'Iron Flesh', maxRank: 5, description: '+10 Max HP per rank', effect: { maxHp: 10 } },
@@ -16,7 +16,7 @@ export const SKILL_TREE = {
   },
   blood_magic: {
     name: 'Blood Magic',
-    icon: '♦',
+    icon: 'M',
     description: 'Dark sorcery drawn from life force.',
     skills: [
       { id: 'mana_well', name: 'Mana Well', maxRank: 5, description: '+10 Max Mana per rank', effect: { maxMana: 10 } },
@@ -28,7 +28,7 @@ export const SKILL_TREE = {
   },
   survival: {
     name: 'Survival',
-    icon: '⛨',
+    icon: 'D',
     description: 'Endurance, recovery, and resource efficiency.',
     skills: [
       { id: 'thick_skin', name: 'Thick Skin', maxRank: 5, description: '-2 Damage taken per rank', effect: { damageReduction: 2 } },

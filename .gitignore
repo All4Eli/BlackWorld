@@ -1,5 +1,50 @@
+# ═══════════════════════════════════════════════════════════════════
+# BLACKWORLD — Git Ignore Rules
+# ═══════════════════════════════════════════════════════════════════
+
+# ── Dependencies ──
 node_modules/
+
+# ── Next.js Build Output ──
 .next/
+out/
+
+# ── Environment & Secrets ──
+# These files contain database passwords, JWT secrets, and API keys.
+# NEVER commit them. Each developer/environment creates their own.
+.env
 .env.local
+.env.production
+.env.*.local
+
+# ── Sensitive Files ──
+# Plaintext passwords, database dumps, and credentials must stay local.
+pass.txt
+*.pem
+*.key
+
+# ── SQL Dumps ──
+# Production data dumps contain real player data.
+# They must never enter version control.
+production_data_dump.sql
+*.dump
+*.pgdump
+
+# ── Deployment ──
 .vercel/
+
+# ── IDE / Editor ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── Legacy / One-off Scripts ──
 setup-db.js
+
+# ── Tooling Caches ──
+.windsurf/
+.agents/

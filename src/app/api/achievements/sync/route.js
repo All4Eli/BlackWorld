@@ -25,16 +25,16 @@ export async function POST() {
         const level = composite.stats.level || 1;
         const bankBalance = composite.stats.bank_balance || 0;
         const gold = composite.stats.gold || 0;
-        const heroData = composite.stats.hero_data || {};
-        const kills = heroData.stats?.kills || 0;
-        const deaths = heroData.stats?.deaths || 0;
-        const pvpWins = heroData.stats?.pvp_wins || 0;
-        const pvpLosses = heroData.stats?.pvp_losses || 0;
-        const bossKills = heroData.stats?.boss_kills || 0;
-        const questsCompleted = heroData.stats?.quests_completed || 0;
-        const itemsCrafted = heroData.stats?.items_crafted || 0;
-        const dungeonClears = heroData.stats?.dungeon_clears || 0;
-        const zonesExplored = heroData.stats?.zones_explored || 0;
+        // All stats now come from normalized hero_stats COLUMNS (no hero_data JSONB)
+        const kills = composite.stats.kills || 0;
+        const deaths = composite.stats.deaths || 0;
+        const pvpWins = composite.stats.pvp_wins || 0;
+        const pvpLosses = composite.stats.pvp_losses || 0;
+        const bossKills = composite.stats.boss_kills || 0;
+        const questsCompleted = composite.stats.quests_completed || 0;
+        const itemsCrafted = composite.stats.items_crafted || 0;
+        const dungeonClears = composite.stats.dungeon_clears || 0;
+        const zonesExplored = composite.stats.zones_explored || 0;
         const bloodStones = composite.stats.blood_stones || 0;
         const covenId = composite.coven?.id;
 
@@ -116,19 +116,9 @@ export async function POST() {
 
             const finalPoints = currRecord[0]?.achievement_points || 0;
 
-            // Manually inject fresh achievement points into hero_data payload to immediately inform the UI
+            // Return ONLY achievement_points for shallow merge (no hero_data spread)
             const newHeroPayload = {
-               ...(composite.stats.hero_data || {}),
-               coven_id: composite.coven?.id,
-               coven_name: composite.coven?.name,
-               coven_tag: composite.coven?.tag,
-               coven_role: composite.coven?.role,
-               bankedGold: bankBalance,
-               gold: composite.stats.gold,
-               hp: composite.stats.hp,
-               max_hp: composite.stats.max_hp,
-               level: level,
-               achievement_points: finalPoints
+               achievementPoints: finalPoints,
             };
 
             return NextResponse.json({ success: true, newlyUnlocked: unlocks, updatedHero: newHeroPayload });

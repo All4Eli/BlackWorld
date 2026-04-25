@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import { usePlayer } from '@/context/PlayerContext';
 
 const TIER_COLORS = {
   normal: 'text-stone-400',
@@ -22,7 +23,8 @@ const TIER_BG = {
   inferno: 'bg-red-950/20',
 };
 
-export default function CovenRaidView({ hero, updateHero, onBack }) {
+export default function CovenRaidView({ onBack }) {
+  const { hero, updateHero } = usePlayer();
   const [raid, setRaid] = useState(null);
   const [contributions, setContributions] = useState([]);
   const [myContrib, setMyContrib] = useState({ damage_dealt: 0, hits: 0 });
@@ -97,11 +99,11 @@ export default function CovenRaidView({ hero, updateHero, onBack }) {
 
       // Combat log
       const logs = [];
-      logs.push(`⚔ You ${data.isCrit ? 'CRITICALLY ' : ''}hit ${raid.bossName} for ${data.damageDealt} damage!`);
+      logs.push(`>> You ${data.isCrit ? 'CRITICALLY ' : ''}hit ${raid.bossName} for ${data.damageDealt} damage!`);
       if (data.dodged) logs.push(`↯ You dodged the counterattack!`);
       else logs.push(`☠ ${raid.bossName} strikes back for ${data.bossDmgToPlayer} damage.`);
       if (data.defeated) {
-        logs.push(`♛ THE BOSS HAS BEEN SLAIN!`);
+        logs.push(`>> THE BOSS HAS BEEN SLAIN!`);
         if (data.rewardMessage) logs.push(`★ ${data.rewardMessage}`);
       }
       setCombatLog(prev => [...logs, '─'.repeat(40), ...prev].slice(0, 50));
@@ -137,7 +139,7 @@ export default function CovenRaidView({ hero, updateHero, onBack }) {
         <div className="border border-neutral-900 bg-[#050505] p-4 sm:p-8 text-center">
           {raid?.status === 'defeated' && (
             <div className="mb-8 p-6 border border-green-900/30 bg-green-950/10">
-              <div className="text-green-500 font-serif text-3xl mb-2">♛ VICTORY</div>
+              <div className="text-green-500 font-serif text-3xl mb-2">{'>'} VICTORY</div>
               <div className="text-stone-400 font-mono text-sm">{raid.bossName} has been vanquished!</div>
             </div>
           )}
@@ -221,7 +223,7 @@ export default function CovenRaidView({ hero, updateHero, onBack }) {
                   ? 'bg-neutral-900 border border-neutral-800 text-stone-600 cursor-not-allowed'
                   : 'bg-red-900/40 border-2 border-red-800 text-red-300 hover:bg-red-700/50 hover:text-white shadow-[0_0_30px_rgba(153,27,27,0.3)]'
               }`}>
-              {attacking ? 'Attacking...' : cooldown > 0 ? `Cooldown: ${cooldown}s` : '⚔ Attack Boss (15 Essence)'}
+              {attacking ? 'Attacking...' : cooldown > 0 ? `Cooldown: ${cooldown}s` : '>> Attack Boss (15 Essence)'}
             </button>
 
             {/* Your Contribution */}
@@ -239,9 +241,9 @@ export default function CovenRaidView({ hero, updateHero, onBack }) {
                 <div key={i} className={`text-xs font-mono py-0.5 ${
                   log.includes('CRITICALLY') ? 'text-yellow-500' :
                   log.includes('SLAIN') ? 'text-green-500 font-bold' :
-                  log.includes('★') ? 'text-yellow-400' :
+                  log.includes('>>') ? 'text-yellow-400' :
                   log.includes('dodged') ? 'text-cyan-400' :
-                  log.includes('☠') ? 'text-red-400' :
+                  log.includes('!!') ? 'text-red-400' :
                   'text-stone-500'
                 }`}>{log}</div>
               ))}

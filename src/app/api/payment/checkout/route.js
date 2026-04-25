@@ -11,7 +11,7 @@ function getStripe() {
 
 export async function POST(req) {
   try {
-    const userId = await auth(req);
+    const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const stripe = getStripe();
@@ -19,7 +19,7 @@ export async function POST(req) {
 
     // ──── SUBSCRIPTION (Dark Pact) ────
     if (type === 'subscription') {
-      const { sqlOne } = await import('@/lib/dal');
+      const { sqlOne } = await import('@/lib/db/pool');
       const { data: player } = await sqlOne(
         'SELECT stripe_customer_id, subscription_status FROM players WHERE clerk_user_id = $1',
         [userId]

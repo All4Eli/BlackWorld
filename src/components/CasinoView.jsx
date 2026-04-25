@@ -1,7 +1,10 @@
 'use client';
 import { useState } from 'react';
+import { usePlayer } from '@/context/PlayerContext';
 
-export default function CasinoView({ hero, updateHero, onBack }) {
+// CONTEXT MIGRATED: hero/updateHero now from usePlayer(), onBack stays as prop.
+export default function CasinoView({ onBack }) {
+  const { hero, updateHero } = usePlayer();
   const [wager, setWager] = useState('');
   const [choice, setChoice] = useState('HEADS');
   const [result, setResult] = useState(null); // { won: boolean, roll: 'HEADS'|'TAILS', amount: number }

@@ -1,8 +1,12 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { usePlayer } from '@/context/PlayerContext';
 import CovenRaidView from './CovenRaidView';
+import CovenWarfareWall from './CovenWarfareWall';
 
-export default function CovenView({ hero, updateHero, onBack }) {
+// CONTEXT MIGRATED: hero/updateHero now from usePlayer(), onBack stays as prop.
+export default function CovenView({ onBack }) {
+  const { hero, updateHero } = usePlayer();
   const [covens, setCovens] = useState([]);
   const [covenDetails, setCovenDetails] = useState(null); // { coven, roster }
   const [loading, setLoading] = useState(true);
@@ -14,6 +18,7 @@ export default function CovenView({ hero, updateHero, onBack }) {
   const [newDesc, setNewDesc] = useState('');
   const [foundingError, setFoundingError] = useState('');
   const [raidMode, setRaidMode] = useState(false);
+  const [siegeMode, setSiegeMode] = useState(false);
 
   const isPledged = !!hero?.coven_id;
   const currentGold = hero?.gold || 0;
@@ -110,7 +115,11 @@ export default function CovenView({ hero, updateHero, onBack }) {
       const { coven, roster } = covenDetails;
 
       if (raidMode) {
-        return <CovenRaidView hero={hero} updateHero={updateHero} onBack={() => setRaidMode(false)} />;
+        return <CovenRaidView onBack={() => setRaidMode(false)} />;
+      }
+
+      if (siegeMode) {
+        return <CovenWarfareWall onBack={() => setSiegeMode(false)} />;
       }
 
       return (
@@ -132,7 +141,10 @@ export default function CovenView({ hero, updateHero, onBack }) {
                       Members: <span className="text-stone-200 font-bold">{coven.member_count}</span>
                    </div>
                    <button onClick={() => setRaidMode(true)} className="px-4 py-2 border border-red-900/50 bg-red-950/20 text-red-500 hover:bg-red-900 hover:text-white uppercase tracking-widest text-[10px] font-mono transition-colors font-bold">
-                       ⚔ Raid Boss
+                       {'>'} Raid Boss
+                    </button>
+                    <button id="btn-siege-warfare" onClick={() => setSiegeMode(true)} className="px-4 py-2 border border-orange-900/50 bg-orange-950/20 text-orange-500 hover:bg-orange-900 hover:text-white uppercase tracking-widest text-[10px] font-mono transition-colors font-bold">
+                        {'>'} Territory Siege
                     </button>
                     <button onClick={handleLeaveCoven} className="text-stone-600 hover:text-red-500 uppercase tracking-widest text-[10px] font-mono transition-colors">
                        Abandon Coven
@@ -155,7 +167,7 @@ export default function CovenView({ hero, updateHero, onBack }) {
                              {member.clerk_user_id === hero.clerk_user_id && <span className="ml-2 text-[10px] text-red-500 tracking-widest font-normal uppercase">(You)</span>}
                           </div>
                           <div className="col-span-3 text-center text-red-700">{member.level}</div>
-                          <div className={`col-span-3 text-right uppercase tracking-widest text-[10px] ${member.coven_role === 'Leader' ? 'text-yellow-600 font-bold' : 'text-stone-500'}`}>
+                          <div className={`col-span-3 text-right uppercase tracking-widest text-[10px] ${member.coven_role === 'leader' ? 'text-yellow-600 font-bold' : 'text-stone-500'}`}>
                              {member.coven_role}
                           </div>
                        </div>

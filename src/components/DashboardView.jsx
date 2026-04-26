@@ -215,6 +215,14 @@ export default function DashboardView() {
               <div className="h-full bg-red-700" style={{ width: `${(currentHp / maxHp) * 100}%` }} />
             </div>
           </div>
+          <div>
+            <div className="flex justify-between text-[10px] font-mono uppercase text-stone-500 mb-1">
+              <span>Arcane Energy</span><span className="text-cyan-500">{hero?.mana ?? 0} / {c.maxMana} MP</span>
+            </div>
+            <div className="h-1 bg-neutral-900 w-full">
+              <div className="h-full bg-cyan-700" style={{ width: `${c.maxMana > 0 ? ((hero?.mana ?? 0) / c.maxMana) * 100 : 0}%` }} />
+            </div>
+          </div>
           <div className="pt-4 border-t border-neutral-900 flex justify-between font-mono">
             <div className="text-center w-1/2 border-r border-neutral-900">
               <div className="text-[10px] text-stone-600 uppercase mb-1">Gold</div>

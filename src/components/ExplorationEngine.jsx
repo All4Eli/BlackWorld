@@ -366,16 +366,16 @@ export default function ExplorationEngine({ onFindCombat }) {
                  {/* Arcana Hotbar */}
                  <div className="border border-purple-900/30 bg-[#050505] p-2 sm:p-4 flex items-center gap-2 sm:gap-4">
                      <div className="text-xs font-mono uppercase tracking-widest text-purple-600 pr-4 border-r border-purple-900/30">
-                        Arcana <br/><span className="text-cyan-600">{hero.energy || 100} MP</span>
+                        Arcana <br/><span className="text-cyan-600">{hero.mana || 0} / {hero.maxMana || 0} MP</span>
                      </div>
                      <div className="flex gap-3">
-                         <button onClick={() => handleCombatAction('SKILL', { skillId: 'blood_surge' })} disabled={combatLoading || (hero.energy||100) < 10} className="w-12 h-12 border-2 border-red-900 bg-red-950/20 hover:bg-red-900/50 text-red-500 font-bold disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xl shadow-[0_0_10px_rgba(255,0,0,0.2)]">
+                         <button onClick={() => handleCombatAction('SKILL', { skillId: 'blood_surge' })} disabled={combatLoading || (hero.mana || 0) < 10} className="w-12 h-12 border-2 border-red-900 bg-red-950/20 hover:bg-red-900/50 text-red-500 font-bold disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xl shadow-[0_0_10px_rgba(255,0,0,0.2)]">
                             <IconBlood size={20} />
                          </button>
-                         <button onClick={() => handleCombatAction('SKILL', { skillId: 'shadow_step' })} disabled={combatLoading || (hero.energy||100) < 15} className="w-12 h-12 border-2 border-stone-800 bg-stone-950 text-stone-500 hover:bg-stone-800 hover:text-stone-300 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xl">
+                         <button onClick={() => handleCombatAction('SKILL', { skillId: 'shadow_step' })} disabled={combatLoading || (hero.mana || 0) < 15} className="w-12 h-12 border-2 border-stone-800 bg-stone-950 text-stone-500 hover:bg-stone-800 hover:text-stone-300 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xl">
                             <IconSpider size={20} />
                          </button>
-                         <button onClick={() => handleCombatAction('SKILL', { skillId: 'holy_cross' })} disabled={combatLoading || (hero.energy||100) < 20} className="w-12 h-12 border-2 border-yellow-700 bg-yellow-950/30 hover:bg-yellow-700/50 text-white font-bold disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xl shadow-[0_0_15px_rgba(255,200,0,0.3)]">
+                         <button onClick={() => handleCombatAction('SKILL', { skillId: 'holy_cross' })} disabled={combatLoading || (hero.mana || 0) < 20} className="w-12 h-12 border-2 border-yellow-700 bg-yellow-950/30 hover:bg-yellow-700/50 text-white font-bold disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xl shadow-[0_0_15px_rgba(255,200,0,0.3)]">
                             <IconCross size={20} />
                          </button>
                      </div>

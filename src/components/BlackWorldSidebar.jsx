@@ -1,36 +1,76 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { calcCombatStats } from '@/lib/gameData';
 import { calculateSkillBonuses } from '@/lib/skillTree';
+import { calculateCurrentResource, calculateMaxResource } from '@/lib/resources';
 import { IconBloodStone } from './icons/GameIcons';
 
 export default function BlackWorldSidebar({ hero, onNavigate }) {
   if (!hero) return null;
 
-  const stats = calcCombatStats(hero, calculateSkillBonuses(hero.skillPoints || {}));
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick(n => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const sb = calculateSkillBonuses(hero.skillPoints || {});
+  const stats = calcCombatStats(hero, sb);
   
   const hp = hero.hp || stats.maxHp;
   const maxHp = stats.maxHp;
-  const hpPercent = Math.min(100, Math.max(0, (hp / maxHp) * 100));
+  const mana = hero.mana ?? 0;
+  const maxMana = stats.maxMana;
 
-  const maxEnergy = hero.max_essence || 100;
-  const energy = hero.essence ?? maxEnergy;
-  const energyPercent = Math.min(100, Math.max(0, (energy / maxEnergy) * 100));
-  
+  // Essence regen (uses the existing resource system)
+  const res = { ...hero, ...(hero.player_resources || {}) };
+  const essenceMax = calculateMaxResource('essence', hero);
+  const eStat = calculateCurrentResource(res, 'essence', essenceMax);
+
+  const formatTime = (secs) => {
+    if (secs <= 0) return null;
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="w-full flex-shrink-0 select-none hidden lg:flex flex-col z-20 mb-8 border border-neutral-900 bg-[#050505]">
        <div className="bg-[#0a0a0a] border-b border-neutral-900 p-3 font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500">
           <span className="text-red-700 font-bold mr-2">{hero.name}</span> <span className="text-stone-600">Lvl {hero.level}</span>
        </div>
-       <div className="p-4 flex flex-col gap-4 font-mono text-[10px] uppercase tracking-[0.2em]">
+       <div className="p-4 flex flex-col gap-3 font-mono text-[10px] uppercase tracking-[0.2em]">
           
-          <div className="flex justify-between items-center">
-             <span className="text-stone-600">Health</span>
-             <span className="text-red-600 font-bold">{hp} / {maxHp}</span>
+          {/* Health */}
+          <div>
+             <div className="flex justify-between items-center">
+                <span className="text-stone-600">Health</span>
+                <span className="text-red-600 font-bold">{hp} / {maxHp}</span>
+             </div>
+             {hp < maxHp && (
+               <div className="text-[8px] text-stone-700 text-right mt-[2px]">Healer / Flask</div>
+             )}
           </div>
 
-          <div className="flex justify-between items-center">
-             <span className="text-stone-600">Essence</span>
-             <span className="text-orange-600 font-bold">{energy} / {maxEnergy}</span>
+          {/* Mana */}
+          <div>
+             <div className="flex justify-between items-center">
+                <span className="text-stone-600">Mana</span>
+                <span className="text-cyan-600 font-bold">{mana} / {maxMana}</span>
+             </div>
+             {mana < maxMana && (
+               <div className="text-[8px] text-stone-700 text-right mt-[2px]">Rest / Meditate</div>
+             )}
+          </div>
+
+          {/* Essence */}
+          <div>
+             <div className="flex justify-between items-center">
+                <span className="text-stone-600">Essence</span>
+                <span className="text-orange-600 font-bold">{eStat.current} / {eStat.max}</span>
+             </div>
+             {eStat.next_tick > 0 && (
+               <div className="text-[8px] text-stone-700 text-right mt-[2px]">+1 in {formatTime(eStat.next_tick)}</div>
+             )}
           </div>
 
           <div className="flex justify-between items-center">
@@ -69,3 +109,4 @@ export default function BlackWorldSidebar({ hero, onNavigate }) {
     </div>
   );
 }
+

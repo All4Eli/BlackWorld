@@ -410,14 +410,30 @@ export async function equipItem(playerId, inventoryId, slot) {
     }
 
     // 2c. Check for active auction listings — prevents equipping items on sale
-    const { rows: auctionRows } = await client.query(
-      `SELECT id FROM auctions
-       WHERE inventory_id = $1 AND seller_id = $2 AND status = 'active'
-       LIMIT 1`,
-      [inventoryId, playerId]
-    );
-    if (auctionRows.length > 0) {
-      throw new Error(`${item.item_name} is currently listed on the Auction House. Cancel the listing first.`);
+    //      Uses a SAVEPOINT because querying a non-existent table aborts
+    //      the entire PostgreSQL transaction. The SAVEPOINT lets us roll
+    //      back just this one query while keeping the transaction alive.
+    //      When the auctions table is eventually created, this works normally.
+    try {
+      await client.query('SAVEPOINT auction_check');
+      const { rows: auctionRows } = await client.query(
+        `SELECT id FROM auctions
+         WHERE inventory_id = $1 AND seller_id = $2 AND status = 'active'
+         LIMIT 1`,
+        [inventoryId, playerId]
+      );
+      await client.query('RELEASE SAVEPOINT auction_check');
+      if (auctionRows.length > 0) {
+        throw new Error(`${item.item_name} is currently listed on the Auction House. Cancel the listing first.`);
+      }
+    } catch (auctionErr) {
+      // Roll back just the savepoint, keeping the parent transaction alive
+      await client.query('ROLLBACK TO SAVEPOINT auction_check');
+      // If the auctions table doesn't exist, skip the check (fail open).
+      // Any other error (actual listing found) should still propagate.
+      if (!auctionErr.message.includes('does not exist')) {
+        throw auctionErr;
+      }
     }
 
     // 3. Verify the item's catalog slot is compatible with the target slot

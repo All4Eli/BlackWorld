@@ -67,6 +67,14 @@ async function handlePost(request, { userId }) {
       if (msg.includes('not found')) status = 404;
       if (msg.includes('Level') || msg.includes('cannot be equipped') || msg.includes('cannot go in')) status = 403;
 
+      console.error('[EQUIP FAILED]', {
+        userId,
+        inventoryId,
+        slot,
+        error: msg,
+        status,
+      });
+
       return NextResponse.json({ error: 'EQUIP_FAILED', message: msg }, { status });
     }
 

@@ -30,7 +30,9 @@ export default function AchievementPanel() {
                 // Fetch dictionary and player's specific unlocks
                 const [{ data: dict }, { data: pAchvs }] = await Promise.all([
                     supabase.from('achievements').select('*'),
-                    supabase.from('player_achievements').select('achievement_id, unlocked_at')
+                    supabase.from('player_achievements')
+                      .select('achievement_id, unlocked_at')
+                      .eq('player_id', hero.clerk_user_id)
                 ]);
 
                 if (dict && pAchvs) {

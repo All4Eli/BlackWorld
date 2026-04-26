@@ -2,30 +2,31 @@
 // POST /api/healer/heal — Restore HP to max for a gold cost
 // ═══════════════════════════════════════════════════════════════════
 //
-// MIDDLEWARE LIFECYCLE:
-//   1. withMiddleware intercepts the request BEFORE handlePost runs.
-//   2. It calls auth() to extract userId from the __bw_sess cookie.
-//   3. It checks the 'heal' rate limit (10 req/min) to prevent
-//      macro abuse (e.g., a bot spamming heal to stay alive).
-//   4. Only THEN does it call handlePost(request, { userId }).
+// EFFECTIVE MAX HP:
+//   The max_hp COLUMN stores only the base pool:
+//     100 + (vit × 5) + (level × 5)
 //
-// JSONB CLEANUP:
-//   OLD: Response spread hero_data blob into the response payload.
-//   NEW: Response returns only the specific fields the client needs.
-//        hero_data is never read or written.
+//   But the player's REAL max HP includes additional sources:
+//     + Skill tree:  iron_flesh (10 HP per rank)
+//     + Tomes:       tome_iron_will (+30 HP)
+//     + Equipment:   base_stats.hp + rolled_stats.hp from all equipped items
+//
+//   The healer must heal to the EFFECTIVE max, not the base column.
+//   We compute this server-side by querying skill_points, tomes,
+//   and equipment in the same read, then passing the effective max
+//   to the UPDATE query as a parameter.
 //
 // ECONOMIC SAFETY:
 //   The UPDATE query uses a WHERE clause with TWO conditions:
-//     gold >= $1 AND hp < max_hp
+//     gold >= $1 AND hp < $2 (effective max)
 //   This means if gold was already spent by a concurrent request,
 //   the WHERE fails, RETURNING returns 0 rows, and we detect it.
-//   This is called "optimistic concurrency control" — the database
-//   itself enforces the business rule, not a JS if-statement.
 // ═══════════════════════════════════════════════════════════════════
 
 import { NextResponse } from 'next/server';
 import { withMiddleware } from '@/lib/middleware';
-import { sqlOne } from '@/lib/db/pool';
+import { sqlOne, sql } from '@/lib/db/pool';
+import { calculateSkillBonuses, calculateTomeBonuses } from '@/lib/skillTree';
 
 /** Fixed heal cost in gold (could move to server_config table later) */
 const HEAL_COST = 20;
@@ -36,13 +37,9 @@ const HEAL_COST = 20;
  */
 async function handlePost(request, { userId }) {
 
-  // ── 1. Read ONLY the columns we need (NO hero_data) ───────────
-  //
-  // We need hp to check if dead or already full,
-  // max_hp to know the heal target,
-  // gold to check if the player can afford it.
+  // ── 1. Read base stats + skill_points + tomes ──────────────────
   const { data: hero, error: heroErr } = await sqlOne(
-    `SELECT hp, max_hp, gold FROM hero_stats WHERE player_id = $1`,
+    `SELECT hp, max_hp, gold, skill_points, tomes FROM hero_stats WHERE player_id = $1`,
     [userId]
   );
 
@@ -50,11 +47,41 @@ async function handlePost(request, { userId }) {
     return NextResponse.json({ error: 'Player not found.' }, { status: 404 });
   }
 
-  // ── 2. Server-side validation ─────────────────────────────────
+  // ── 2. Compute equipment HP bonuses ────────────────────────────
   //
-  // These checks run BEFORE the UPDATE query. They're fast-fail
-  // guards that give descriptive error messages to the client.
-  // The UPDATE below has its own WHERE guards as a second layer.
+  // Sum base_stats.hp and rolled_stats.hp from all equipped items.
+  // The equipment table links player → inventory → items catalog.
+  const { data: gearRows } = await sql(
+    `SELECT i.base_stats, inv.rolled_stats
+     FROM equipment e
+     JOIN inventory inv ON e.inventory_id = inv.id
+     JOIN items i ON inv.item_id = i.id
+     WHERE e.player_id = $1`,
+    [userId]
+  );
+
+  let gearHpBonus = 0;
+  if (gearRows) {
+    for (const row of gearRows) {
+      const baseHp = row.base_stats?.hp || row.base_stats?.vit || 0;
+      const rolledHp = row.rolled_stats?.hp || row.rolled_stats?.vit || 0;
+      gearHpBonus += baseHp + rolledHp;
+    }
+  }
+
+  // ── 3. Compute skill tree HP bonuses ───────────────────────────
+  const skillBonuses = calculateSkillBonuses(hero.skill_points || {});
+  const tomeBonuses = calculateTomeBonuses(hero.tomes || []);
+
+  // ── 4. Calculate EFFECTIVE max HP ──────────────────────────────
+  //
+  // base max_hp (column) + skills + tomes + gear
+  const effectiveMaxHp = hero.max_hp
+    + (skillBonuses.maxHp || 0)
+    + (tomeBonuses.flatHp || 0)
+    + gearHpBonus;
+
+  // ── 5. Server-side validation ─────────────────────────────────
   if (hero.hp <= 0) {
     return NextResponse.json(
       { error: 'You are dead. Use Revive instead.' },
@@ -62,7 +89,7 @@ async function handlePost(request, { userId }) {
     );
   }
 
-  if (hero.hp >= hero.max_hp) {
+  if (hero.hp >= effectiveMaxHp) {
     return NextResponse.json(
       { error: 'Already at full health.' },
       { status: 400 }
@@ -76,38 +103,25 @@ async function handlePost(request, { userId }) {
     );
   }
 
-  // ── 3. Atomic UPDATE with server-side guards ──────────────────
+  // ── 6. Atomic UPDATE — heal to effective max ──────────────────
   //
-  // SET hp = max_hp        → Heal to full in one expression.
-  //     gold = gold - $1   → Deduct cost using SQL arithmetic.
-  //                          This is atomic: two concurrent requests
-  //                          both decrement from the row's CURRENT
-  //                          value, never a stale JS variable.
-  //
-  // WHERE player_id = $2
-  //   AND gold >= $1       → Second layer: if a concurrent request
-  //                          already spent the gold, this WHERE
-  //                          fails and RETURNING returns nothing.
-  //   AND hp < max_hp      → Prevents double-heal edge case.
-  //
-  // RETURNING hp, max_hp, gold → Returns the NEW values after the
-  //   UPDATE, so we can send them to the client without a second query.
+  // SET hp = $3 (effectiveMaxHp) instead of SET hp = max_hp.
+  // This ensures the healer restores HP to the FULL amount
+  // including skill tree, tome, and equipment bonuses.
   const { data: updated, error: updateErr } = await sqlOne(
     `UPDATE hero_stats
-     SET hp = max_hp,
+     SET hp = $3,
          gold = gold - $1,
          updated_at = NOW()
      WHERE player_id = $2
        AND gold >= $1
-       AND hp < max_hp
+       AND hp < $3
      RETURNING hp, max_hp, gold`,
-    [HEAL_COST, userId]
+    [HEAL_COST, userId, effectiveMaxHp]
   );
 
   if (updateErr) throw updateErr;
 
-  // If RETURNING gave us nothing, the WHERE conditions failed.
-  // This means a concurrent request already changed the state.
   if (!updated) {
     return NextResponse.json(
       { error: 'Heal failed — state changed. Refresh and try again.' },
@@ -115,16 +129,13 @@ async function handlePost(request, { userId }) {
     );
   }
 
-  // ── 4. Return ONLY the fields the client needs ────────────────
-  //
-  // OLD: { ...heroRow.hero_data, ...updated } — leaked the entire blob
-  // NEW: Explicit field list. The client knows exactly what to expect.
+  // ── 7. Return the EFFECTIVE max, not the base column ──────────
   return NextResponse.json({
     success: true,
     cost: HEAL_COST,
     updatedHero: {
       hp: updated.hp,
-      maxHp: updated.max_hp,   // camelCase to match PlayerContext field
+      maxHp: effectiveMaxHp,   // Full max including all bonuses
       gold: updated.gold,
     },
   });

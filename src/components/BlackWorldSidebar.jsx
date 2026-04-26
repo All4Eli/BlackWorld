@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { calcCombatStats } from '@/lib/gameData';
 import { calculateSkillBonuses } from '@/lib/skillTree';
-import { calculateCurrentResource, calculateMaxResource } from '@/lib/resources';
 import { IconBloodStone } from './icons/GameIcons';
 
 export default function BlackWorldSidebar({ hero, onNavigate }) {
@@ -21,10 +20,9 @@ export default function BlackWorldSidebar({ hero, onNavigate }) {
   const mana = hero.mana ?? 0;
   const maxMana = stats.maxMana;
 
-  // Essence regen (uses the existing resource system)
-  const res = { ...hero, ...(hero.player_resources || {}) };
-  const essenceMax = calculateMaxResource('essence', hero);
-  const eStat = calculateCurrentResource(res, 'essence', essenceMax);
+  // Essence — use DB columns directly (max_essence is the source of truth)
+  const essence = hero.essence ?? (hero.max_essence || 100);
+  const essenceMax = hero.max_essence || 100;
 
   const formatTime = (secs) => {
     if (secs <= 0) return null;
@@ -66,10 +64,10 @@ export default function BlackWorldSidebar({ hero, onNavigate }) {
           <div>
              <div className="flex justify-between items-center">
                 <span className="text-stone-600">Essence</span>
-                <span className="text-orange-600 font-bold">{eStat.current} / {eStat.max}</span>
+                <span className="text-orange-600 font-bold">{essence} / {essenceMax}</span>
              </div>
-             {eStat.next_tick > 0 && (
-               <div className="text-[8px] text-stone-700 text-right mt-[2px]">+1 in {formatTime(eStat.next_tick)}</div>
+             {essence < essenceMax && (
+               <div className="text-[8px] text-stone-700 text-right mt-[2px]">Regenerating</div>
              )}
           </div>
 

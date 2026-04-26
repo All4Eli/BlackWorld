@@ -45,10 +45,14 @@ export default function ArsenalView() {
     fetchInventory();
   }, []);
 
+  const [equippingId, setEquippingId] = useState(null);
+
   // ── equipArtifact ─────────────────────────────────────────────
   // Calls the canonical /api/equipment/equip endpoint.
   // Sends { inventoryId, slot } — the normalized contract.
   const equipArtifact = async (item) => {
+    if (equippingId) return; // Prevent double-clicks
+    
     const typeToSlot = {
       WEAPON: 'mainHand', MAIN_HAND: 'mainHand', OFF_HAND: 'offHand',
       ARMOR: 'body', BODY: 'body', HEAD: 'head',
@@ -57,6 +61,8 @@ export default function ArsenalView() {
     const slotSource = item.item_slot || item.item_type;
     const slot = typeToSlot[String(slotSource).toUpperCase()];
     if (!slot) return alert('This item cannot be equipped.');
+
+    setEquippingId(item.inventory_id);
 
     try {
       const res = await fetch('/api/equipment/equip', {
@@ -104,7 +110,9 @@ export default function ArsenalView() {
         // Silent — worst case, the list is stale until next navigation
       }
     } catch(err) {
-      alert(`Failed to equip: ${err.message}`);
+      alert(`Equipment action failed: ${err.message}`);
+    } finally {
+      setEquippingId(null);
     }
   };
 

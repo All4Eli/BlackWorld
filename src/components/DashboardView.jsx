@@ -121,7 +121,9 @@ export default function DashboardView() {
   //      object shape that PlayerContext expects.
   //
   const handleEquip = async (inventoryId) => {
+    if (modalLoading) return; // Prevent double-clicks
     try {
+      setModalLoading(true);
       const body = inventoryId
         ? { inventoryId, slot: modalSlot }
         : { slot: modalSlot };  // No inventoryId = unequip
@@ -155,6 +157,8 @@ export default function DashboardView() {
       setModalSlot(null);
     } catch (err) {
       alert(`Equipment action failed: ${err.message}`);
+    } finally {
+      setModalLoading(false);
     }
   };
 

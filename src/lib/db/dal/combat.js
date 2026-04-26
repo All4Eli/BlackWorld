@@ -162,17 +162,18 @@ export async function processTurn(userId, action) {
 
             } else if (engineResult.result === 'DEFEAT') {
                 // Death penalty: lose % of gold (e.g. 10%)
+                // Player is DEAD (hp = 0) — must use Healer/Revive to restore.
                 const goldLost = Math.floor(heroStats.gold * 0.10);
                 await client.query(
                     `UPDATE hero_stats SET
                      gold = GREATEST(0, gold - $1),
                      deaths = deaths + 1,
-                     hp = max_hp  -- Revive at town
+                     hp = 0
                      WHERE player_id = $2`,
                     [goldLost, userId]
                 );
                 finalResponse.penalties = { goldLost };
-                finalResponse.state.player_hp = heroStats.max_hp; // Reset for frontend
+                finalResponse.state.player_hp = 0;
             } else if (engineResult.result === 'FLED') {
                 // Return to town normally, keep current HP
                 await client.query(

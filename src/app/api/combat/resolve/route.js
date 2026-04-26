@@ -12,6 +12,7 @@ import { HeroStats, Composite, Monsters, sqlOne } from '@/lib/dal';
 import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { calcPlayerStats, rollDamage, calcMonsterStats, isHitDodged } from '@/lib/combat';
+import { calculateSkillBonuses, calculateTomeBonuses } from '@/lib/skillTree';
 import * as InventoryDal from '@/lib/db/dal/inventory';
 
 export async function POST(request) {
@@ -25,7 +26,7 @@ export async function POST(request) {
         const { data: stats, error: playerError } = await sqlOne(
             `SELECT hp, max_hp, gold, xp, level, kills, deaths, flasks,
                     str, def, dex, int, vit, base_dmg,
-                    unspent_points, skill_points_unspent, skill_points
+                    unspent_points, skill_points_unspent, skill_points, tomes
              FROM hero_stats WHERE player_id = $1`,
             [userId]
         );
@@ -175,10 +176,22 @@ export async function POST(request) {
         const { error: updateError } = await HeroStats.update(userId, updates);
         if (updateError) throw updateError;
 
-        // ── 6. Return partial updatedHero for shallow merge ────────
-        //
-        // Map to camelCase for PlayerContext compatibility.
-        // Include ALL fields that could have changed during combat.
+        // ── 6. Compute effective maxHp/maxMana for response ────────
+        const skillBonuses = calculateSkillBonuses(stats.skill_points || {});
+        const tomeBonuses = calculateTomeBonuses(stats.tomes || []);
+        const finalLevel = updates.level ?? stats.level;
+        const baseMaxHp = 100 + (stats.vit * 5) + (finalLevel * 5);
+        const baseMaxMana = 50 + (stats.int * 3);
+
+        let gearHp = 0;
+        if (eqRows?.gear) {
+          for (const row of eqRows.gear) {
+            gearHp += (row.baseStats?.hp || 0) + (row.rolledStats?.hp || 0);
+          }
+        }
+
+        const effectiveMaxHp = baseMaxHp + (skillBonuses.maxHp || 0) + (tomeBonuses.flatHp || 0) + gearHp;
+
         return NextResponse.json({
             success: true,
             win,
@@ -187,13 +200,13 @@ export async function POST(request) {
             droppedLoot,
             updatedHero: {
                 hp: updates.hp,
-                maxHp: updates.max_hp ?? stats.max_hp,
+                maxHp: effectiveMaxHp,
                 gold: updates.gold ?? stats.gold,
                 xp: updates.xp ?? stats.xp,
-                level: updates.level ?? stats.level,
+                level: finalLevel,
                 kills: updates.kills ?? stats.kills,
                 deaths: updates.deaths ?? stats.deaths,
-                flasks: stats.flasks,  // Combat may not change flasks, but UI needs current count
+                flasks: stats.flasks,
                 unspentPoints: updates.unspent_points ?? stats.unspent_points,
                 skillPointsUnspent: updates.skill_points_unspent ?? stats.skill_points_unspent,
             }

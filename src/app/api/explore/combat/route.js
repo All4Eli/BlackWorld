@@ -20,6 +20,7 @@ import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { sql, sqlOne } from '@/lib/db/pool';
 import { calcPlayerStats, rollDamage, calcMonsterStats, isHitDodged } from '@/lib/combat';
+import { calculateSkillBonuses, calculateTomeBonuses } from '@/lib/skillTree';
 import * as InventoryDal from '@/lib/db/dal/inventory';
 
 export async function POST(request) {
@@ -34,7 +35,7 @@ export async function POST(request) {
           `SELECT hp, max_hp, gold, xp, level, kills, deaths, flasks, max_flasks,
                   str, def, dex, int, vit, base_dmg, mana, max_mana,
                   unspent_points, skill_points_unspent, skill_points,
-                  essence, max_essence
+                  essence, max_essence, tomes
            FROM hero_stats WHERE player_id = $1`, [userId]
         );
         if (heroErr || !heroRow) throw new Error('Player not found.');
@@ -291,7 +292,7 @@ export async function POST(request) {
         } else if (combatEnded && hero.hp <= 0) {
             const goldLoss = Math.floor((hero.gold || 0) * 0.1);
             hero.gold = Math.max(0, (hero.gold || 0) - goldLoss);
-            hero.hp = 1;
+            hero.hp = 0;  // Player is DEAD — must use Healer/Revive
             hero.deaths = (hero.deaths || 0) + 1;
             initialLogs.push(`☠ [DEATH]: You have fallen. Lost ${goldLoss} gold.`);
         }
@@ -325,12 +326,24 @@ export async function POST(request) {
 
         // ── Response: return ONLY the changed fields ────────────────
         //
-        // The client's updateHero() now does a SHALLOW MERGE,
-        // so we only need to send the fields that changed.
-        // This is lighter than sending the entire hero object.
-        // Recalculate derived stats for the response (matches the SQL formula)
-        const newMaxHp = 100 + (heroRow.vit * 5) + (hero.level * 5);
-        const newMaxMana = 50 + (heroRow.int * 3);
+        // Effective max HP/Mana includes skill tree + tome + gear bonuses.
+        // Base column only stores 100 + vit*5 + level*5.
+        const skillBonuses = calculateSkillBonuses(heroRow.skill_points || {});
+        const tomeBonuses = calculateTomeBonuses(heroRow.tomes || []);
+        const baseMaxHp = 100 + (heroRow.vit * 5) + (hero.level * 5);
+        const baseMaxMana = 50 + (heroRow.int * 3);
+
+        // Gear HP/Mana bonuses from equipped items
+        let gearHp = 0, gearMana = 0;
+        if (eqRows) {
+          for (const row of eqRows) {
+            gearHp += (row.baseStats?.hp || 0) + (row.rolledStats?.hp || 0);
+            gearMana += (row.baseStats?.maxMana || 0) + (row.rolledStats?.maxMana || 0);
+          }
+        }
+
+        const effectiveMaxHp = baseMaxHp + (skillBonuses.maxHp || 0) + (tomeBonuses.flatHp || 0) + gearHp;
+        const effectiveMaxMana = baseMaxMana + (skillBonuses.maxMana || 0) + gearMana;
 
         return NextResponse.json({
             success: true, win, combatEnded,
@@ -342,7 +355,7 @@ export async function POST(request) {
             initialLogs, delayedLogs,
             updatedHero: {
                 hp: hero.hp,
-                maxHp: newMaxHp,
+                maxHp: effectiveMaxHp,
                 gold: hero.gold,
                 xp: hero.xp,
                 level: hero.level,
@@ -350,7 +363,7 @@ export async function POST(request) {
                 deaths: hero.deaths,
                 flasks: hero.flasks,
                 mana: hero.mana ?? heroRow.mana,
-                maxMana: newMaxMana,
+                maxMana: effectiveMaxMana,
                 unspentPoints: hero.unspentStatPoints,
                 skillPointsUnspent: hero.skillPointsUnspent,
             }

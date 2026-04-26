@@ -39,7 +39,7 @@ async function handlePost(request, { userId }) {
 
   // ── 1. Read base stats + skill_points + tomes ──────────────────
   const { data: hero, error: heroErr } = await sqlOne(
-    `SELECT hp, max_hp, gold, skill_points, tomes FROM hero_stats WHERE player_id = $1`,
+    `SELECT hp, max_hp, gold, skill_points, learned_tomes FROM hero_stats WHERE player_id = $1`,
     [userId]
   );
 
@@ -71,7 +71,7 @@ async function handlePost(request, { userId }) {
 
   // ── 3. Compute skill tree HP bonuses ───────────────────────────
   const skillBonuses = calculateSkillBonuses(hero.skill_points || {});
-  const tomeBonuses = calculateTomeBonuses(hero.tomes || []);
+  const tomeBonuses = calculateTomeBonuses(hero.learned_tomes || []);
 
   // ── 4. Calculate EFFECTIVE max HP ──────────────────────────────
   //

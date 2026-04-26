@@ -61,17 +61,6 @@ export default function ResourceBars({ hero, onRefillClick }) {
                 );
             })}
             
-            {/* Mana / Arcane Energy */}
-            <div className="relative">
-                <div className="flex justify-between text-[10px] font-mono tracking-widest uppercase mb-1">
-                    <span className="text-cyan-500">Mana</span>
-                    <span className="text-neutral-500">{hero?.mana ?? 0} / {hero?.max_mana ?? hero?.maxMana ?? 0}</span>
-                </div>
-                <div className="h-2 border border-cyan-900 bg-neutral-950 overflow-hidden relative">
-                    <div className="h-full bg-cyan-700 transition-all duration-1000" style={{ width: `${(hero?.max_mana || hero?.maxMana) ? ((hero?.mana ?? 0) / (hero?.max_mana ?? hero?.maxMana ?? 1)) * 100 : 0}%` }}></div>
-                </div>
-            </div>
-
             <div className={`border bg-[#050505] border-red-900 shadow-lg relative overflow-hidden group`}>
                 <div className="px-3 py-[6px] relative z-10 flex justify-between items-center text-[10px] font-mono tracking-widest uppercase mb-[2px]">
                     <span className="text-red-500 font-bold pointer-events-none drop-shadow-md">Blood Stones</span>

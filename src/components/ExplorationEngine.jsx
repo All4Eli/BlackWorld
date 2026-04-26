@@ -5,7 +5,7 @@ import { ZONES } from '@/lib/gameData';
 import { calcPlayerStats, rollDamage, calcMonsterStats, isHitDodged } from '@/lib/combat';
 import WorldMap from './WorldMap';
 import { useSounds } from './SoundEngine';
-import { GameIcon, IconSword, IconSkull, IconBlood, IconSpider, IconCross, IconShield, IconFlask } from './icons/GameIcons';
+import { GameIcon, IconSword, IconSkull, IconShield, IconFlask } from './icons/GameIcons';
 
 // ╔═══════════════════════════════════════════════════════════════╗
 // ║  ARCHITECTURAL NOTE — GOD COMPONENT TRIAGE                   ║
@@ -73,6 +73,7 @@ export default function ExplorationEngine({ onFindCombat }) {
   const [enemyHP, setEnemyHP] = useState(0);
   const [combatLoading, setCombatLoading] = useState(false);
   const [combatEnded, setCombatEnded] = useState(false);
+  const [skillMenuOpen, setSkillMenuOpen] = useState(false);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -350,35 +351,43 @@ export default function ExplorationEngine({ onFindCombat }) {
              {/* Action Bar */}
              {!combatEnded && !combatLoading && (
               <div className="p-3 sm:p-8 pb-4 sm:pb-10 mt-auto">
-                  <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-3 sm:mb-4">
-                     <button onClick={handleAttack} disabled={combatLoading} className="bg-red-950/20 hover:bg-red-950/40 border border-red-900/50 py-3 sm:py-4 font-mono uppercase tracking-wider sm:tracking-widest text-xs sm:text-sm text-red-500 disabled:opacity-30 disabled:cursor-not-allowed">
-                        Attack (Melee)
+                  <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                     <button onClick={handleAttack} disabled={combatLoading} className="bg-red-950/20 hover:bg-red-950/40 border border-red-900/50 py-3 sm:py-4 font-mono uppercase tracking-wider text-xs sm:text-sm text-red-500 disabled:opacity-30 disabled:cursor-not-allowed">
+                        Attack
                      </button>
-                     <button onClick={handleUseItem} disabled={combatLoading || (hero.flasks || 0) <= 0} className="bg-stone-900/40 hover:bg-stone-800 border border-stone-800 py-3 sm:py-4 font-mono uppercase tracking-wider sm:tracking-widest text-xs sm:text-sm text-stone-400 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-1 sm:gap-2">
-                        <span>Flask</span>
-                        <span className="text-red-800 text-xs">x{hero.flasks || 0}</span>
+                     <button onClick={handleUseItem} disabled={combatLoading || (hero.flasks || 0) <= 0} className="bg-stone-900/40 hover:bg-stone-800 border border-stone-800 py-3 sm:py-4 font-mono uppercase tracking-wider text-xs sm:text-sm text-stone-400 disabled:opacity-30 disabled:cursor-not-allowed">
+                        Flask <span className="text-red-800 text-[10px]">x{hero.flasks || 0}</span>
                      </button>
-                     <button onClick={handleFlee} disabled={combatLoading} className="bg-stone-950 hover:bg-stone-900 border border-neutral-900 py-3 sm:py-4 font-mono uppercase tracking-wider sm:tracking-widest text-xs sm:text-sm text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed">
+                     <div className="relative">
+                       <button onClick={() => setSkillMenuOpen(!skillMenuOpen)} disabled={combatLoading || (hero.mana || 0) < 10} className="w-full bg-purple-950/20 hover:bg-purple-950/40 border border-purple-900/50 py-3 sm:py-4 font-mono uppercase tracking-wider text-xs sm:text-sm text-purple-400 disabled:opacity-30 disabled:cursor-not-allowed">
+                          Skill <span className="text-cyan-600 text-[10px]">{hero.mana || 0}mp</span>
+                       </button>
+                       {skillMenuOpen && (
+                         <div className="absolute bottom-full left-0 right-0 mb-1 border border-purple-900/50 bg-[#0a0a0a] z-10 shadow-[0_0_20px_rgba(100,0,200,0.2)]">
+                           {[
+                             { id: 'blood_surge', name: 'Blood Surge', cost: 10, desc: '3.5× damage' },
+                             { id: 'shadow_step', name: 'Shadow Step', cost: 15, desc: 'Evade next hit' },
+                             { id: 'holy_cross', name: 'Holy Cross', cost: 20, desc: '5× damage' },
+                           ].map(skill => (
+                             <button
+                               key={skill.id}
+                               onClick={() => { setSkillMenuOpen(false); handleCombatAction('SKILL', { skillId: skill.id }); }}
+                               disabled={(hero.mana || 0) < skill.cost}
+                               className="w-full text-left px-3 py-2 hover:bg-purple-950/40 border-b border-purple-900/20 last:border-b-0 disabled:opacity-30 disabled:cursor-not-allowed"
+                             >
+                               <div className="flex justify-between items-center">
+                                 <span className="font-mono text-xs uppercase tracking-wider text-purple-300">{skill.name}</span>
+                                 <span className="font-mono text-[10px] text-cyan-600">{skill.cost} MP</span>
+                               </div>
+                               <div className="text-[10px] text-stone-600 font-mono">{skill.desc}</div>
+                             </button>
+                           ))}
+                         </div>
+                       )}
+                     </div>
+                     <button onClick={handleFlee} disabled={combatLoading} className="bg-stone-950 hover:bg-stone-900 border border-neutral-900 py-3 sm:py-4 font-mono uppercase tracking-wider text-xs sm:text-sm text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed">
                         Flee
                      </button>
-                 </div>
-
-                 {/* Arcana Hotbar */}
-                 <div className="border border-purple-900/30 bg-[#050505] p-2 sm:p-4 flex items-center gap-2 sm:gap-4">
-                     <div className="text-xs font-mono uppercase tracking-widest text-purple-600 pr-4 border-r border-purple-900/30">
-                        Arcana <br/><span className="text-cyan-600">{hero.mana || 0} / {hero.maxMana || 0} MP</span>
-                     </div>
-                     <div className="flex gap-3">
-                         <button onClick={() => handleCombatAction('SKILL', { skillId: 'blood_surge' })} disabled={combatLoading || (hero.mana || 0) < 10} className="w-12 h-12 border-2 border-red-900 bg-red-950/20 hover:bg-red-900/50 text-red-500 font-bold disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xl shadow-[0_0_10px_rgba(255,0,0,0.2)]">
-                            <IconBlood size={20} />
-                         </button>
-                         <button onClick={() => handleCombatAction('SKILL', { skillId: 'shadow_step' })} disabled={combatLoading || (hero.mana || 0) < 15} className="w-12 h-12 border-2 border-stone-800 bg-stone-950 text-stone-500 hover:bg-stone-800 hover:text-stone-300 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xl">
-                            <IconSpider size={20} />
-                         </button>
-                         <button onClick={() => handleCombatAction('SKILL', { skillId: 'holy_cross' })} disabled={combatLoading || (hero.mana || 0) < 20} className="w-12 h-12 border-2 border-yellow-700 bg-yellow-950/30 hover:bg-yellow-700/50 text-white font-bold disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xl shadow-[0_0_15px_rgba(255,200,0,0.3)]">
-                            <IconCross size={20} />
-                         </button>
-                     </div>
                  </div>
               </div>
              )}

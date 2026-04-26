@@ -360,7 +360,7 @@ export default function ExplorationEngine({ onFindCombat }) {
                      </button>
                      <div className="relative">
                        <button onClick={() => setSkillMenuOpen(!skillMenuOpen)} disabled={combatLoading || (hero.mana || 0) < 10} className="w-full bg-purple-950/20 hover:bg-purple-950/40 border border-purple-900/50 py-3 sm:py-4 font-mono uppercase tracking-wider text-xs sm:text-sm text-purple-400 disabled:opacity-30 disabled:cursor-not-allowed">
-                          Skill <span className="text-cyan-600 text-[10px]">{hero.mana || 0}mp</span>
+                          Skills <span className="text-cyan-600 text-[10px]">{hero.mana || 0}mp</span>
                        </button>
                        {skillMenuOpen && (
                          <div className="absolute bottom-full left-0 right-0 mb-1 border border-purple-900/50 bg-[#0a0a0a] z-10 shadow-[0_0_20px_rgba(100,0,200,0.2)]">

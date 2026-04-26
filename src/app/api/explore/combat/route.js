@@ -35,7 +35,7 @@ export async function POST(request) {
           `SELECT hp, max_hp, gold, xp, level, kills, deaths, flasks, max_flasks,
                   str, def, dex, int, vit, base_dmg, mana, max_mana,
                   unspent_points, skill_points_unspent, skill_points,
-                  essence, max_essence, tomes
+                  essence, max_essence, learned_tomes
            FROM hero_stats WHERE player_id = $1`, [userId]
         );
         if (heroErr || !heroRow) throw new Error('Player not found.');
@@ -329,7 +329,7 @@ export async function POST(request) {
         // Effective max HP/Mana includes skill tree + tome + gear bonuses.
         // Base column only stores 100 + vit*5 + level*5.
         const skillBonuses = calculateSkillBonuses(heroRow.skill_points || {});
-        const tomeBonuses = calculateTomeBonuses(heroRow.tomes || []);
+        const tomeBonuses = calculateTomeBonuses(heroRow.learned_tomes || []);
         const baseMaxHp = 100 + (heroRow.vit * 5) + (hero.level * 5);
         const baseMaxMana = 50 + (heroRow.int * 3);
 

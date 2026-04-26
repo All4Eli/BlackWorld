@@ -36,7 +36,7 @@ function calcReviveCost(level) {
 async function handlePost(request, { userId }) {
   // ── 1. Pre-check current state ──────────────────────────────
   const { data: heroRow, error: heroErr } = await sqlOne(
-    'SELECT hp, max_hp, gold, level, skill_points, tomes FROM hero_stats WHERE player_id = $1',
+    'SELECT hp, max_hp, gold, level, skill_points, learned_tomes FROM hero_stats WHERE player_id = $1',
     [userId]
   );
 
@@ -80,7 +80,7 @@ async function handlePost(request, { userId }) {
   }
 
   const skillBonuses = calculateSkillBonuses(heroRow.skill_points || {});
-  const tomeBonuses = calculateTomeBonuses(heroRow.tomes || []);
+  const tomeBonuses = calculateTomeBonuses(heroRow.learned_tomes || []);
   const effectiveMaxHp = heroRow.max_hp
     + (skillBonuses.maxHp || 0)
     + (tomeBonuses.flatHp || 0)

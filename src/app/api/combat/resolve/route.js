@@ -26,7 +26,7 @@ export async function POST(request) {
         const { data: stats, error: playerError } = await sqlOne(
             `SELECT hp, max_hp, gold, xp, level, kills, deaths, flasks,
                     str, def, dex, int, vit, base_dmg,
-                    unspent_points, skill_points_unspent, skill_points, tomes
+                    unspent_points, skill_points_unspent, skill_points, learned_tomes
              FROM hero_stats WHERE player_id = $1`,
             [userId]
         );
@@ -178,7 +178,7 @@ export async function POST(request) {
 
         // ── 6. Compute effective maxHp/maxMana for response ────────
         const skillBonuses = calculateSkillBonuses(stats.skill_points || {});
-        const tomeBonuses = calculateTomeBonuses(stats.tomes || []);
+        const tomeBonuses = calculateTomeBonuses(stats.learned_tomes || []);
         const finalLevel = updates.level ?? stats.level;
         const baseMaxHp = 100 + (stats.vit * 5) + (finalLevel * 5);
         const baseMaxMana = 50 + (stats.int * 3);

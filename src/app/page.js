@@ -182,6 +182,11 @@ export default function GameStateDirector() {
      return null; // Let the next render handle it
   }
 
+  if (stage === 'BOOT' && isSignedIn && !saveData?.heroData) {
+     setSaveData(prev => ({ ...prev, stage: 'CREATOR' }));
+     return null;
+  }
+
   const showGameNav = stage !== 'BOOT' && isSignedIn;
 
   return (

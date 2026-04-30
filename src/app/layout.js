@@ -50,6 +50,8 @@ export const metadata = {
 import ErrorBoundary from "@/components/ErrorBoundary";
 import SoundEngine from "@/components/SoundEngine";
 
+import GoogleAuthProviderWrapper from "@/components/GoogleAuthProvider";
+
 export default function RootLayout({ children }) {
   return (
     <html
@@ -60,7 +62,9 @@ export default function RootLayout({ children }) {
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
           <ErrorBoundary>
             <SoundEngine>
-              {children}
+              <GoogleAuthProviderWrapper>
+                {children}
+              </GoogleAuthProviderWrapper>
             </SoundEngine>
           </ErrorBoundary>
       </body>

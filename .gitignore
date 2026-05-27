@@ -48,3 +48,5 @@ setup-db.js
 # ── Tooling Caches ──
 .windsurf/
 .agents/
+*.zip
+*.exe

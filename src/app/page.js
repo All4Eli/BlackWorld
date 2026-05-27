@@ -34,8 +34,13 @@ export default function GameStateDirector() {
   useEffect(() => {
     if (saveData?.heroData && typeof window !== 'undefined') {
       const tutorialDone = localStorage.getItem('bw_tutorial_done');
-      if (!tutorialDone) {
+      const isExperienced = saveData.heroData.level > 1 || saveData.heroData.kills > 0;
+      
+      if (!tutorialDone && !isExperienced) {
         setShowTutorial(true);
+      } else if (isExperienced && !tutorialDone) {
+        // Silently mark tutorial as done for veterans logging in on new devices
+        localStorage.setItem('bw_tutorial_done', 'true');
       }
     }
   }, [saveData?.heroData]);

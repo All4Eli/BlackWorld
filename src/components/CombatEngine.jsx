@@ -90,9 +90,12 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
                 onVictory(data.updatedHero);
             }, 3000);
         } else {
-            addLog(`[WARNING] ${enemy.name} overpowered you!`);
-            addLog("[PERISHED]: The dark consumes you...");
-            setHero(prev => ({ ...prev, hp: 0 }));
+            addLog(`⚠️ ${enemy.name} overpowered you!`);
+            addLog("🛑 [PERISHED]: The dark consumes you...");
+            setEnemy(prev => ({ ...prev, hp: 0 }));
+            setTimeout(() => {
+                onHeroDeath(data.updatedHero);
+            }, 2500);
         }
 
     } catch (err) {
@@ -101,44 +104,45 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
     }
   };
 
-  const handleFlask = () => {
+  const handleFlask = async () => {
      if (hero.hp <= 0 || enemy.hp <= 0 || !isPlayerTurn) return;
-     if (hero.flasks <= 0) {
-        addLog("[EMPTY]: You reach for a Flask, but have none left.");
-        return;
-     }
-
-     const flaskHeal = 60 + c.flaskBonus;
      setIsPlayerTurn(false);
-     setHero(prev => ({ ...prev, hp: Math.min(c.maxHp, prev.hp + flaskHeal), flasks: prev.flasks - 1 }));
-     addLog(`[CRIMSON FLASK]: Restored ${flaskHeal} HP.`);
 
-    setTimeout(() => {
-      const rawDmg = Math.floor(Math.random() * 5) + enemy.attackDamage;
-      const reduced = Math.max(1, rawDmg - c.damageReduction);
-      let died = false;
-      setHero(prev => {
-        const newHp = Math.max(0, prev.hp - reduced);
-        if (newHp <= 0) died = true;
-        return { ...prev, hp: newHp };
-      });
-      addLog(`[WARNING] ${enemy.name} strikes during recovery for ${reduced} damage!`);
-      if (died) {
-        addLog(">> [PERISHED]: The dark consumes you...");
-      } else {
-        setIsPlayerTurn(true);
-      }
-    }, 1200);
+     try {
+         const response = await fetch('/api/combat/flask', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ enemyId: enemy.id || 'void_stalker' })
+         });
+         const data = await response.json();
+
+         if (!response.ok) {
+             addLog(`🚫 [ERROR]: ${data.error}`);
+             setIsPlayerTurn(true);
+             return;
+         }
+
+         addLog(data.narrative);
+
+         if (data.died) {
+            setEnemy(prev => ({ ...prev, hp: 0 }));
+            setTimeout(() => {
+                onHeroDeath(data.updatedHero);
+            }, 2500);
+         } else {
+            // Because updatedHero is shallow, we only need to pass it to updateHero.
+            // Wait, we need to update our local hero state as well so UI renders!
+            setHero(prev => ({ ...prev, ...data.updatedHero }));
+            setIsPlayerTurn(true);
+         }
+
+     } catch (err) {
+         addLog(`❌ [SYSTEM ERROR]: ${err.message}`);
+         setIsPlayerTurn(true);
+     }
   }
 
-  // Check Death Trigger to bubble up to Game State manager
-  useEffect(() => {
-    if (hero.hp <= 0) {
-       setTimeout(() => {
-         onHeroDeath();
-       }, 2500); // Wait 2.5s before showing Death Screen overlay
-    }
-  }, [hero.hp, onHeroDeath]);
+  // Death is now handled directly within action handlers (handleAttack, handleFlask).
 
 
   const renderBar = (current, max, colorClass, bgClass) => {

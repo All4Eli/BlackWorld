@@ -170,6 +170,8 @@ export async function POST(request) {
         } else {
             updates.hp = 0;
             updates.deaths = (stats.deaths || 0) + 1;
+            // Apply death penalty: halve gold
+            updates.gold = Math.floor((stats.gold || 0) / 2);
         }
 
         // ── 5. Persist via column UPDATE (no hero_data JSONB) ──────

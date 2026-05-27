@@ -28,7 +28,7 @@ export async function POST(request) {
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const { enemyId, action, enemyState } = await request.json();
+        const { enemyId, action, enemyState, zoneId } = await request.json();
 
         // ── 1. Fetch hero from NORMALIZED COLUMNS (no hero_data) ────
         const { data: heroRow, error: heroErr } = await sqlOne(
@@ -279,11 +279,14 @@ export async function POST(request) {
             // This is a best-effort call — combat should never fail
             // because quest tracking failed.
             try {
+                const isBoss = enemyState?.tier === 'BOSS';
+                const event = isBoss ? 'KILL_BOSS' : 'KILL_ENEMIES';
+
                 await fetch(new URL('/api/quests/progress', request.url), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json',
                                'Cookie': request.headers.get('cookie') || '' },
-                    body: JSON.stringify({ event: 'KILL_ENEMIES', count: 1, zone: 'exploration' }),
+                    body: JSON.stringify({ event, count: 1, zoneId }),
                 });
             } catch (qErr) {
                 console.warn('[QUEST PROGRESS]', qErr.message);

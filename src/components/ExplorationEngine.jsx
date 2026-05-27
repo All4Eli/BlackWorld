@@ -224,7 +224,8 @@ export default function ExplorationEngine({ onFindCombat }) {
              body: JSON.stringify({
                enemyId: currentEnemy.id || 'void_stalker',
                action,
-               enemyState: { ...currentEnemy, hp: enemyHP, skillId: options.skillId }
+               enemyState: { ...currentEnemy, hp: enemyHP, skillId: options.skillId },
+               zoneId: activeZone?.id
              })
          });
          const data = await response.json();

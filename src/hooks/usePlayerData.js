@@ -92,8 +92,13 @@ export function usePlayerData() {
             inventoryCount: player.inventoryCount || 0,
           };
 
+          let stage = player.stage || 'BOOT';
+          if (typeof window !== 'undefined' && sessionStorage.getItem('bw_combat_state')) {
+            stage = 'COMBAT';
+          }
+
           setSaveData({
-            stage: player.stage || 'BOOT',
+            stage,
             heroData,
           });
         }

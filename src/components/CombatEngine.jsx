@@ -24,6 +24,25 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
   }
 
   const mountEnemy = () => {
+    // Check for saved combat state first
+    if (typeof window !== 'undefined') {
+      const savedCombat = sessionStorage.getItem('bw_combat_state');
+      if (savedCombat) {
+        try {
+          const state = JSON.parse(savedCombat);
+          if (state.hero?.name === heroDef.name) {
+            setHero(state.hero);
+            setEnemy(state.enemy);
+            if (state.combatLog) setCombatLog(state.combatLog);
+            if (state.isPlayerTurn !== undefined) setIsPlayerTurn(state.isPlayerTurn);
+            return;
+          }
+        } catch (e) {
+          console.error("Failed to parse saved combat state", e);
+        }
+      }
+    }
+
     const levelMulti = 1 + (hero.level * 0.3);
     const isBossRoll = hero.kills > 0 && hero.kills % 3 === 0;
 
@@ -57,6 +76,17 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
   useEffect(() => {
     mountEnemy();
   }, []);
+
+  // Save combat state to prevent refreshing to escape or reroll enemies
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (hero.hp <= 0 || enemy.hp <= 0) {
+        sessionStorage.removeItem('bw_combat_state');
+      } else {
+        sessionStorage.setItem('bw_combat_state', JSON.stringify({ hero, enemy, combatLog, isPlayerTurn }));
+      }
+    }
+  }, [hero, enemy, combatLog, isPlayerTurn]);
 
   const sb = calculateSkillBonuses(hero.skillPoints || {});
   const c = calcCombatStats(hero, sb);

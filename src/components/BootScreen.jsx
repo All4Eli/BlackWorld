@@ -146,6 +146,7 @@ export default function BootScreen({ onStart }) {
                       value={username}
                       onChange={e => setUsername(e.target.value)}
                       required
+                      autoComplete="username"
                       className="w-full bg-black border border-neutral-800 focus:border-red-900 focus:outline-none text-stone-200 px-4 py-3 font-mono text-sm tracking-widest transition-colors"
                       placeholder="Your dark name..."
                     />
@@ -159,6 +160,7 @@ export default function BootScreen({ onStart }) {
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
+                    autoComplete="email"
                     className="w-full bg-black border border-neutral-800 focus:border-red-900 focus:outline-none text-stone-200 px-4 py-3 font-mono text-sm tracking-widest transition-colors"
                     placeholder="soul@blackworld.io"
                   />
@@ -172,6 +174,7 @@ export default function BootScreen({ onStart }) {
                     onChange={e => setPassword(e.target.value)}
                     required
                     minLength={6}
+                    autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
                     className="w-full bg-black border border-neutral-800 focus:border-red-900 focus:outline-none text-stone-200 px-4 py-3 font-mono text-sm tracking-widest transition-colors"
                     placeholder="••••••••"
                   />

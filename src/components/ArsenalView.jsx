@@ -191,7 +191,7 @@ export default function ArsenalView() {
                          {stats.lifesteal > 0 && <span className="text-red-400">+{stats.lifesteal} LIFESTEAL</span>}
                        </div>
 
-                       {Object.values(equipment).includes(item.inventory_id) ? (
+                       {Object.values(hero?.equipped || {}).some(e => e?.inventoryId === item.inventory_id) ? (
                          <button className="text-[10px] font-mono uppercase tracking-widest bg-stone-900 border border-stone-700 text-stone-500 w-full py-2 cursor-default">
                            Equipped
                          </button>

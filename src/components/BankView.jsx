@@ -57,9 +57,14 @@ export default function BankView({ onBack }) {
             <span className="text-[10px] text-stone-600 uppercase tracking-widest mb-1">On Person</span>
             <span className="text-3xl font-bold text-yellow-600">{current.toLocaleString()}g</span>
           </div>
-          <div className="border border-neutral-800 bg-[#020202] py-6 flex flex-col items-center">
+          <div className="border border-neutral-800 bg-[#020202] py-6 flex flex-col items-center relative">
             <span className="text-[10px] text-stone-600 uppercase tracking-widest mb-1">In The Vault</span>
-            <span className="text-3xl font-bold text-stone-300">{banked.toLocaleString()}g</span>
+            <span className="text-3xl font-bold text-stone-300">
+              {banked.toLocaleString()}g
+            </span>
+            <span className="absolute bottom-2 text-[10px] text-stone-600 uppercase tracking-widest">
+              Limit: {hero.bankLimit?.toLocaleString() || '50,000'}g
+            </span>
           </div>
         </div>
 
@@ -77,7 +82,7 @@ export default function BankView({ onBack }) {
           <div className="flex gap-4">
             <button 
               onClick={() => handleTransaction('deposit')}
-              disabled={loading || !amount || parseInt(amount) > current || parseInt(amount) <= 0}
+              disabled={loading || !amount || parseInt(amount) > current || parseInt(amount) <= 0 || banked + parseInt(amount) > (hero.bankLimit || 50000)}
               className="flex-1 py-3 border border-neutral-800 bg-black text-stone-400 hover:bg-neutral-900 hover:text-stone-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-widest"
             >
               {loading ? '...' : 'Deposit'}
@@ -93,7 +98,10 @@ export default function BankView({ onBack }) {
           
           {/* Quick Actions */}
           <div className="flex justify-between mt-2 pt-4 border-t border-neutral-900">
-             <button onClick={() => setAmount(current.toString())} className="text-[10px] text-stone-600 hover:text-yellow-600 uppercase tracking-widest">
+             <button onClick={() => {
+                const maxDeposit = (hero.bankLimit || 50000) - banked;
+                setAmount(Math.min(current, Math.max(0, maxDeposit)).toString());
+             }} className="text-[10px] text-stone-600 hover:text-yellow-600 uppercase tracking-widest">
                 Insert All
              </button>
              <button onClick={() => setAmount(banked.toString())} className="text-[10px] text-stone-600 hover:text-stone-300 uppercase tracking-widest">

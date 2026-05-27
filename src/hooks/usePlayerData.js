@@ -39,6 +39,7 @@ export function usePlayerData() {
             baseDmg: stats.baseDmg,
             gold: stats.gold,
             bankedGold: stats.bankBalance,
+            bankLimit: stats.bankLimit,
             bloodStones: stats.bloodStones || 0,
             level: stats.level,
             xp: stats.xp,

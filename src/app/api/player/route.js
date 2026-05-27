@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import * as HeroDal from '@/lib/db/dal/hero';
 import * as InventoryDal from '@/lib/db/dal/inventory';
+import * as LairsDal from '@/lib/db/dal/lairs';
 import { sql, sqlOne } from '@/lib/db/pool';
 
 /**
@@ -88,7 +89,16 @@ export async function GET() {
     [userId]
   );
 
-  // 6. Build the response — clean, normalized, no JSONB blobs
+  // 6. Fetch player lair for dynamic limits
+  const { data: lair } = await LairsDal.getPlayerLair(userId);
+  const BASE_BANK_LIMIT = 50000;
+  const bankBonus = lair ? (lair.bank_bonus * lair.tier) : 0;
+  const essenceBonus = lair ? (lair.essence_bonus * lair.tier) : 0;
+  const bankLimit = BASE_BANK_LIMIT + bankBonus;
+  // Max essence from stats + lair bonus
+  const dynamicMaxEssence = stats.max_essence + essenceBonus;
+
+  // 7. Build the response — clean, normalized, no JSONB blobs
   const player = {
     userId,
     username: identity?.username || 'Unknown',
@@ -100,6 +110,7 @@ export async function GET() {
       xp: stats.xp,
       gold: stats.gold,
       bankBalance: stats.bank_balance,
+      bankLimit,
       bloodStones: stats.blood_stones,
       kills: stats.kills,
       deaths: stats.deaths,
@@ -121,7 +132,8 @@ export async function GET() {
       maxFlasks: stats.max_flasks,
       // Essence
       essence: stats.essence,
-      maxEssence: stats.max_essence,
+      maxEssence: dynamicMaxEssence,
+      baseMaxEssence: stats.max_essence, // keep track of base if needed
       essenceRegenAt: stats.essence_regen_at,
       // Skills
       skillPoints: stats.skill_points,

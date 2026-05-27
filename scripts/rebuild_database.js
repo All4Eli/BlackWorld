@@ -727,6 +727,20 @@ async function main() {
   console.log('[OK] pvp_matches');
 
   await client.query(`
+    CREATE TABLE player_bounties (
+      id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      target_id       text NOT NULL REFERENCES players(clerk_user_id) ON DELETE CASCADE,
+      setter_id       text NOT NULL REFERENCES players(clerk_user_id) ON DELETE CASCADE,
+      gold_amount     integer NOT NULL,
+      status          text NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','CLAIMED')),
+      created_at      timestamptz NOT NULL DEFAULT now(),
+      claimed_by      text REFERENCES players(clerk_user_id),
+      claimed_at      timestamptz
+    );
+  `);
+  console.log('[OK] player_bounties');
+
+  await client.query(`
     CREATE TABLE pvp_seasons (
       id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       season_number   integer UNIQUE NOT NULL,

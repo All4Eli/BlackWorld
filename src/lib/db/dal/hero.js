@@ -429,6 +429,8 @@ export async function bankTransfer(playerId, action, amount) {
     return { data: null, error: new Error('Amount must be positive') };
   }
 
+  const BASE_BANK_LIMIT = 50000;
+
   return transaction(async (client) => {
     const { rows } = await client.query(
       `SELECT gold, bank_balance FROM hero_stats WHERE player_id = $1 FOR UPDATE`,
@@ -439,11 +441,28 @@ export async function bankTransfer(playerId, action, amount) {
 
     const hero = rows[0];
 
+    // Calculate max bank based on lair bonus
+    const lairRes = await client.query(
+      `SELECT pl.tier, lt.bank_bonus FROM player_lairs pl
+       JOIN lair_types lt ON pl.lair_type = lt.type
+       WHERE pl.player_id = $1`,
+      [playerId]
+    );
+    let bankBonus = 0;
+    if (lairRes.rows.length > 0) {
+      bankBonus = lairRes.rows[0].bank_bonus * lairRes.rows[0].tier;
+    }
+    const maxBankLimit = BASE_BANK_LIMIT + bankBonus;
+
     if (action === 'deposit' && hero.gold < amount) {
       throw new Error(`Insufficient gold: have ${hero.gold}, need ${amount}`);
     }
     if (action === 'withdraw' && hero.bank_balance < amount) {
       throw new Error(`Insufficient bank balance: have ${hero.bank_balance}, need ${amount}`);
+    }
+
+    if (action === 'deposit' && hero.bank_balance + amount > maxBankLimit) {
+      throw new Error(`Bank limit exceeded. Maximum capacity is ${maxBankLimit}`);
     }
 
     const goldDelta = action === 'deposit' ? -amount : amount;

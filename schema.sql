@@ -607,6 +607,20 @@
   ;
 
 
+    CREATE TABLE player_bounties (
+      id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      target_id       text NOT NULL REFERENCES players(clerk_user_id) ON DELETE CASCADE,
+      setter_id       text NOT NULL REFERENCES players(clerk_user_id) ON DELETE CASCADE,
+      gold_amount     integer NOT NULL,
+      status          text NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','CLAIMED')),
+      created_at      timestamptz NOT NULL DEFAULT now(),
+      claimed_by      text REFERENCES players(clerk_user_id),
+      claimed_at      timestamptz
+    );
+  ;
+
+
+
     CREATE TABLE pvp_seasons (
       id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       season_number   integer UNIQUE NOT NULL,

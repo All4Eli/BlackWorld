@@ -13,6 +13,8 @@ import LeaderboardHub from './LeaderboardHub';
 import HallOfLegendsView from './HallOfLegendsView';
 import BloodStoneShop from './BloodStoneShop';
 import MonumentView from './MonumentView';
+import LairView from './LairView';
+import BountyBoardView from './BountyBoardView';
 
 // ── CONTEXT MIGRATION ──────────────────────────────────────────
 // TownView PREVIOUSLY received { hero, updateHero } from GameShell
@@ -63,7 +65,14 @@ export default function TownView() {
       locations: [
         { id: 'covens', name: 'Blood Covens', description: 'Pledge loyalty to a community guild.', status: null },
         { id: 'casino', name: 'Demon Casino', description: 'Wager gold on dark outcomes.', status: null },
+        { id: 'bounties', name: 'Bounty Board', description: 'Place a bounty on your enemies or claim gold for their heads.', status: null },
         { id: 'premium', name: 'Blood Stone Altar', description: 'Exchange mortal currency for Blood Stones and dark power.', status: null },
+      ]
+    },
+    {
+      title: 'Real Estate',
+      locations: [
+        { id: 'lairs', name: 'Estate Broker', description: 'Purchase and upgrade your personal lair.', status: null },
       ]
     },
     {
@@ -89,6 +98,8 @@ export default function TownView() {
   if (activeLocation === 'monuments') return <MonumentView onBack={() => setActiveLocation(null)} />;
   if (activeLocation === 'premium') return <BloodStoneShop onBack={() => setActiveLocation(null)} />;
   if (activeLocation === 'politics') return <HallOfLegendsView onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'lairs') return <LairView onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'bounties') return <BountyBoardView onBack={() => setActiveLocation(null)} />;
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col gap-8 animate-in slide-in-from-bottom-4 duration-700">

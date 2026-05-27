@@ -32,7 +32,7 @@ export default function MailboxModal({ onClose, messages, onRefresh }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
-      <div className="w-full max-w-3xl bg-[#050505] border border-neutral-900 shadow-[0_0_50px_rgba(0,0,0,0.9)] flex flex-col h-[600px] animate-in zoom-in-95 duration-200">
+      <div className="w-full max-w-3xl bg-[#050505] border border-neutral-900 shadow-[0_0_50px_rgba(0,0,0,0.9)] flex flex-col h-[90vh] sm:h-[600px] animate-in zoom-in-95 duration-200">
         
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b border-red-900/30 bg-black">

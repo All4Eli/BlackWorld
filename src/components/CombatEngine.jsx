@@ -8,11 +8,11 @@ import { IconSkull, IconSword, IconCross } from './icons/GameIcons';
 export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) {
   // We use internal state for combat logic, but initialize strictly from the unified heroDef
   const [hero, setHero] = useState(heroDef);
-  const activeZone = zone || null;
-  
-  const [enemy, setEnemy] = useState({ name: 'Feral Ghoul', hp: 40, maxHp: 40, attackDamage: 8, isBoss: false });
-  const [combatLog, setCombatLog] = useState(["[LORE]: You enter the Bloodied Cathedral."]);
-  const [isPlayerTurn, setIsPlayerTurn] = useState(true);
+  const [enemy, setEnemy] = useState(null);
+  const [combatLog, setCombatLog] = useState(["[LORE]: The shadows shift around you..."]);
+  const [isPlayerTurn, setIsPlayerTurn] = useState(false); // Disable buttons until state loads
+  const [sessionData, setSessionData] = useState(null);
+  const [timeRemaining, setTimeRemaining] = useState(300); // 5 minutes in seconds
   const logEndRef = useRef(null);
 
   useEffect(() => {
@@ -20,157 +20,123 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
   }, [combatLog]);
 
   const addLog = (message) => {
-    setCombatLog(prev => [...prev, message]);
+    if (Array.isArray(message)) {
+        setCombatLog(prev => [...prev, ...message]);
+    } else {
+        setCombatLog(prev => [...prev, message]);
+    }
   }
 
-  const mountEnemy = () => {
-    // Check for saved combat state first
-    if (typeof window !== 'undefined') {
-      const savedCombat = sessionStorage.getItem('bw_combat_state');
-      if (savedCombat) {
-        try {
-          const state = JSON.parse(savedCombat);
-          if (state.hero?.name === heroDef.name) {
-            setHero(state.hero);
-            setEnemy(state.enemy);
-            if (state.combatLog) setCombatLog(state.combatLog);
-            if (state.isPlayerTurn !== undefined) setIsPlayerTurn(state.isPlayerTurn);
-            return;
+  const fetchCombatState = async () => {
+      try {
+          const res = await fetch('/api/combat/state');
+          const data = await res.json();
+          if (data.active) {
+              setEnemy({ ...data.monster, hp: data.session.monster_hp, maxHp: data.monster.base_hp });
+              setHero(prev => ({ ...prev, hp: data.session.player_hp }));
+              setSessionData(data.session);
+              setIsPlayerTurn(true);
+              addLog(`[ENCOUNTER]: A ${data.monster.name} stands before you.`);
+
+              // Calculate time remaining based on session created_at
+              const sessionTime = new Date(data.session.created_at).getTime();
+              const elapsed = Math.floor((Date.now() - sessionTime) / 1000);
+              const remaining = Math.max(0, 300 - elapsed);
+              setTimeRemaining(remaining);
+          } else {
+              // Should not happen if they are legitimately in COMBAT stage, but just in case
+              addLog("[ERROR]: The area is empty. You shouldn't be here.");
           }
-        } catch (e) {
-          console.error("Failed to parse saved combat state", e);
-        }
+      } catch (e) {
+          addLog(`[SYSTEM ERROR]: Could not connect to combat servers.`);
       }
-    }
-
-    const levelMulti = 1 + (hero.level * 0.3);
-    const isBossRoll = hero.kills > 0 && hero.kills % 3 === 0;
-
-    // Pull from zone data if available, otherwise use fallback
-    const bossPool = activeZone?.bosses || [
-      { name: 'The Nameless Sovereign', baseHp: 200, baseDmg: 20, isBoss: true },
-      { name: 'Warden of the Abyss', baseHp: 250, baseDmg: 15, isBoss: true }
-    ];
-    const enemyPool = activeZone?.enemies || [
-      { name: 'Gargoyle', baseHp: 60, baseDmg: 10, isBoss: false },
-      { name: 'Wraith', baseHp: 45, baseDmg: 18, isBoss: false },
-      { name: 'Flesh Golem', baseHp: 110, baseDmg: 8, isBoss: false }
-    ];
-
-    const pool = isBossRoll ? bossPool : enemyPool;
-    const chosen = pool[Math.floor(Math.random() * pool.length)];
-    const scaled = {
-      ...chosen,
-      maxHp: Math.floor(chosen.baseHp * levelMulti),
-      hp: Math.floor(chosen.baseHp * levelMulti),
-      attackDamage: Math.floor(chosen.baseDmg * levelMulti)
-    };
-    setEnemy(scaled);
-    if (scaled.isBoss) {
-      addLog(`[BOSS]: ${scaled.name} blocks your path.`);
-    } else {
-      addLog(`[ENCOUNTER]: A ${scaled.name} emerges from the shadows.`);
-    }
   };
 
   useEffect(() => {
-    mountEnemy();
+      fetchCombatState();
   }, []);
 
-  // Save combat state to prevent refreshing to escape or reroll enemies
+  // 5-minute visual countdown timer
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      if (hero.hp <= 0 || enemy.hp <= 0) {
-        sessionStorage.removeItem('bw_combat_state');
-      } else {
-        sessionStorage.setItem('bw_combat_state', JSON.stringify({ hero, enemy, combatLog, isPlayerTurn }));
-      }
-    }
-  }, [hero, enemy, combatLog, isPlayerTurn]);
+      if (!isPlayerTurn || timeRemaining <= 0 || !enemy || enemy.hp <= 0) return;
+      const interval = setInterval(() => {
+          setTimeRemaining(prev => {
+              if (prev <= 1) {
+                  clearInterval(interval);
+                  handleCombatAction('FLEE'); // Auto-timeout fallback just to trigger the end visually
+                  return 0;
+              }
+              return prev - 1;
+          });
+      }, 1000);
+      return () => clearInterval(interval);
+  }, [isPlayerTurn, timeRemaining, enemy]);
+
+  const formatTime = (seconds) => {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
 
   const sb = calculateSkillBonuses(hero.skillPoints || {});
   const c = calcCombatStats(hero, sb);
 
+  const handleCombatAction = async (action) => {
+      if (hero.hp <= 0 || (enemy && enemy.hp <= 0) || !isPlayerTurn) return;
+      setIsPlayerTurn(false);
 
-  const handleAttack = async () => {
-    if (hero.hp <= 0 || enemy.hp <= 0 || !isPlayerTurn) return;
-    setIsPlayerTurn(false);
-
-    try {
-        const response = await fetch('/api/combat/resolve', {
-             method: 'POST',
-             headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ enemyId: enemy.id || 'void_stalker' })
-        });
-        const data = await response.json();
-
-        if (!response.ok) {
-            addLog(`[X] [ERROR]: ${data.error}`);
-            setIsPlayerTurn(true);
-            return;
-        }
-
-        if (data.win) {
-            addLog(`[STRIKE]: You devastate ${enemy.name}!`);
-            setEnemy(prev => ({ ...prev, hp: 0 }));
-            addLog(`[SLAIN]: The ${enemy.name} has fallen.`);
-            addLog(`+ ${data.expGained} EXP | + ${data.goldGained} Gold`);
-            
-            setTimeout(() => {
-                onVictory(data.updatedHero);
-            }, 3000);
-        } else {
-            addLog(`⚠️ ${enemy.name} overpowered you!`);
-            addLog("🛑 [PERISHED]: The dark consumes you...");
-            setEnemy(prev => ({ ...prev, hp: 0 }));
-            setTimeout(() => {
-                onHeroDeath(data.updatedHero);
-            }, 2500);
-        }
-
-    } catch (err) {
-        addLog(`✖ [SYSTEM ERROR]: ${err.message}`);
-        setIsPlayerTurn(true);
-    }
-  };
-
-  const handleFlask = async () => {
-     if (hero.hp <= 0 || enemy.hp <= 0 || !isPlayerTurn) return;
-     setIsPlayerTurn(false);
-
-     try {
-         const response = await fetch('/api/combat/flask', {
+      try {
+          const response = await fetch('/api/combat/turn', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ enemyId: enemy.id || 'void_stalker' })
-         });
-         const data = await response.json();
+              body: JSON.stringify({ action })
+          });
+          const data = await response.json();
 
-         if (!response.ok) {
-             addLog(`🚫 [ERROR]: ${data.error}`);
-             setIsPlayerTurn(true);
-             return;
-         }
+          if (!response.ok) {
+              addLog(`[X] [ERROR]: ${data.message || 'Action failed'}`);
+              setIsPlayerTurn(true);
+              return;
+          }
 
-         addLog(data.narrative);
+          if (data.log) {
+              addLog(data.log);
+          }
 
-         if (data.died) {
-            setEnemy(prev => ({ ...prev, hp: 0 }));
-            setTimeout(() => {
-                onHeroDeath(data.updatedHero);
-            }, 2500);
-         } else {
-            // Because updatedHero is shallow, we only need to pass it to updateHero.
-            // Wait, we need to update our local hero state as well so UI renders!
-            setHero(prev => ({ ...prev, ...data.updatedHero }));
-            setIsPlayerTurn(true);
-         }
+          if (data.state) {
+              setHero(prev => ({ ...prev, hp: data.state.playerHp }));
+              if (enemy) setEnemy(prev => ({ ...prev, hp: data.state.monsterHp }));
+          }
 
-     } catch (err) {
-         addLog(`❌ [SYSTEM ERROR]: ${err.message}`);
-         setIsPlayerTurn(true);
-     }
-  }
+          if (data.isOver) {
+              if (data.result === 'VICTORY') {
+                  addLog(`+ ${data.rewards?.xp || 0} EXP | + ${data.rewards?.gold || 0} Gold`);
+                  setTimeout(() => {
+                      onVictory({ ...hero, hp: data.state.playerHp });
+                  }, 3000);
+              } else if (data.result === 'DEFEAT') {
+                  addLog("🛑 [PERISHED]: The dark consumes you...");
+                  setTimeout(() => {
+                      if (typeof window !== 'undefined') localStorage.removeItem('bw_active_zone');
+                      onHeroDeath({ ...hero, hp: 0, activeZone: null });
+                  }, 2500);
+              } else if (data.result === 'STALEMATE' || data.result === 'FLED') {
+                  setTimeout(() => {
+                      onVictory({ ...hero, hp: data.state.playerHp }); // Treat stalemate/fled as returning to town
+                  }, 3000);
+              }
+          } else {
+              setIsPlayerTurn(true);
+          }
+
+      } catch (err) {
+          addLog(`✖ [SYSTEM ERROR]: ${err.message}`);
+          setIsPlayerTurn(true);
+      }
+  };
+
+  const handleAttack = () => handleCombatAction('ATTACK');
+  const handleFlask = () => handleCombatAction('USE_FLASK');
 
   // Death is now handled directly within action handlers (handleAttack, handleFlask).
 
@@ -207,10 +173,10 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 flex-col-reverse">
         
         {/* LEFT TRAY: HERO HUD */}
-        <section className="lg:col-span-1 flex flex-col gap-6">
+        <section className="lg:col-span-1 flex flex-col gap-6 order-2 lg:order-1">
           <div className="bg-[#050505] border border-red-900/20 p-6 shadow-[0_0_15px_rgba(153,27,27,0.1)]">
             <div className="flex items-center gap-4 mb-6 pb-4 border-b border-red-900/20">
               <div className="w-12 h-12 bg-red-950/40 border border-red-800/50 flex items-center justify-center text-red-500">
@@ -255,7 +221,7 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
             
             <button 
               onClick={handleAttack}
-              disabled={hero.hp <= 0 || enemy.hp <= 0 || !isPlayerTurn}
+              disabled={hero.hp <= 0 || !enemy || enemy.hp <= 0 || !isPlayerTurn}
               className="w-full bg-red-950/20 hover:bg-red-900/40 border border-red-800/30 text-red-400 font-bold py-4 text-xs uppercase tracking-widest transition-all disabled:opacity-20 disabled:grayscale"
             >
               Strike (Melee)
@@ -263,7 +229,7 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
             
             <button 
               onClick={handleFlask}
-              disabled={hero.hp <= 0 || enemy.hp <= 0 || !isPlayerTurn}
+              disabled={hero.hp <= 0 || !enemy || enemy.hp <= 0 || !isPlayerTurn}
               className="w-full bg-black hover:bg-neutral-900 border border-neutral-800 text-stone-400 font-bold py-4 text-xs uppercase tracking-widest transition-all disabled:opacity-20 flex justify-between px-4 items-center"
             >
               <span>Crimson Flask</span>
@@ -273,7 +239,7 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
         </section>
 
         {/* CENTER: COMBAT TERMINAL */}
-        <section className="lg:col-span-2 flex flex-col h-[700px]">
+        <section className="lg:col-span-2 flex flex-col h-[350px] lg:h-[700px] order-3 lg:order-2">
           <div className="flex-1 bg-[#020202] border border-red-900/20 flex flex-col shadow-inner overflow-hidden relative">
             
             <div className="flex justify-between items-center px-6 py-4 border-b border-red-900/20 bg-[#050505] font-mono text-xs uppercase tracking-widest text-stone-600">
@@ -284,20 +250,34 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
               </span>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-8 font-serif text-base leading-loose space-y-4 shadow-[inset_0_0_50px_rgba(0,0,0,1)]">
+            <div className="flex-1 overflow-y-auto p-4 lg:p-8 font-serif text-base leading-loose space-y-4 shadow-[inset_0_0_50px_rgba(0,0,0,1)]">
               {combatLog.map((log, index) => {
+                 const text = typeof log === 'string' ? log : log.message;
+                 
                  let colorClass = "text-stone-500";
-                 if (log.includes('AGONY')) colorClass = "text-red-600 font-bold";
-                 else if (log.includes('STRIKE')) colorClass = "text-stone-300";
-                 else if (log.includes('SLAUGHTER') || log.includes('ASCENSION')) colorClass = "text-red-400 font-serif text-lg tracking-wide shadow-black drop-shadow-md";
-                 else if (log.includes('CRIMSON')) colorClass = "text-red-500 font-bold";
-                 else if (log.includes('PERISHED') || log.includes('DENIED') || log.includes('EMPTY')) colorClass = "text-red-800 font-black tracking-widest";
-                 else if (log.includes('LORE') || log.includes('SHADOWS')) colorClass = "text-neutral-700 italic";
-                 else if (log.includes('BOSS')) colorClass = "text-yellow-600 font-black text-xl italic uppercase font-serif drop-shadow-[0_0_5px_rgba(202,138,4,0.4)]";
+                 if (text.includes('ERROR')) colorClass = "text-red-500 font-bold";
+                 else if (text.includes('VICTORY')) colorClass = "text-yellow-600 font-black tracking-wider";
+                 else if (text.includes('DEFEAT') || text.includes('PERISHED')) colorClass = "text-red-800 font-black tracking-widest";
+                 else if (typeof log === 'object') {
+                     if (log.actor === 'player') {
+                         if (log.type === 'attack') colorClass = log.isCrit ? "text-yellow-500 font-bold" : "text-stone-300";
+                         else if (log.type === 'heal') colorClass = "text-emerald-500";
+                         else if (log.type === 'buff' || log.type === 'thorns') colorClass = "text-blue-400";
+                         else if (log.type.includes('flee')) colorClass = "text-stone-400 italic";
+                     } else if (log.actor === 'monster') {
+                         if (log.type === 'attack') colorClass = "text-red-500";
+                         else if (log.type === 'special') colorClass = "text-red-600 font-bold";
+                         else if (log.type === 'status_damage' || log.type === 'status_apply') colorClass = "text-purple-500 italic";
+                     }
+                 } else {
+                     // Fallback for strings
+                     if (text.includes('ENCOUNTER')) colorClass = "text-yellow-600 font-black italic uppercase font-serif drop-shadow-[0_0_5px_rgba(202,138,4,0.4)]";
+                     else if (text.includes('EXP') || text.includes('Gold')) colorClass = "text-yellow-500 font-bold";
+                 }
                  
                  return (
                    <p key={index} className={`${colorClass} border-l-2 border-transparent pl-4 hover:border-red-900/30 transition-all`}>
-                     {log}
+                     {text}
                    </p>
                  );
               })}
@@ -307,12 +287,13 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
         </section>
 
         {/* RIGHT TRAY: TARGET HUD */}
-        <section className="lg:col-span-1">
-          {enemy.hp > 0 ? (
-            <div className={`bg-[#050505] border p-6 shadow-2xl relative overflow-hidden transition-all duration-300 ${enemy.isBoss ? "border-yellow-600/50 shadow-[0_0_30px_rgba(202,138,4,0.1)]" : "border-red-900/30"}`}>
+        <section className="lg:col-span-1 order-1 lg:order-3">
+          {enemy && enemy.hp > 0 ? (
+            <div className={`bg-[#050505] border p-6 shadow-2xl relative overflow-hidden transition-all duration-300 ${enemy.is_boss ? "border-yellow-600/50 shadow-[0_0_30px_rgba(202,138,4,0.1)]" : "border-red-900/30"}`}>
               
-              <h3 className={`text-xs font-bold tracking-widest uppercase mb-2 font-mono ${enemy.isBoss ? 'text-yellow-600 animate-pulse' : 'text-red-900'}`}>
-                {enemy.isBoss ? "BOSS" : "Enemy"}
+              <h3 className={`text-xs font-bold tracking-widest uppercase mb-2 font-mono flex justify-between ${enemy.is_boss ? 'text-yellow-600 animate-pulse' : 'text-red-900'}`}>
+                <span>{enemy.is_boss ? "BOSS" : "Enemy"}</span>
+                {timeRemaining > 0 && <span className="text-red-500 tabular-nums">{formatTime(timeRemaining)}</span>}
               </h3>
               <h2 className="text-3xl font-black text-stone-200 uppercase tracking-widest mb-6 font-serif">{enemy.name}</h2>
               
@@ -327,7 +308,7 @@ export default function CombatEngine({ heroDef, zone, onVictory, onHeroDeath }) 
               <div className="mt-8 pt-6 font-mono border-t border-neutral-900">
                 <div className="text-xs text-stone-600 uppercase tracking-widest mb-2">Damage</div>
                 <div className="flex items-center gap-3">
-                  <span className="text-lg font-bold text-red-500">Max Dmg: {enemy.attackDamage + (enemy.isBoss ? 4 : 2)}</span>
+                  <span className="text-lg font-bold text-red-500">Max Dmg: {(enemy.base_dmg || 5) + (enemy.is_boss ? 4 : 2)}</span>
                 </div>
               </div>
             </div>

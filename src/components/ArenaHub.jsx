@@ -174,6 +174,7 @@ export default function ArenaHub({ onBack }) {
                                         </div>
                                         <button 
                                             onClick={async () => {
+                                                if (hero.hp <= 0) return alert('You are dead. Revive first.');
                                                 const check = validateAndConsume(hero, hero?.player_resources, 10, 'essence');
                                                 if (!check.success) return alert(`Not enough Essence. Short ${check.deficit}.`);
                                                 
@@ -196,7 +197,8 @@ export default function ArenaHub({ onBack }) {
                                                     alert(`[ERROR] ${err.message}`);
                                                 }
                                             }}
-                                            className="bg-black hover:bg-red-950/40 text-red-500 border border-red-900/40 py-2 px-4 font-mono text-xs uppercase tracking-widest transition-colors">
+                                            disabled={hero.hp <= 0}
+                                            className="bg-black hover:bg-red-950/40 text-red-500 border border-red-900/40 py-2 px-4 font-mono text-xs uppercase tracking-widest transition-colors disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed">
                                             Duel
                                         </button>
                                     </div>

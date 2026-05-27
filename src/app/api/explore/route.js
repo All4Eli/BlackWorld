@@ -105,6 +105,15 @@ async function handlePost(request, { userId }) {
     // ── ENEMY ENCOUNTER (35%) ─────────────────────────────────
     encounterType = 'enemy';
     narrative = pick(ENEMY_NARRATIVES);
+    
+    try {
+      const CombatDal = await import('@/lib/db/dal/combat');
+      const { monster } = await CombatDal.getOrStartCombat(userId, zoneId);
+      loot = { enemyId: monster.id }; // Pass the instantiated monster ID down
+    } catch (e) {
+      console.error('[EXPLORE] Error instantiating combat:', e);
+      return NextResponse.json({ error: 'Failed to generate encounter' }, { status: 500 });
+    }
 
   } else if (roll > 0.35) {
     // ── RESOURCE / LOOT FIND (30%) ────────────────────────────

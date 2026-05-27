@@ -222,7 +222,7 @@ function rollCrit(critChance) {
  *     hero.enemyVuln        — Numeric: enemies take X% more damage
  *
  * @param {Object} monster — The static monster object from DB:
- *   { name, is_boss, stats: { dmg, hp, def } }
+ *   { name, is_boss, base_hp, base_dmg, defense }
  *
  * @param {string} action — Player intent: 'ATTACK', 'USE_FLASK', 'FLEE'
  *
@@ -326,7 +326,7 @@ export function resolveCombatTurn(combatSession, hero, monster, action) {
 
     // Net damage = gross minus monster's defense
     // UNCAPPED: 0 damage is valid when player defense is weaker than monster's
-    let netDmg = Math.max(0, Math.floor(grossDmg - (monster.stats.def || 0)));
+    let netDmg = Math.max(0, Math.floor(grossDmg - (monster.defense || 0)));
     monsterHp = Math.max(0, monsterHp - netDmg);
 
     log.push({
@@ -376,7 +376,7 @@ export function resolveCombatTurn(combatSession, hero, monster, action) {
   // The monster attacks UNLESS the player fled and failed (in which
   // case there's a 50% chance the monster still hits).
   if (action !== 'FLEE' || Math.random() < 0.5) {
-    let mDmg = monster.stats.dmg || 5;
+    let mDmg = monster.base_dmg || 5;
 
     // Bosses have a 10% chance to use a devastating special attack
     // that deals double damage. This adds variance to boss fights.

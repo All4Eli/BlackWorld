@@ -55,7 +55,16 @@ export async function GET() {
     return NextResponse.json({ player: null });
   }
 
-  // 2. Fetch player identity (username, email)
+  // 2. Check for active combat session to override stage
+  const { data: combatSession } = await sqlOne(
+    `SELECT id FROM combat_sessions WHERE player_id = $1`,
+    [userId]
+  );
+  if (combatSession) {
+      stats.stage = 'COMBAT';
+  }
+
+  // 3. Fetch player identity (username, email)
   const { data: identity } = await sqlOne(
     `SELECT username, email, created_at AS joined_at FROM players WHERE clerk_user_id = $1`,
     [userId]

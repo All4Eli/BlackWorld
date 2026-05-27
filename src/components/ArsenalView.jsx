@@ -54,13 +54,13 @@ export default function ArsenalView() {
     if (equippingId) return; // Prevent double-clicks
     
     const typeToSlot = {
-      WEAPON: 'mainHand', MAIN_HAND: 'mainHand', OFF_HAND: 'offHand',
-      ARMOR: 'body', BODY: 'body', HEAD: 'head',
-      BOOTS: 'boots', AMULET: 'amulet', RING: 'ring1',
+      WEAPON: 'mainHand', MAIN_HAND: 'mainHand', MAINHAND: 'mainHand', OFF_HAND: 'offHand', OFFHAND: 'offHand',
+      ARMOR: 'body', BODY: 'body', HEAD: 'head', HELMET: 'head', HELM: 'head',
+      BOOTS: 'boots', AMULET: 'amulet', NECK: 'amulet', RING: 'ring1', RING1: 'ring1', RING2: 'ring2', ACCESSORY: 'amulet',
     };
     const slotSource = item.item_slot || item.item_type;
     const slot = typeToSlot[String(slotSource).toUpperCase()];
-    if (!slot) return alert('This item cannot be equipped.');
+    if (!slot) return alert(`This item cannot be equipped. (slot: ${item.item_slot}, type: ${item.item_type})`);
 
     setEquippingId(item.inventory_id);
 

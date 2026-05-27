@@ -333,14 +333,14 @@ export default function DungeonGrid({ onTriggerCombat, onBack }) {
           <button
             id={`btn-enter-${d.id}`}
             onClick={() => handleStartRun(d.id)}
-            disabled={levelLocked || actionLoading}
+            disabled={levelLocked || actionLoading || hero?.hp <= 0}
             className={`px-6 py-3 font-mono text-[11px] uppercase tracking-widest font-bold transition-all border ${
-              levelLocked || actionLoading
+              levelLocked || actionLoading || hero?.hp <= 0
                 ? 'bg-neutral-900 border-neutral-800 text-stone-700 cursor-not-allowed'
                 : 'bg-red-950/20 border-red-900/50 text-red-400 hover:bg-red-900/40 hover:text-red-200'
             }`}
           >
-            {actionLoading ? 'Entering...' : levelLocked ? `Locked (Lv.${d.min_level})` : 'Enter'}
+            {hero?.hp <= 0 ? 'You are dead' : actionLoading ? 'Entering...' : levelLocked ? `Locked (Lv.${d.min_level})` : 'Enter'}
           </button>
         </div>
       </div>

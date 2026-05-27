@@ -390,17 +390,19 @@ export default function GatheringView({ onBack }) {
                   <button
                     id={`btn-gather-${node.id}`}
                     onClick={() => handleGather(node.id)}
-                    disabled={!canGather || gathering === node.id}
+                    disabled={!canGather || gathering === node.id || hero?.hp <= 0}
                     className={`
                       w-full py-3 font-mono uppercase tracking-widest text-[11px] font-bold transition-all border
-                      ${!canGather || gathering === node.id
+                      ${!canGather || gathering === node.id || hero?.hp <= 0
                         ? 'bg-neutral-900 border-neutral-800 text-stone-700 cursor-not-allowed'
                         : 'bg-red-950/20 border-red-900/50 text-red-400 hover:bg-red-900/40 hover:text-red-200'
                       }
                     `}
                   >
-                    {gathering === node.id
-                      ? 'Gathering...'
+                    {hero?.hp <= 0 
+                      ? 'You are dead'
+                      : gathering === node.id
+                        ? 'Gathering...'
                       : !meetsReq
                         ? `Locked (Lv.${node.min_skill_level})`
                         : (hero?.essence || 0) < (node.essence_cost || 5)

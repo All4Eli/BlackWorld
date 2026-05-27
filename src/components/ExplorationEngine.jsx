@@ -52,7 +52,19 @@ import { GameIcon, IconSword, IconSkull, IconShield, IconFlask } from './icons/G
 export default function ExplorationEngine({ onFindCombat }) {
   const { hero, updateHero } = usePlayer();
   const [log, setLog] = useState([]);
-  const [activeZone, setActiveZone] = useState(hero?.activeZone || null);
+  
+  const [activeZone, setActiveZone] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('bw_active_zone');
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch(e) {}
+      }
+    }
+    return hero?.activeZone || null;
+  });
+
   const [activeBounties, setActiveBounties] = useState([]);
   const logEndRef = useRef(null);
   const combatLogEndRef = useRef(null);
@@ -99,6 +111,10 @@ export default function ExplorationEngine({ onFindCombat }) {
         const data = await res.json();
         if (res.ok) {
             setActiveZone(zone);
+            if (typeof window !== 'undefined') localStorage.setItem('bw_active_zone', JSON.stringify(zone));
+            if (data.updatedHero) {
+                updateHero(data.updatedHero);
+            }
             setLog([{ type: 'system', text: `You cross into the ${zone.name}.`, time: Date.now() }]);
         } else {
             addLog({ type: 'error', text: data.error, time: Date.now() });
@@ -134,7 +150,7 @@ export default function ExplorationEngine({ onFindCombat }) {
           addLog({ type: 'narrative', text: data.narrative, time: Date.now() });
 
           // Loot found
-          if (data.loot) {
+          if (data.loot && data.loot.name) {
              addLog({ type: 'loot', text: `Found: ${data.loot.name} [${data.loot.tier}]`, tier: data.loot.tier, time: Date.now() });
              sound?.play('loot');
           }
@@ -146,11 +162,13 @@ export default function ExplorationEngine({ onFindCombat }) {
           }
 
           // Enemy encounter — start combat
-          if (data.encounter === 'enemy') {
+          if (data.loot?.enemyId || data.encounterType === 'enemy') {
              addLog({ type: 'danger', text: 'Prepare for combat!', time: Date.now() });
              sound?.play('encounter');
              setTimeout(() => {
-                 initCombat(activeZone);
+                 if (onFindCombat) {
+                     onFindCombat({ zone: activeZone });
+                 }
                  setExploreCooldown(false);
              }, 1200);
           } else {
@@ -517,18 +535,22 @@ export default function ExplorationEngine({ onFindCombat }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 onClick={handleExplore}
-                disabled={exploreCooldown}
-                className="relative bg-[#080808] hover:bg-red-950/20 border border-red-900/40 hover:border-red-800/60 py-5 font-mono uppercase tracking-[0.2em] text-sm text-red-500 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 group"
+                disabled={exploreCooldown || hero.hp <= 0}
+                className="w-full relative group overflow-hidden bg-red-950/20 border border-red-900/40 text-stone-200 py-3 sm:py-4 px-6 text-sm font-mono tracking-widest uppercase transition-all hover:bg-red-900/40 hover:border-red-500/50 active:scale-[0.98] disabled:opacity-30 disabled:grayscale disabled:pointer-events-none"
               >
-                <span className="relative z-10 flex items-center justify-center gap-3">
-                  <IconSword size={18} className="group-hover:animate-pulse" />
-                  {exploreCooldown ? 'Exploring...' : 'Explore the Depths'}
+                <div className="absolute inset-0 bg-gradient-to-r from-red-900/0 via-red-900/20 to-red-900/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                <span className="relative flex items-center justify-center gap-3">
+                  <IconSword size={18} className={exploreCooldown ? 'animate-pulse text-stone-500' : 'text-red-500'} />
+                  {hero.hp <= 0 ? 'You are dead' : (exploreCooldown ? 'Exploring...' : 'Venture Deeper')}
                 </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-red-950/0 via-red-950/10 to-red-950/0 opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
 
               <button
-                onClick={() => setActiveZone(null)}
+                onClick={() => {
+                  setActiveZone(null);
+                  if (typeof window !== 'undefined') localStorage.removeItem('bw_active_zone');
+                  updateHero({ activeZone: null });
+                }}
                 className="bg-[#050505] hover:bg-stone-950 border border-neutral-800 hover:border-neutral-700 py-5 font-mono uppercase tracking-[0.2em] text-sm text-stone-600 hover:text-stone-400 transition-all duration-300"
               >
                 <span className="flex items-center justify-center gap-3">

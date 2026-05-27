@@ -29,6 +29,7 @@ export function usePlayerData() {
           // Map the normalized response into the heroData shape the client components expect.
           const stats = player.stats || {};
           const heroData = {
+            clerk_user_id: player.userId,
             name: player.username,
             hp: stats.hp,
             maxHp: stats.maxHp,
@@ -93,8 +94,8 @@ export function usePlayerData() {
           };
 
           let stage = player.stage || 'BOOT';
-          if (typeof window !== 'undefined' && sessionStorage.getItem('bw_combat_state')) {
-            stage = 'COMBAT';
+          if (stats.stage === 'COMBAT') {
+              stage = 'COMBAT';
           }
 
           setSaveData({

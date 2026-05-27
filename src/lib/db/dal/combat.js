@@ -23,7 +23,7 @@ export async function getOrStartCombat(userId, zoneId) {
     // Production would query monsters table grouped by zone
     // For now we'll pick a random generic monster matching the zone level
     const { data: monster } = await sqlOne(
-        `SELECT * FROM monsters WHERE zone = $1 ORDER BY RANDOM() LIMIT 1`,
+        `SELECT * FROM monsters WHERE zone_id = $1 ORDER BY RANDOM() LIMIT 1`,
         [zoneId]
     );
 
@@ -43,7 +43,7 @@ export async function getOrStartCombat(userId, zoneId) {
         `INSERT INTO combat_sessions (player_id, monster_id, zone_id, player_hp, monster_hp)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING *`,
-        [userId, monster.id, zoneId, compiled.maxHp, (monster.stats || {}).hp || 50]
+        [userId, monster.id, zoneId, compiled.maxHp, monster.base_hp || 50]
     );
 
     return { session: newSession, monster };
@@ -69,6 +69,24 @@ export async function processTurn(userId, action) {
         }
 
         const combatSession = sessionRows[0];
+
+        // ── 5-Minute Global Timeout (Torn City Style) ──────────────
+        const MAX_COMBAT_DURATION_MS = 5 * 60 * 1000;
+        const timeElapsed = Date.now() - new Date(combatSession.created_at).getTime();
+        
+        if (timeElapsed > MAX_COMBAT_DURATION_MS) {
+            // Combat timed out! Delete session and return stalemate
+            await client.query(`DELETE FROM combat_sessions WHERE player_id = $1`, [userId]);
+            await client.query('COMMIT');
+            return { 
+                data: { 
+                    log: ["[TIMEOUT]: The battle has dragged on too long. Both parties disengage in exhaustion."],
+                    isOver: true,
+                    result: 'STALEMATE',
+                    state: { player_hp: combatSession.player_hp }
+                } 
+            };
+        }
 
         // Fetch Player Stats & Equipment under transaction
         const { rows: heroRows } = await client.query(`SELECT * FROM hero_stats WHERE player_id = $1`, [userId]);

@@ -515,16 +515,39 @@ export async function claimQuestReward(playerId, questKey) {
       throw new Error(`Quest is in unexpected status: ${pq.status}`);
     }
 
-    // 2. Grant gold + XP to hero_stats atomically
-    const { rows: heroRows } = await client.query(
-      `UPDATE hero_stats
-       SET gold = gold + $1, xp = xp + $2
-       WHERE player_id = $3
-       RETURNING gold, xp`,
-      [pq.reward_gold, pq.reward_xp, playerId]
+    // 2. Grant gold + XP to hero_stats atomically, handling level up loop
+    const { rows: preHeroRows } = await client.query(
+      `SELECT xp, level, unspent_stat_points, skill_points_unspent
+       FROM hero_stats
+       WHERE player_id = $1
+       FOR UPDATE`,
+      [playerId]
     );
 
-    if (heroRows.length === 0) throw new Error('Hero not found');
+    if (preHeroRows.length === 0) throw new Error('Hero not found');
+
+    let currentXp = (preHeroRows[0].xp || 0) + pq.reward_xp;
+    let currentLevel = preHeroRows[0].level || 1;
+    let statPts = preHeroRows[0].unspent_stat_points || 0;
+    let skillPts = preHeroRows[0].skill_points_unspent || 0;
+
+    const { calculateXPRequirement } = require('@/lib/gameData');
+    let reqXp = calculateXPRequirement(currentLevel);
+    while (currentXp >= reqXp) {
+      currentXp -= reqXp;
+      currentLevel += 1;
+      statPts += 3;
+      skillPts += 1;
+      reqXp = calculateXPRequirement(currentLevel);
+    }
+
+    const { rows: heroRows } = await client.query(
+      `UPDATE hero_stats
+       SET gold = gold + $1, xp = $2, level = $3, unspent_stat_points = $4, skill_points_unspent = $5
+       WHERE player_id = $6
+       RETURNING gold, xp`,
+      [pq.reward_gold, currentXp, currentLevel, statPts, skillPts, playerId]
+    );
 
     // 3. Grant reward items (if any)
     const grantedItems = [];

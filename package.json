@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed": "node --env-file=.env.local scripts/seed_game_content.js"
   },
   "dependencies": {
     "@react-oauth/google": "^0.13.5",

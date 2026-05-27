@@ -274,20 +274,12 @@ export async function POST(request) {
             }
 
             // ── Quest progress via normalized player_quests table ──
-            //
-            // Fire quest events so the QuestLog can track progress.
-            // This is a best-effort call — combat should never fail
-            // because quest tracking failed.
             try {
                 const isBoss = enemyState?.tier === 'BOSS';
                 const event = isBoss ? 'KILL_BOSS' : 'KILL_ENEMIES';
 
-                await fetch(new URL('/api/quests/progress', request.url), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json',
-                               'Cookie': request.headers.get('cookie') || '' },
-                    body: JSON.stringify({ event, count: 1, zoneId }),
-                });
+                const QuestDal = await import('@/lib/db/dal/quests');
+                await QuestDal.incrementProgress(userId, event, 1, { zoneId });
             } catch (qErr) {
                 console.warn('[QUEST PROGRESS]', qErr.message);
             }

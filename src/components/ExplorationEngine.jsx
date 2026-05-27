@@ -158,6 +158,7 @@ export default function ExplorationEngine({ onFindCombat }) {
           // Gold found
           if (data.goldFound > 0) {
              addLog({ type: 'gold', text: `+${data.goldFound} Gold`, time: Date.now() });
+             updateHero({ gold: (hero.gold || 0) + data.goldFound });
              sound?.play('coin');
           }
 

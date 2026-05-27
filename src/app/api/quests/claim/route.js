@@ -49,7 +49,7 @@ async function handlePost(req, { userId }) {
     const { data: result, error: txErr } = await transaction(async (client) => {
       // STEP 1: Lock hero_stats row to prevent double-claim
       const { rows: heroRows } = await client.query(
-        `SELECT hp, gold, xp, level, daily_quests
+        `SELECT hp, gold, xp, level, unspent_stat_points, skill_points_unspent, daily_quests
          FROM hero_stats
          WHERE player_id = $1
          FOR UPDATE`,
@@ -78,14 +78,32 @@ async function handlePost(req, { userId }) {
       const rewardGold = quest.reward?.gold || 0;
       const rewardXP = quest.reward?.xp || 0;
 
+      const { calculateXPRequirement } = require('@/lib/gameData');
+      let currentXp = (hero.xp || 0) + rewardXP;
+      let currentLevel = hero.level || 1;
+      let statPts = hero.unspent_stat_points || 0;
+      let skillPts = hero.skill_points_unspent || 0;
+      
+      let reqXp = calculateXPRequirement(currentLevel);
+      while (currentXp >= reqXp) {
+        currentXp -= reqXp;
+        currentLevel += 1;
+        statPts += 3;
+        skillPts += 1;
+        reqXp = calculateXPRequirement(currentLevel);
+      }
+
       const { rows: updatedHero } = await client.query(
         `UPDATE hero_stats
          SET gold = gold + $1,
-             xp = xp + $2,
+             xp = $2,
+             level = $3,
+             unspent_stat_points = $4,
+             skill_points_unspent = $5,
              updated_at = NOW()
-         WHERE player_id = $3
+         WHERE player_id = $6
          RETURNING gold, xp, level, hp, max_hp`,
-        [rewardGold, rewardXP, userId]
+        [rewardGold, currentXp, currentLevel, statPts, skillPts, userId]
       );
 
       // STEP 5: Mark quest as claimed in JSONB

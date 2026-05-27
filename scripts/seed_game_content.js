@@ -219,6 +219,10 @@ async function main() {
   //  6. QUESTS — Story quests, dailies, bounties
   // ══════════════════════════════════════════════════════════════════
   console.log('\n═══ 6. QUESTS ═══');
+  
+  // Deactivate all old quests first so that if keys changed, the old ones are hidden
+  await client.query('UPDATE quests SET is_active = false');
+  
   await client.query(`
     INSERT INTO quests (key, title, description, type, icon, objective_type, objective_target, reward_gold, reward_xp, level_required, difficulty, zone_id, is_repeatable, sort_order) VALUES
     -- Story Quests (one-time, sequential)
@@ -248,7 +252,15 @@ async function main() {
     ('bounty_blood_matriarch','The Blood Mother',         'End the Blood Matriarch''s reign in the Crimson Depths.',              'BOUNTY', '☠', 'KILL_BOSS',       1,  3000, 1500, 18, 'elite', 'crimson_depths',   false, 2),
     ('bounty_iron_tyrant',    'The Iron Tyrant',          'Destroy the Iron Tyrant war machine.',                                'BOUNTY', '☠', 'KILL_BOSS',       1,  5000, 2500, 28, 'elite', 'iron_wastes',      false, 3),
     ('bounty_architect',      'The Architect of Ruin',    'Ascend the Void Spire and destroy the Architect.',                    'BOUNTY', '☠', 'KILL_BOSS',       1, 15000, 8000, 42, 'elite', 'void_spire',       false, 4)
-    ON CONFLICT (key) DO NOTHING;
+    ON CONFLICT (key) DO UPDATE SET 
+      is_active = true, 
+      title = EXCLUDED.title, 
+      description = EXCLUDED.description, 
+      reward_gold = EXCLUDED.reward_gold, 
+      reward_xp = EXCLUDED.reward_xp, 
+      zone_id = EXCLUDED.zone_id,
+      objective_target = EXCLUDED.objective_target,
+      type = EXCLUDED.type;
   `);
   const questCount = await client.query('SELECT COUNT(*) FROM quests');
   console.log(`[OK] ${questCount.rows[0].count} quests`);

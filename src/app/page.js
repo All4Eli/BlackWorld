@@ -17,7 +17,7 @@ import { PlayerProvider } from '@/context/PlayerContext';
 
 export default function GameStateDirector() {
   const { saveData, setSaveData, isLoading, isSignedIn, logout } = usePlayerData();
-  const { notifications, messages, unreadNotificationsCount, unreadMessagesCount, fetchMessages, markNotificationsRead, fetchNotifications } = useSocial();
+  const { notifications, messages, unreadNotificationsCount, unreadMessagesCount, fetchMessages, markNotificationsRead, fetchNotifications } = useSocial(isSignedIn);
   
   // UI State Mode
   const [showMailbox, setShowMailbox] = useState(false);

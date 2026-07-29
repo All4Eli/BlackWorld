@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 
-export function useSocial() {
+export function useSocial(isSignedIn = false) {
   const [notifications, setNotifications] = useState([]);
   const [messages, setMessages] = useState([]);
   
@@ -43,6 +43,9 @@ export function useSocial() {
   }, []);
 
   useEffect(() => {
+    // Don't fire social API calls until the user is authenticated
+    if (!isSignedIn) return;
+
     fetchNotifications();
     fetchMessages();
     
@@ -53,7 +56,7 @@ export function useSocial() {
     }, 60000);
     
     return () => clearInterval(interval);
-  }, [fetchNotifications, fetchMessages]);
+  }, [isSignedIn, fetchNotifications, fetchMessages]);
 
   return {
     notifications,

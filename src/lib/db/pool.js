@@ -16,7 +16,7 @@ dns.setDefaultResultOrder('ipv6first');
 import { Pool } from 'pg';
 
 let connectionString =
-  process.env.DATABASE_URL || 'postgresql://postgres:E87319ee@localhost:5432/blackworld';
+  process.env.DATABASE_URL || process.env.POSTGRES_URL || 'postgresql://postgres:E87319ee@localhost:5432/blackworld';
 
 // Defensive URL parser: If a user pastes a Supabase password with an '@' in it natively to Vercel,
 // the pg parser breaks. We URL encode the password portion if an unescaped '@' is detected.

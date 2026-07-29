@@ -51,4 +51,3 @@ setup-db.js
 *.zip
 client_secret_*.json
 *.exe
-android-studio-panda4-windows.exe

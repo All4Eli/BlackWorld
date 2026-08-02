@@ -20,27 +20,17 @@ import { Pool } from 'pg';
 let connectionString =
   process.env.DATABASE_URL || process.env.POSTGRES_URL || 'postgresql://postgres:E87319ee@localhost:5432/blackworld';
 
-// Strip sslmode query params that force strict CA verification in pg parser
-if (connectionString) {
-  connectionString = connectionString.replace(/(\?|&)sslmode=[^&]*/g, '');
-}
-
-// Defensive URL parser: If a user pastes a Supabase password with an '@' in it natively to Vercel,
-// the pg parser breaks. We URL encode the password portion if an unescaped '@' is detected.
-if (connectionString.startsWith('postgres://') || connectionString.startsWith('postgresql://')) {
-  const parts = connectionString.split('@');
-  if (parts.length > 2) {
-    const tail = parts.pop();      // host:port/db
-    const creds = parts.join('@'); // protocol://user:pass
-    const protoIdx = creds.indexOf('://') + 3;
-    const protocol = creds.slice(0, protoIdx);
-    const auth = creds.slice(protoIdx);
-    const colonIdx = auth.indexOf(':');
-    if (colonIdx !== -1) {
-      const user = auth.slice(0, colonIdx);
-      const rawPass = auth.slice(colonIdx + 1);
-      connectionString = `${protocol}${user}:${encodeURIComponent(rawPass)}@${tail}`;
-    }
+// Clean connection string URL parameters safely using standard URL API
+try {
+  if (connectionString.startsWith('postgres://') || connectionString.startsWith('postgresql://')) {
+    const u = new URL(connectionString);
+    u.searchParams.delete('sslmode');
+    connectionString = u.toString();
+  }
+} catch (e) {
+  // If connection string has unescaped characters in password preventing new URL parsing
+  if (connectionString.includes('sslmode=')) {
+    connectionString = connectionString.replace(/(\?|&)sslmode=[^&]*/g, '');
   }
 }
 

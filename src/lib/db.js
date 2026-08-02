@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/blackworld';
+const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || 'postgresql://postgres:postgres@localhost:5432/blackworld';
 
 const pool = new Pool({
   connectionString,

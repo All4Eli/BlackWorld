@@ -22,6 +22,7 @@ import { sql, sqlOne } from '@/lib/db/pool';
 import { calcPlayerStats, rollDamage, calcMonsterStats, isHitDodged } from '@/lib/combat';
 import { calculateSkillBonuses, calculateTomeBonuses } from '@/lib/skillTree';
 import * as InventoryDal from '@/lib/db/dal/inventory';
+import { checkJailStatus } from '@/lib/db/dal/expansion';
 
 export async function POST(request) {
     const { userId } = await auth();
@@ -35,10 +36,21 @@ export async function POST(request) {
           `SELECT hp, max_hp, gold, xp, level, kills, deaths, flasks, max_flasks,
                   str, def, dex, int, vit, base_dmg, mana, max_mana,
                   unspent_points, skill_points_unspent, skill_points,
-                  essence, max_essence, learned_tomes
+                  essence, max_essence, learned_tomes, jail_until, jail_reason
            FROM hero_stats WHERE player_id = $1`, [userId]
         );
         if (heroErr || !heroRow) throw new Error('Player not found.');
+
+        const jailStatus = checkJailStatus(heroRow);
+        if (jailStatus.in_jail) {
+          return NextResponse.json({
+            error: 'You are currently in the Dungeon (Jail)!',
+            code: 'IN_DUNGEON',
+            jail_until: heroRow.jail_until,
+            jail_reason: heroRow.jail_reason,
+            remaining_seconds: jailStatus.remaining_seconds
+          }, { status: 403 });
+        }
 
         // Build a hero object from normalized columns for calcPlayerStats
         const hero = {

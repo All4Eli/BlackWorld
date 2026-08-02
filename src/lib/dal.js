@@ -10,7 +10,7 @@
 //       This file re-exports pool helpers for backward compat.
 // ═══════════════════════════════════════════════════════════════════
 
-import { pool, sql as _sql, sqlOne as _sqlOne, transaction as _transaction } from '@/lib/db/pool';
+import { pool, sql as _sql, sqlOne as _sqlOne, transaction as _transaction } from './db/pool.js';
 
 // Re-export pool helpers under the same names used throughout this file.
 // All 27+ route files that `import { sql, sqlOne } from '@/lib/dal'` keep working.
@@ -788,3 +788,7 @@ export const supabase = {
 
 // Export pool for direct access if needed
 export { pool, sql, sqlOne, transaction };
+
+// Expansion DAL Exports
+export * from './db/dal/expansion.js';
+

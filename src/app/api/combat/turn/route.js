@@ -5,6 +5,8 @@
 import { NextResponse } from 'next/server';
 import { withMiddleware } from '@/lib/middleware';
 import * as CombatDal from '@/lib/db/dal/combat';
+import { sqlOne } from '@/lib/db/pool';
+import { checkJailStatus } from '@/lib/db/dal/expansion';
 
 /**
  * POST /api/combat/turn

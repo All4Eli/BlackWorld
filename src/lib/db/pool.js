@@ -20,6 +20,11 @@ import { Pool } from 'pg';
 let connectionString =
   process.env.DATABASE_URL || process.env.POSTGRES_URL || 'postgresql://postgres:E87319ee@localhost:5432/blackworld';
 
+// Strip sslmode query params that force strict CA verification in pg parser
+if (connectionString) {
+  connectionString = connectionString.replace(/(\?|&)sslmode=[^&]*/g, '');
+}
+
 // Defensive URL parser: If a user pastes a Supabase password with an '@' in it natively to Vercel,
 // the pg parser breaks. We URL encode the password portion if an unescaped '@' is detected.
 if (connectionString.startsWith('postgres://') || connectionString.startsWith('postgresql://')) {

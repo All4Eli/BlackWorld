@@ -17,6 +17,11 @@ import GlobalChatWidget from './GlobalChatWidget';
 import GatheringView from './GatheringView';
 import { useSounds } from './SoundEngine';
 import BloodStoneShop from './BloodStoneShop';
+import CrimesView from './CrimesView';
+import GymView from './GymView';
+import EducationView from './EducationView';
+import BazaarView from './BazaarView';
+import StockMarketView from './StockMarketView';
 
 function SoundToggle() {
   const sound = useSounds();
@@ -32,42 +37,7 @@ function SoundToggle() {
   );
 }
 
-// ── BEFORE (Prop Drilling): ─────────────────────────────────────
-//   export default function GameShell({ hero, updateHero, onFindCombat })
-//
-//   hero and updateHero were passed as props from page.js.
-//   This means:
-//     1. GameShell re-renders EVERY time page.js state changes
-//        (because it received a new prop reference)
-//     2. Every child of GameShell also re-renders (cascading)
-//     3. If we wanted hero data in a deeply nested component,
-//        we'd have to thread it through every intermediate parent
-//
-// ── AFTER (Context Subscription): ───────────────────────────────
-//   export default function GameShell({ onFindCombat })
-//
-//   hero and updateHero are consumed from PlayerContext.
-//   onFindCombat STAYS as a prop because it triggers a page-level
-//   stage transition (EXPLORATION → COMBAT), which is NOT player
-//   data — it's navigation/routing logic owned by page.js.
-//
 export default function GameShell({ onFindCombat }) {
-
-  // ── Subscribe to PlayerContext ──────────────────────────────
-  //
-  // usePlayer() calls useContext(PlayerContext) under the hood.
-  // This does two things:
-  //   1. Returns the current { hero, updateHero } from the nearest
-  //      <PlayerProvider> ancestor
-  //   2. SUBSCRIBES this component: whenever PlayerProvider's value
-  //      changes, React will re-render GameShell automatically
-  //
-  // DESTRUCTURING: { hero, updateHero } = usePlayer()
-  //   This is JavaScript "destructuring assignment." It's equivalent to:
-  //     const playerContext = usePlayer();
-  //     const hero = playerContext.hero;
-  //     const updateHero = playerContext.updateHero;
-  //   But written in one line.
   const { hero, updateHero } = usePlayer();
 
   const [activeTab, setActiveTab] = useState('DASHBOARD');
@@ -137,6 +107,14 @@ export default function GameShell({ onFindCombat }) {
     { id: 'GATHERING', label: 'Gathering', iconKey: 'gathering' }
   ];
 
+  const expansionTabs = [
+    { id: 'CRIMES', label: 'Crimes', iconKey: 'skull' },
+    { id: 'GYM', label: 'Gym', iconKey: 'combat' },
+    { id: 'EDUCATION', label: 'Academy', iconKey: 'scroll' },
+    { id: 'BAZAAR', label: 'Bazaar', iconKey: 'shop' },
+    { id: 'STOCKS', label: 'Stocks', iconKey: 'gold' }
+  ];
+
   const charTabs = [
     { id: 'ARSENAL', label: 'Arsenal', iconKey: 'arsenal' },
     { id: 'SKILLS', label: 'Skills', iconKey: 'skills', alert: unspentPoints > 0 },
@@ -144,7 +122,7 @@ export default function GameShell({ onFindCombat }) {
     { id: 'SHOP', label: 'Blood Shop', iconKey: 'shop' }
   ];
 
-  const activeTabData = [...mainTabs, ...charTabs].find(t => t.id === activeTab);
+  const activeTabData = [...mainTabs, ...expansionTabs, ...charTabs].find(t => t.id === activeTab);
 
   const NavItem = ({ tab, isMobile }) => {
     const active = activeTab === tab.id;
@@ -175,7 +153,7 @@ export default function GameShell({ onFindCombat }) {
     <WorldEventBanner />
     <div className="flex flex-col md:flex-row w-full h-full min-h-[85vh] max-w-7xl mx-auto px-4 py-6 animate-in fade-in duration-700">
       
-      {/* MOBILE NAV (Top bar with Hamburger Menu, hidden on md+) */}
+      {/* MOBILE NAV */}
       <div className="md:hidden relative mb-6 z-40">
         <button 
           id="mobile-menu-toggle"
@@ -200,6 +178,12 @@ export default function GameShell({ onFindCombat }) {
                    {mainTabs.map(tab => <NavItem key={tab.id} tab={tab} isMobile={true} />)}
                 </div>
              </div>
+             <div className="mb-4">
+                <h3 className="text-[10px] text-stone-600 font-mono uppercase tracking-widest mb-2 px-4">Activities</h3>
+                <div className="flex flex-col gap-1">
+                   {expansionTabs.map(tab => <NavItem key={tab.id} tab={tab} isMobile={true} />)}
+                </div>
+             </div>
              <div>
                 <h3 className="text-[10px] text-stone-600 font-mono uppercase tracking-widest mb-2 px-4">Character</h3>
                 <div className="flex flex-col gap-1">
@@ -210,7 +194,7 @@ export default function GameShell({ onFindCombat }) {
         )}
       </div>
 
-      {/* DESKTOP NAV (Left Sidebar, visible on md+) */}
+      {/* DESKTOP NAV */}
       <aside className="hidden md:flex flex-col w-[260px] pr-6 border-r border-neutral-900/50 mr-8 flex-shrink-0">
          <div className="mb-6">
             <BlackWorldSidebar hero={hero} onNavigate={(tab) => {
@@ -219,10 +203,16 @@ export default function GameShell({ onFindCombat }) {
             }} />
          </div>
 
-         <div className="mb-8">
+         <div className="mb-6">
             <h3 className="text-[10px] text-stone-600 font-mono uppercase tracking-widest mb-3 px-4">Main</h3>
             <div className="flex flex-col gap-1">
                {mainTabs.map(tab => <NavItem key={tab.id} tab={tab} isMobile={false} />)}
+            </div>
+         </div>
+         <div className="mb-6">
+            <h3 className="text-[10px] text-stone-600 font-mono uppercase tracking-widest mb-3 px-4">Activities</h3>
+            <div className="flex flex-col gap-1">
+               {expansionTabs.map(tab => <NavItem key={tab.id} tab={tab} isMobile={false} />)}
             </div>
          </div>
          <div>
@@ -240,18 +230,8 @@ export default function GameShell({ onFindCombat }) {
           </div>
       </aside>
 
-
       {/* View Rendering Container */}
       <main className="flex-1 overflow-x-hidden min-w-0">
-        {/* ── ALL VIEWS MIGRATED TO PlayerContext ──────────────────
-            Every component below now calls usePlayer() internally
-            to get hero and updateHero. NO hero props are passed.
-
-            Props that REMAIN are:
-              - onFindCombat: stage transition (page.js-level)
-              - onBack: navigation callback (GameShell-level)
-              - inline: UI layout flag (boolean, not data)
-        */}
         {activeTab === 'DASHBOARD' && <DashboardView />}
         {activeTab === 'TOWN' && <TownView />}
         {activeTab === 'EXPLORE' && <ExplorationEngine onFindCombat={onFindCombat} />}
@@ -261,6 +241,11 @@ export default function GameShell({ onFindCombat }) {
         {activeTab === 'ACHIEVEMENTS' && <AchievementPanel />}
         {activeTab === 'GATHERING' && <GatheringView onBack={() => setActiveTab('DASHBOARD')} />}
         {activeTab === 'SHOP' && <BloodStoneShop />}
+        {activeTab === 'CRIMES' && <CrimesView onBack={() => setActiveTab('TOWN')} />}
+        {activeTab === 'GYM' && <GymView onBack={() => setActiveTab('TOWN')} />}
+        {activeTab === 'EDUCATION' && <EducationView onBack={() => setActiveTab('TOWN')} />}
+        {activeTab === 'BAZAAR' && <BazaarView onBack={() => setActiveTab('TOWN')} />}
+        {activeTab === 'STOCKS' && <StockMarketView onBack={() => setActiveTab('TOWN')} />}
       </main>
 
       {refillModal && (

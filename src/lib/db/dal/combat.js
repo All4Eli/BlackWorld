@@ -19,16 +19,28 @@ export async function getOrStartCombat(userId, zoneId) {
         return { session: existing, monster };
     }
 
-    // Spawn new encounter (simplified: random monster from zone)
-    // Production would query monsters table grouped by zone
-    // For now we'll pick a random generic monster matching the zone level
-    const { data: monster } = await sqlOne(
+    // Spawn new encounter (random monster from zone with fallback to ZONES config)
+    let { data: monster } = await sqlOne(
         `SELECT * FROM monsters WHERE zone_id = $1 ORDER BY RANDOM() LIMIT 1`,
         [zoneId]
     );
 
     if (!monster) {
-        throw new Error('No monsters found in this zone.');
+        const { ZONES } = await import('@/lib/gameData');
+        const zone = ZONES.find(z => z.id === zoneId) || ZONES[0];
+        const rawEnemy = zone.enemies?.[Math.floor(Math.random() * (zone.enemies?.length || 1))] || { name: 'Grave Shambler', baseHp: 50, baseDmg: 8 };
+        const enemyId = `m_${zone.id}_${rawEnemy.name.toLowerCase().replace(/\s+/g, '_')}`;
+
+        await sqlOne(
+          `INSERT INTO monsters (id, zone_id, name, base_hp, base_dmg, tier)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (id) DO UPDATE SET base_hp = $4, base_dmg = $5
+           RETURNING *`,
+          [enemyId, zone.id, rawEnemy.name, rawEnemy.baseHp || 50, rawEnemy.baseDmg || 8, 'COMMON']
+        );
+
+        const { data: createdMonster } = await sqlOne(`SELECT * FROM monsters WHERE id = $1`, [enemyId]);
+        monster = createdMonster;
     }
 
     // Fetch player to get max HP for the new session

@@ -15,25 +15,12 @@ import BloodStoneShop from './BloodStoneShop';
 import MonumentView from './MonumentView';
 import LairView from './LairView';
 import BountyBoardView from './BountyBoardView';
+import CrimesView from './CrimesView';
+import GymView from './GymView';
+import EducationView from './EducationView';
+import BazaarView from './BazaarView';
+import StockMarketView from './StockMarketView';
 
-// ── CONTEXT MIGRATION ──────────────────────────────────────────
-// TownView PREVIOUSLY received { hero, updateHero } from GameShell
-// and blindly forwarded them to all 11 sub-views.
-//
-// PROBLEM: TownView doesn't USE hero — it only passes it through.
-//   But React doesn't know that. When updateHero() fires inside
-//   a sub-view (e.g., HealerView heals the player), this happened:
-//     1. page.js state changes → re-renders
-//     2. GameShell receives new hero prop → re-renders
-//     3. TownView receives new hero prop → re-renders (WASTED)
-//     4. All 11 sub-views receive new hero prop → 11 re-renders
-//
-// FIX: TownView accepts NO hero props. Each sub-view calls
-//   usePlayer() internally. TownView is now a pure navigation
-//   shell — it only manages which sub-view is active.
-//   When hero data changes, ONLY the sub-view that subscribes
-//   to PlayerContext re-renders. TownView skips the re-render.
-//
 export default function TownView() {
   const [activeLocation, setActiveLocation] = useState(null);
   const categories = [
@@ -42,8 +29,10 @@ export default function TownView() {
       locations: [
         { id: 'shop', name: 'The Merchant', description: 'Exchange gold for rare artifacts and gear.', status: null },
         { id: 'forge', name: 'The Blacksmith', description: 'Forge materials and enhance your power infinitely.', status: null },
+        { id: 'bazaar', name: 'Player Bazaar', description: 'Trade items directly with other players in custom player shops.', status: null },
         { id: 'auction', name: 'Auction House', description: 'Trade legendary artifacts with other players.', status: null },
         { id: 'bank', name: 'Blood Bank', description: 'Secure your gold before diving into the dark.', status: null },
+        { id: 'stocks', name: 'Black Stock Exchange', description: 'Invest gold in corporate shares and earn passive dividends.', status: null },
       ]
     },
     {
@@ -51,18 +40,21 @@ export default function TownView() {
       title: 'The Proving Grounds',
       locations: [
         { id: 'arena', name: 'The Colosseum', description: 'Wager your gold in lethal combat against other players.', status: null },
+        { id: 'gym', name: 'Iron Gym', description: 'Train your battle stats (Strength, Speed, Defense, Dexterity).', status: null },
       ]
     },
     {
-      title: 'Sanctuary',
+      title: 'Sanctuary & Academy',
       locations: [
         { id: 'healer', name: 'The Hollow Healer', description: 'Rejuvenate health and restore flasks.', status: null },
+        { id: 'education', name: 'Blackwood Academy', description: 'Enroll in courses for permanent stat boosts and special perks.', status: null },
         { id: 'quests', name: 'Notice Board', description: 'Accept contracts for bounty and glory.', status: null },
       ]
     },
     {
       title: 'The Underbelly',
       locations: [
+        { id: 'crimes', name: 'Crime Syndicate', description: 'Commit street crimes and illegal heists for Gold & XP.', status: null },
         { id: 'covens', name: 'Blood Covens', description: 'Pledge loyalty to a community guild.', status: null },
         { id: 'casino', name: 'Demon Casino', description: 'Wager gold on dark outcomes.', status: null },
         { id: 'bounties', name: 'Bounty Board', description: 'Place a bounty on your enemies or claim gold for their heads.', status: null },
@@ -85,6 +77,11 @@ export default function TownView() {
     }
   ];
 
+  if (activeLocation === 'crimes') return <CrimesView onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'gym') return <GymView onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'education') return <EducationView onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'bazaar') return <BazaarView onBack={() => setActiveLocation(null)} />;
+  if (activeLocation === 'stocks') return <StockMarketView onBack={() => setActiveLocation(null)} />;
   if (activeLocation === 'healer') return <HealerView onBack={() => setActiveLocation(null)} />;
   if (activeLocation === 'bank') return <BankView onBack={() => setActiveLocation(null)} />;
   if (activeLocation === 'casino') return <CasinoView onBack={() => setActiveLocation(null)} />;

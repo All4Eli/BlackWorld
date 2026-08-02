@@ -81,23 +81,12 @@ async function handlePost(request, { userId }) {
   //
   // Notice: hero_data is NOT in this SELECT. It's gone.
   const { data: hero, error: heroErr } = await sqlOne(
-    `SELECT level, gold, essence, jail_until, jail_reason FROM hero_stats WHERE player_id = $1`,
+    `SELECT level, gold, essence FROM hero_stats WHERE player_id = $1`,
     [userId]
   );
 
   if (heroErr || !hero) {
     return NextResponse.json({ error: 'Player not found.' }, { status: 404 });
-  }
-
-  const jailStatus = checkJailStatus(hero);
-  if (jailStatus.in_jail) {
-    return NextResponse.json({
-      error: 'You are currently in the Dungeon (Jail)!',
-      code: 'IN_DUNGEON',
-      jail_until: hero.jail_until,
-      jail_reason: hero.jail_reason,
-      remaining_seconds: jailStatus.remaining_seconds
-    }, { status: 403 });
   }
 
   // ── 2. Validate zone ──────────────────────────────────────────

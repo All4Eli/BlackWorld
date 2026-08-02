@@ -16,7 +16,7 @@
 //   3. Items are identified by inventory.id (instance), not items.id (catalog).
 // ═══════════════════════════════════════════════════════════════════
 
-import { sql, sqlOne, transaction } from '@/lib/db/pool';
+import { sql, sqlOne, transaction } from '../pool.js';
 
 // ─────────────────────────────────────────────────────────────────
 //  Constants

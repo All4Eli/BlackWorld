@@ -46,9 +46,7 @@ export const calculateCurrentResource = (resourceRecord, resourceType, maxVal) =
   };
 };
 
-import { tickPlayerResources } from '@/lib/db/dal/expansion';
 
-export { tickPlayerResources };
 
 // Frontend consumptions helper
 // It checks offline regen FIRST before deduction.

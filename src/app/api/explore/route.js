@@ -28,6 +28,7 @@ import { withMiddleware } from '@/lib/middleware';
 import { sqlOne } from '@/lib/db/pool';
 import { transaction } from '@/lib/db/pool';
 import * as InventoryDal from '@/lib/db/dal/inventory';
+import { checkJailStatus } from '@/lib/db/dal/expansion';
 import { generateLoot, ZONES } from '@/lib/gameData';
 
 // ── Narrative banks (pure data, no DB) ─────────────────────────
@@ -79,8 +80,6 @@ async function handlePost(request, { userId }) {
   //   essence — future: deduct exploration cost
   //
   // Notice: hero_data is NOT in this SELECT. It's gone.
-import { checkJailStatus } from '@/lib/db/dal/expansion';
-
   const { data: hero, error: heroErr } = await sqlOne(
     `SELECT level, gold, essence, jail_until, jail_reason FROM hero_stats WHERE player_id = $1`,
     [userId]

@@ -56,8 +56,8 @@ function getPool() {
     query_timeout: 10000,          // client-side query timeout
   };
 
-  // Ensure SSL is active and bypass strict CA checks for Supabase pooler
-  if (connectionString.includes('supabase.co') || connectionString.includes('supabase.com')) {
+  // Ensure SSL is active and bypass strict CA checks for all remote connections
+  if (!connectionString.includes('localhost') && !connectionString.includes('127.0.0.1')) {
     poolConfig.ssl = { rejectUnauthorized: false };
   }
 

@@ -4,6 +4,7 @@ const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL ||
 
 const pool = new Pool({
   connectionString,
+  ssl: connectionString.includes('localhost') || connectionString.includes('127.0.0.1') ? false : { rejectUnauthorized: false },
   // Production pool config
   max: 20,                         // max simultaneous connections
   idleTimeoutMillis: 30000,        // close idle clients after 30s

@@ -10,7 +10,7 @@ export default function LeaderboardHub({ onBack }) {
     useEffect(() => {
         const fetchRankings = async () => {
             try {
-                const res = await fetch('/api/leaderboard');
+                const res = await fetch('/api/leaderboards');
                 const json = await res.json();
                 if (res.ok) setData(json);
             } catch (err) {

@@ -13,12 +13,10 @@ import dns from 'dns';
 // This forces Node to resolve the AAAA records which Vercel's network natively supports routing.
 dns.setDefaultResultOrder('ipv6first');
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
 import { Pool } from 'pg';
 
 let connectionString =
-  process.env.DATABASE_URL || process.env.POSTGRES_URL || 'postgresql://postgres:E87319ee@localhost:5432/blackworld';
+  process.env.DATABASE_URL || process.env.POSTGRES_URL || 'postgresql://postgres:postgres@localhost:5432/blackworld';
 
 // Clean connection string URL parameters safely using standard URL API
 try {

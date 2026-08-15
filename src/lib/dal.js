@@ -1,13 +1,13 @@
 // ═══════════════════════════════════════════════════════════════════
-// BLACKWORLD — DATA ACCESS LAYER (DAL)
+// BLACKWORLD — DATA ACCESS LAYER (DAL) — Transitional Barrel
 // ═══════════════════════════════════════════════════════════════════
-// Typed query functions for all game systems.
-// Every function returns { data, error } to stay compatible with
-// the existing API route pattern.
+// This file contains legacy DAL objects (Players, HeroStats, etc.)
+// still used by ~10 API routes. New code should import from:
+//   - '@/lib/db/pool' for sql, sqlOne, transaction
+//   - '@/lib/db/dal/*' for domain-specific DAL modules
 //
-// NOTE: This file is the legacy monolith. New DAL modules go in
-//       src/lib/db/dal/*.js and import from src/lib/db/pool.js.
-//       This file re-exports pool helpers for backward compat.
+// The exports here exist for backward compatibility. Do NOT add
+// new query functions here — add them to src/lib/db/dal/ instead.
 // ═══════════════════════════════════════════════════════════════════
 
 import { pool, sql as _sql, sqlOne as _sqlOne, transaction as _transaction } from './db/pool.js';
@@ -774,17 +774,9 @@ export const Composite = {
     }),
 };
 
-
 // ═════════════════════════════════════════════════════════════════
-//  EXPORTS — Backward compat Supabase-style wrapper
+//  EXPORTS
 // ═════════════════════════════════════════════════════════════════
-
-// Keep the old supabase-style interface alive for gradual migration
-import { SupabaseQueryBuilder } from './db.js';
-
-export const supabase = {
-  from: (table) => new SupabaseQueryBuilder(table),
-};
 
 // Export pool for direct access if needed
 export { pool, sql, sqlOne, transaction };
